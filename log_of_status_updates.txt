@@ -1,0 +1,16 @@
+6.2.2021: I rewrote the methods effective_g, effective_A, line_broadening and calculate_spectrum. The for loops with nfields iterations were replaced
+	  with operations on numpy arrays. For example, instead of returning a single gValue for one single field direction, effective_g_array() returns
+	  an array of size nfields containing all the gValues for every field direction. This led to a significant speed up. Calculation of spectrum now
+	  takes around half a second, used to take 15+ seconds
+
+	  Problems: 1) Spectrum still doesn't look like the C++ version. It just looks like a gauss curve
+                    2) Once in about 7 times calculate spectrum throws an error. I suspect that the cause might be that I don't use random distributions/rngs
+		       correctly. Need to talk with Dinar about seeding and what urng does in C++ Peldor.
+
+11.2.2021: 1) The program architecture was extended. 
+           2) The read_config method was extended. 
+		   3) The Spin class was rewritten. 
+		   4) The Simulator class was modified: 
+		      a) The epr_spectrum attribute was added. It allows to correctly compute the EPR spectrum (tested by means of main_test.py) 
+			  b) The attribute peldor_signal and several others were temporaly removed, because they need to be rewritten by using a more general class Experiment.
+			  c) The class Peldor_4p_rect was implemented (not completed).
