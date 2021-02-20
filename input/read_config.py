@@ -55,7 +55,7 @@ def read_experimental_parameters(config):
             experiments.append(exp)
         else:
             raise ValueError('Invalid name of experiment!')
-            sys.exit(1)   
+            sys.exit(1)  
     return experiments
 
 def read_array(array_obj, data_type, scale=1.0):
@@ -142,13 +142,13 @@ def read_calculation_settings(config):
         raise ValueError('Invalid integration method!')
         sys.exit(1)   
     calculation_settings["distributions"] = {}
-    calculation_settings["r"] = config.calculation_settings.distributions.r
-    calculation_settings["xi"] = config.calculation_settings.distributions.xi
-    calculation_settings["phi"] = config.calculation_settings.distributions.phi
-    calculation_settings["alpha"] = config.calculation_settings.distributions.alpha
-    calculation_settings["beta"] = config.calculation_settings.distributions.beta
-    calculation_settings["gamma"] = config.calculation_settings.distributions.gamma
-    calculation_settings["j"] = config.calculation_settings.distributions.j   
+    calculation_settings["distributions"]["r"] = config.calculation_settings.distributions.r
+    calculation_settings["distributions"]["xi"] = config.calculation_settings.distributions.xi
+    calculation_settings["distributions"]["phi"] = config.calculation_settings.distributions.phi
+    calculation_settings["distributions"]["alpha"] = config.calculation_settings.distributions.alpha
+    calculation_settings["distributions"]["beta"] = config.calculation_settings.distributions.beta
+    calculation_settings["distributions"]["gamma"] = config.calculation_settings.distributions.gamma
+    calculation_settings["distributions"]["j"] = config.calculation_settings.distributions.j   
     calculation_settings["excitation_treshold"] = float(config.calculation_settings.excitation_treshold)
     return calculation_settings
 

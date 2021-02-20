@@ -3,7 +3,6 @@ The simulator class
 '''
 
 import numpy as np
-from time import time
 
 from spin_physics.spin import Spin
 from mathematics.random_points_on_sphere import random_points_on_sphere
@@ -34,11 +33,9 @@ class Simulator():
     
     def epr_spectrum(self, spin_system, field_value):
         # Random orientations of the static magnetic field
-        a = time()
         if self.field_directions == []:
             self.field_directions = self.set_field_directions()
         num_field_directions = self.field_directions.shape[0]
-        b = time()
         # Resonance frequencies and their probabilities
         all_frequencies = []
         all_probabilities = []
@@ -54,15 +51,12 @@ class Simulator():
             probabilities = histogram(resonance_frequencies, bins=frequencies, weights=weights)
             all_frequencies.extend(frequencies)
             all_probabilities.extend(probabilities)
-        c = time()
         # EPR spectrum
         min_frequency = np.amin(all_frequencies) - 0.150
         max_frequency = np.amax(all_frequencies) + 0.150
         spectrum = {}
         spectrum["f"] = np.arange(min_frequency, max_frequency+self.frequency_increment_epr_spectrum, self.frequency_increment_epr_spectrum)
         spectrum["s"] = histogram(all_frequencies, bins=spectrum["f"], weights=all_probabilities)
-        d = time()
-        print(b-a)
-        print(c-b)
-        print(d-c)
         return spectrum
+        
+    

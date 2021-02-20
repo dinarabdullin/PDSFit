@@ -22,13 +22,11 @@ if __name__ == '__main__':
     filepath_config = "examples/example01_nitroxide_biradical_Wband_PELDOR/config_ex01.cfg"
     #filepath_config = "examples/example01_nitroxide_biradical_Wband_PELDOR/config_ex01_grids.cfg"
     mode, experiments, spins, simulation_settings, calculation_settings, output_settings = read_config(filepath_config)
-    
     # Make an output directory
     #make_output_directory(output_settings, filepath_config)
     
     # Init simulator
     simulator = Simulator(calculation_settings)
-    
     # Simulate the EPR spectrum of the spin system
     spectrum = simulator.epr_spectrum(spins, experiments[0].magnetic_field)
     #save_epr_spectrum(spectrum, output_settings['directory'])
