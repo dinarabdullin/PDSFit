@@ -15,20 +15,18 @@ gamma = 45 * deg_to_rad
 
 rot_matrix_from_script = RotationMatrix()
 rot_matrix_from_script.reset_angles(alpha, beta, gamma)
-print(rot_matrix_from_script.rotation_matrix)
+#print(rot_matrix_from_script.rotation_matrix)
 
 
-rot_matrix_scipy = Rotation.from_euler('ZXZ', [alpha, beta, gamma], degrees = False)
-print(rot_matrix_scipy.as_matrix())
+rot_matrix_scipy = Rotation.from_euler('ZXZ', [alpha, beta, gamma])
+#print(rot_matrix_scipy.as_matrix())
 
 """ The scipy method and the python script produce the same rotation matrix. 
     To avoid unnecessary code, scipy will be used and rotation_matrix.py will be deleted """
 
-
-vectors = np.array(((0.1, 0.2 , 0.3), (0.4, 0.5, 0.6)))
+##############################
+angles = np.array([[90, 0, 0],[0, 45, 0],[45, 60, 30]])
+vectors = np.random.normal(0, 1 , size=(3, 3))
+rot_matrix_scipy = Rotation.from_euler('ZXZ', angles, degrees=True)
 rotated_vectors = rot_matrix_scipy.apply(vectors)
 print(rotated_vectors)
-rotated_vectors = rot_matrix_scipy.as_matrix().dot(vectors)
-
-
-

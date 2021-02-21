@@ -2,6 +2,7 @@
 Class for 4-pulse ELDOR with rectangular pulses
 '''
 
+from time import time
 import numpy as np
 from experiments.experiment import Experiment
 from mathematics.values_from_distribution import values_from_distribution
@@ -59,6 +60,7 @@ class Peldor_4p_rect(Experiment):
     
     # TODO This function should calculate a 4pELDOR time trace using dipolar frequencies, detection probabilities, pump probabilities, etc
     # pumpEfficiency needs to be added to cfg file?
+    # very unsure about the use of detection and pump probabilities (max is very likely the wrong approach)
     def compute_time_trace(self, simulator, spins, parameters, calculation_settings):
         # replace with scipy soon
         # Calculate the PELDOR signal for the two-spin sytem
@@ -66,29 +68,28 @@ class Peldor_4p_rect(Experiment):
             # Set the values of all geometric parameters and the J coupling constant
             distr = calculation_settings["distributions"]
             size = calculation_settings["mc_sample_size"]
-            r = values_from_distribution(parameters['r_mean'], parameters['r_width'], distr['r'], size)
-            xi = values_from_distribution(parameters['xi_mean'], parameters['xi_width'], distr['xi'], size)
-            phi =values_from_distribution(parameters['phi_mean'], parameters['phi_width'], distr['phi'], size)
-            alpha = values_from_distribution(parameters['alpha_mean'], parameters['alpha_width'], distr['alpha'], size)
-            beta = values_from_distribution(parameters['beta_mean'], parameters['beta_width'], distr['beta'], size)
-            gamma = values_from_distribution(parameters['gamma_mean'], parameters['gamma_width'], distr['gamma'], size)
-            J = values_from_distribution(parameters['j_mean'], parameters['j_width'], distr['j'], size)
-
+            # is it intended that the parameters have this form: [[parameter]] ? According to powerpoint it should just be a float, no lists
+            r = values_from_distribution(parameters['r_mean'][0][0], parameters['r_width'][0][0], distr['r'], size)
+            xi = values_from_distribution(parameters['xi_mean'][0][0], parameters['xi_width'][0][0], distr['xi'], size)
+            phi =values_from_distribution(parameters['phi_mean'][0][0], parameters['phi_width'][0][0], distr['phi'], size)
+            alpha = values_from_distribution(parameters['alpha_mean'][0][0], parameters['alpha_width'][0][0], distr['alpha'], size)
+            beta = values_from_distribution(parameters['beta_mean'][0][0], parameters['beta_width'][0][0], distr['beta'], size)
+            gamma = values_from_distribution(parameters['gamma_mean'][0][0], parameters['gamma_width'][0][0], distr['gamma'], size)
+            J = values_from_distribution(parameters['j_mean'][0][0], parameters['j_width'][0][0], distr['j'], size)
             fieldDirA = simulator.set_field_directions()
             res_freqA = spins[0].res_freq(fieldDirA, self.magnetic_field)
-            gValuesA = spins[0].g_effective(fieldDirA, size)
-            detProbA = self.detection_probability(res_freqA)
-            pumpProbA = self.pump_probability(res_freqA)
-
+            gValuesA = spins[0].g_effective(fieldDirA, size).reshape(size, )
+            detProbA = np.max(self.detection_probability(res_freqA), axis=1)
+            pumpProbA = np.max(self.pump_probability(res_freqA), axis = 1)
             #Rotation matrix between the spin A and spin B frames
-            rotationMatrix = Rotation.from_euler('ZXZ', [alpha, beta, gamma], degrees = False)
+            rotationMatrices = Rotation.from_euler('ZXZ', np.column_stack((alpha, beta, gamma)))
             # Calculate the directions of the magnetic field in the spin B frame
-            fieldDirB = rotationMatrix.apply(fieldDirA)
-            gValuesB = spins[1].g_effective(fieldDirB, size)
+            fieldDirB = rotationMatrices.apply(fieldDirA)
+            gValuesB = spins[1].g_effective(fieldDirB, size).reshape(size, )
             res_freqB = spins[1].res_freq(fieldDirB, self.magnetic_field)
-            detProbB = self.detection_probability(res_freqB)
+            detProbB = np.max(self.detection_probability(res_freqB), axis=1)
             # Calculate the probability of spin B to be excited by the pump pulse
-            pumpProbB = self.pump_probability(res_freqB) * (detProbA > simulator.excitation_threshold)
+            pumpProbB = np.max(self.pump_probability(res_freqB), axis=1) * (detProbA > simulator.excitation_threshold)
             # Calculate the amplitude of the PELDOR signal
             amplitude = np.sum((detProbA > simulator.excitation_threshold) * detProbA + (detProbB > simulator.excitation_threshold) * detProbB)
             # Determine whether the spin pair is excited 
@@ -113,7 +114,8 @@ class Peldor_4p_rect(Experiment):
             modAmplitude += excited_BA_and_notAB * (detProbB * pumpProbA) * pumpEfficiency
             # The oscillating part of the PELDOR signal
             signalValues = np.zeros(self.t.size)  #maybe we should rename t to something more meaningful like timeValues 
-            for i in self.t.size:
+            # for loop takes around 10 seconds. I've had problems trying to vectorize this because the array size would become very large 
+            for i in range(self.t.size):
                 signalValues[i] = np.sum(modAmplitude * (1-np.cos(wdd * self.t[i])))
             # Calculate the entire PELDOR signal and normalize it
             norm = 1/amplitude
@@ -122,3 +124,22 @@ class Peldor_4p_rect(Experiment):
         if len(spins) == 3:
             pass
         return signalValues
+
+
+""" print("fieldDirA.shape: " + str(fieldDirA.shape))
+print("res_freqA.shape: " + str(res_freqA.shape))
+print("detProbA.shape: " + str(detProbA.shape))
+print("pumpProbA.shape: " + str(pumpProbA.shape))
+print("alpha.shape: :" + str(alpha.shape))
+print("gValuesA.shape: " + str(gValuesA.shape))
+print("fieldDirB.shape: " + str(fieldDirB.shape))
+print("gValuesB.shape: " + str(gValuesB.shape))
+print("detProbB .shape: " + str(detProbB .shape))
+print("pumpProbB.shape: " + str(pumpProbB.shape))
+print("excited_AB.shape: " + str(excited_AB.shape))
+print("excited_BA.shape: " + str(excited_BA.shape))
+print("excited_AB_and_BA.shape: " + str(excited_AB_and_BA.shape))
+print("excited_AB_and_notBA.shape: " + str(excited_AB_and_notBA.shape))
+print("excited_BA_and_notAB.shape: " + str(excited_BA_and_notAB.shape))
+print("cosDipolarAngle.shape: " + str(cosDipolarAngle.shape))
+exit() """
