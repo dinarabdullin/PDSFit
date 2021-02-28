@@ -18,22 +18,28 @@ class Peldor_4p_rect(Experiment):
         self.bandwidth_pump_pulse = 1 / (2 * self.pump_pulse_length)
         self.double_frequency_experiment = True
         
-    def detection_probability(self, resonance_frequencies, weights):
+    def detection_probability(self, resonance_frequencies, weights = None):
         frequency_offsets_squared = (self.detection_frequency - resonance_frequencies)**2
         rabi_frequencies_pi_half_pulse = np.sqrt(frequency_offsets_squared + self.bandwidth_detection_pi_half_pulse**2)
         rabi_frequencies_pi_pulse = np.sqrt(frequency_offsets_squared + self.bandwidth_detection_pi_pulse**2)
         detection_probabilities = (self.bandwidth_detection_pi_half_pulse / rabi_frequencies_pi_half_pulse) * np.sin(2*np.pi * rabi_frequencies_pi_half_pulse * self.detection_pi_half_pulse_length) * \
                                   0.25 * (self.bandwidth_detection_pi_pulse / rabi_frequencies_pi_pulse) ** 4 * (1 - np.cos(2*np.pi * rabi_frequencies_pi_pulse * self.detection_pi_pulse_length))**2
-        detection_probabilities = detection_probabilities * weights.reshape(weights.size,1)
-        detection_probabilities = detection_probabilities.sum(axis=0)
+        #detection_probabilities = detection_probabilities * weights.reshape(weights.size,1)
+        #detection_probabilities = detection_probabilities.sum(axis=0)
+        if weights is not None:
+            detection_probabilities = detection_probabilities * weights
+            detection_probabilities = detection_probabilities.sum(axis=1)
         return detection_probabilities
 
-    def pump_probability(self, resonance_frequencies, weights):
+    def pump_probability(self, resonance_frequencies, weights= None):
         frequency_offsets_squared = (self.pump_frequency - resonance_frequencies)**2
         rabi_frequencies_pump_pulse = np.sqrt(frequency_offsets_squared + self.bandwidth_pump_pulse**2)
         pump_probabilities = 0.5 * (self.bandwidth_pump_pulse / rabi_frequencies_pump_pulse)**2 * (1 - np.cos(2*np.pi * rabi_frequencies_pump_pulse * self.pump_pulse_length))
-        pump_probabilities = pump_probabilities * weights.reshape(weights.size,1)
-        pump_probabilities = pump_probabilities.sum(axis=0)
+        #pump_probabilities = pump_probabilities * weights.reshape(weights.size,1)
+        #pump_probabilities = pump_probabilities.sum(axis=0)
+        if weights is not None:
+            pump_probabilities = pump_probabilities * weights
+            pump_probabilities = pump_probabilities.sum(axis=1)
         return pump_probabilities
         
     def get_detection_bandwidth(self, ranges=()):

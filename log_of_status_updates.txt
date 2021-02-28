@@ -6,6 +6,7 @@
 	  Problems: 1) Spectrum still doesn't look like the C++ version. It just looks like a gauss curve
                     2) Once in about 7 times calculate spectrum throws an error. I suspect that the cause might be that I don't use random distributions/rngs
 		       correctly. Need to talk with Dinar about seeding and what urng does in C++ Peldor.
+--------------------------------------------------------------------------------------------
 
 11.2.2021: 1) The program architecture was extended. 
            2) The read_config method was extended. 
@@ -14,6 +15,8 @@
       	   	a) The epr_spectrum attribute was added. It allows to correctly compute the EPR spectrum (tested by means of main_test.py) 
 	  	b) The attribute peldor_signal and several others were temporaly removed, because they need to be rewritten by using a more general class Experiment.
 	  	c) The class Peldor_4p_rect was implemented (not completed).
+
+--------------------------------------------------------------------------------------
 
 21.2.2021 : 1) The simulation of the time trace was implemented in the method compute_time_trace() in peldor_4p_rect.py.
 		It is currently limited to a unimodal, two spin spin system. The old C++ code was used as a template. Instead of looping
@@ -33,4 +36,11 @@
 			 - attempts to vectorize the for loop at line 118 in peldor_4p_rect.py led to very large arrays. This remaining for loop
 			   takes 10 seconds. There is probably a more clever way to do this.
 
-		4) next step: write a proper plot method for timetrace and compare the timetrace to C++ PeldorFit timetrace
+-------------------------------------------------------------------------------------------
+
+28.2.2021  1) Minor changes:
+			 - simulator.py: The name of the method field_orientations() was changed to set_field_directions() 
+				due to a name clash with the variable field_orientations
+			 - peldor_4p_rect.py: changes were made to detection and pump probability because weighting was not compatible
+			   with the method class from pump_bandwidth() and detection_bandwith(). Need to discuss
+			 - moved simulate_time_trace() into the class Simulator

@@ -9,6 +9,7 @@ import plots.set_style
 
 
 def plot_epr_spectrum(spectrum, detection_bandwidth={}, pump_bandwidth={}, save_figure=False, directory='', filename="epr_spectrum"):
+    plt.ioff()
     fig = plt.figure(facecolor='w', edgecolor='w')
     axes = fig.gca()
     axes.plot(spectrum["f"], spectrum["s"]/np.amax(spectrum["s"]), 'k-', label="EPR spectrum")
@@ -23,7 +24,8 @@ def plot_epr_spectrum(spectrum, detection_bandwidth={}, pump_bandwidth={}, save_
     axes.set_xlim(np.amin(spectrum["f"]), np.amax(spectrum["f"]))
     axes.set_ylim(0.0, 1.1)
     plt.tight_layout()
-    plt.draw()
+    #plt.draw()
     if save_figure:
         filepath = directory + filename + ".png"
         plt.savefig(filepath, format='png', dpi=600)
+    plt.close(fig)

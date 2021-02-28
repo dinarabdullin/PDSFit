@@ -1,7 +1,7 @@
 
-def save_timetrace(t, s, directory):
+def save_timetrace(timetrace, directory):
     filepath = directory + "timetrace.dat"
     file = open(filepath, 'w')
-    for i in range(t.size):
-        file.write('{0:<12.4f} {1:<12.4f} \n'.format(t[i], s[i]))
+    for i in range(timetrace['t'].size):
+        file.write('{0:<12.4f} {1:<12.4f} \n'.format(timetrace['t'][i], timetrace['s'][i]))
     file.close()

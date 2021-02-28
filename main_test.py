@@ -24,7 +24,6 @@ if __name__ == '__main__':
 	filepath_config = "examples/example01_nitroxide_biradical_Wband_PELDOR/config_ex01.cfg"
 	#filepath_config = "examples/example01_nitroxide_biradical_Wband_PELDOR/config_ex01_grids.cfg"
 	mode, experiments, spins, simulation_settings, calculation_settings, output_settings = read_config(filepath_config)
-
 	# Make an output directory
 	make_output_directory(output_settings, filepath_config)
 
@@ -34,21 +33,22 @@ if __name__ == '__main__':
 	# Simulate the EPR spectrum of the spin system
 	spectrum = simulator.epr_spectrum(spins, experiments[0].magnetic_field)
 	save_epr_spectrum(spectrum, output_settings['directory'])
-
+  
 	# Test the Peldor_4p_rect class: calculate the bandwidths of pump and detection pulses
 	detection_bandwidth = experiments[0].get_detection_bandwidth()
 	pump_bandwidth = experiments[0].get_pump_bandwidth()
+
 	save_bandwidth(detection_bandwidth, output_settings['directory'], "detection_bandwidth_"+experiments[0].name)
 	save_bandwidth(pump_bandwidth, output_settings['directory'], "pump_bandwidth_"+experiments[0].name)
 
 	# Plot the EPR spectrum of the spin system overlaid with the pump and detection bandwidth profiles
 	plot_epr_spectrum(spectrum, save_figure=True, directory=output_settings['directory'])
 	plot_epr_spectrum(spectrum, detection_bandwidth, pump_bandwidth, save_figure=True, directory=output_settings['directory'], filename="epr_spectrum_"+experiments[0].name)
-
+ 
 	# Test the Peldor_4p_rect class: calculate the PELDOR time trace
-	time_trace = simulator.compute_time_trace(experiments[0], spins, simulation_settings['parameters'])
+	time_trace = simulator.simulate_time_trace(experiments[0], spins, calculation_settings, simulation_settings['parameters'])
 	# time_trace = experiments[0].compute_time_trace(simulator, spins, simulation_settings['parameters'], calculation_settings)
-	# save_timetrace(experiments[0].t, time_trace, output_settings['directory'])
-	# plot_timetrace(experiments[0].t, time_trace, True, directory=output_settings['directory'], filename="timetrace"+experiments[0].name)
+	save_timetrace(time_trace, output_settings['directory'])
+	plot_timetrace(time_trace, True, directory=output_settings['directory'], filename="timetrace")
 
 	keep_figures_visible()
