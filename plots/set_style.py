@@ -1,6 +1,4 @@
-'''
-Adjusts the matplotlib rcParams
-'''
+''' Adjusts the matplotlib rcParams '''
 
 from matplotlib import rcParams
 rcParams['xtick.direction'] = 'out'

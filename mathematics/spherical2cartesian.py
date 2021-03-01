@@ -1,6 +1,4 @@
-'''
-Convert spherical coordinates into Cartestian coordinates
-'''
+''' Convert spherical coordinates into Cartestian coordinates '''
 
 import numpy as np
 

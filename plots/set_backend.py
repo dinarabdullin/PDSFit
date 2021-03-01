@@ -1,6 +1,4 @@
-'''
-Adjusts the matplotlib backend
-'''
+''' Adjusts the matplotlib backend '''
 
 import os
 import matplotlib

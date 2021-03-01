@@ -1,6 +1,4 @@
-'''
-Main file of osPDSFit
-'''
+''' Main file of osPDSFit '''
 
 import argparse
 from input.read_config import read_config

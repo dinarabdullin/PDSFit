@@ -1,6 +1,4 @@
-'''
-A modified histogram with "bins" being bin centers instead of bin edges
-'''
+''' A modified histogram with "bins" being bin centers instead of bin edges '''
 
 import numpy as np
 

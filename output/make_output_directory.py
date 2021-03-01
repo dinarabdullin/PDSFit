@@ -1,6 +1,4 @@
-'''
-Create an output directory
-'''
+''' Make an output directory '''
 
 import os
 import errno

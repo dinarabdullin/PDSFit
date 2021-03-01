@@ -1,12 +1,9 @@
-'''
-Plot a simulated EPR spectrum
-'''
+''' Plot a simulated EPR spectrum '''
 
 import numpy as np
 import plots.set_backend
 import matplotlib.pyplot as plt
 import plots.set_style
-
 
 def plot_epr_spectrum(spectrum, detection_bandwidth={}, pump_bandwidth={}, save_figure=False, directory='', filename="epr_spectrum"):
     fig = plt.figure(facecolor='w', edgecolor='w')

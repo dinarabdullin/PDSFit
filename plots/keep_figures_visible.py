@@ -1,6 +1,4 @@
-'''
-Keep all figures visible
-'''
+''' Keep all figures visible '''
 
 import matplotlib.pyplot as plt
 

@@ -1,6 +1,4 @@
-'''
-Save a simulated EPR spectrum
-'''
+''' Save a simulated EPR spectrum '''
 
 def save_epr_spectrum(spectrum, directory):
     filepath = directory + "epr_spectrum.dat"

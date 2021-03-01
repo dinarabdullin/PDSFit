@@ -1,6 +1,4 @@
-'''
-Save a bandwidth profile
-'''
+''' Save a bandwidth profile '''
 
 def save_bandwidth(bandwidth, directory, filename):
     filepath = directory + filename + ".dat"

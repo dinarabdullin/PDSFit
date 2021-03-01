@@ -1,6 +1,4 @@
-'''
-The spin class
-'''
+''' Spin class '''
 
 import numpy as np
 from math import sqrt
@@ -9,7 +7,7 @@ from supplement.definitions import const
 
 class Spin:
 
-    def __init__(self, g, n, I, A, gStrain, AStrain, lwpp, gAnisotropy):
+    def __init__(self, g, n, I, A, gStrain, AStrain, lwpp, T1, g_anisotropy_in_dipolar_coupling):
         self.g = g
         self.n = n
         self.I = I
@@ -17,7 +15,8 @@ class Spin:
         self.gStrain = gStrain
         self.AStrain = AStrain
         self.lwpp = lwpp
-        self.gAnisotropy = gAnisotropy
+        self.T1 = T1
+        self.g_anisotropy_in_dipolar_coupling = g_anisotropy_in_dipolar_coupling
         self.num_trans = 0
         self.num_res_freq = 0
         self.int_res_freq = []
@@ -104,4 +103,4 @@ class Spin:
                 m = np.tile(m, num_tile)
                 fh = Aeff * m
                 f += fh
-        return f
+        return f, g_eff.flatten()

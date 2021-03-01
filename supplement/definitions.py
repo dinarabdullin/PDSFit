@@ -1,6 +1,4 @@
-'''
-Constants & definitions
-'''
+''' Constants & definitions '''
 
 import numpy as np
 

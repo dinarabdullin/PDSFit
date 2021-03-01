@@ -7,13 +7,13 @@
                     2) Once in about 7 times calculate spectrum throws an error. I suspect that the cause might be that I don't use random distributions/rngs
 		       correctly. Need to talk with Dinar about seeding and what urng does in C++ Peldor.
 
-11.2.2021: 1) The program architecture was extended. 
-           2) The read_config method was extended. 
-	   3) The Spin class was rewritten. 
-	   4) The Simulator class was modified: 
-      	   	a) The epr_spectrum attribute was added. It allows to correctly compute the EPR spectrum (tested by means of main_test.py) 
-	  	b) The attribute peldor_signal and several others were temporaly removed, because they need to be rewritten by using a more general class Experiment.
-	  	c) The class Peldor_4p_rect was implemented (not completed).
+11.2.2021:	1) The program architecture was extended. 
+			2) The read_config method was extended. 
+			3) The Spin class was rewritten. 
+			4) The Simulator class was modified: 
+				a) The epr_spectrum attribute was added. It allows to correctly compute the EPR spectrum (tested by means of main_test.py) 
+				b) The attribute peldor_signal and several others were temporaly removed, because they need to be rewritten by using a more general class Experiment.
+				c) The class Peldor_4p_rect was implemented (not completed).
 
 21.2.2021 : 1) The simulation of the time trace was implemented in the method compute_time_trace() in peldor_4p_rect.py.
 		It is currently limited to a unimodal, two spin spin system. The old C++ code was used as a template. Instead of looping
@@ -34,3 +34,14 @@
 			   takes 10 seconds. There is probably a more clever way to do this.
 
 		4) next step: write a proper plot method for timetrace and compare the timetrace to C++ PeldorFit timetrace
+
+01.0.2021:	1) The config file was extended: variables 'experiment.mixing_time', 'spin.T1', 'spin.g_anisotropy_in_dipolar_coupling' were added.
+			2) The read_config method was changed accordingly to 1). 
+			3) The Spin.res_freq method's output was changed. 
+			3) The Peldor_4p_rect.compute_time_trace method was removed.
+			4) The Ridme_5p_rect class was created and included in experiment_types.
+			4) The Simulator class was modified: Many new methods were added. Among these, a 'compute_time_trace_via_monte_carlo' method, which allows to calculate a 
+			time trace via Monte-Carlo integration. Currently, this method is limited by 2 spins and the assumption that the g-anisopropy of both spins have a negligible
+            effect on the dipolar coupling frequencies calculated.
+			
+			The 'compute_time_trace_via_grids' method, which allows to calculate a time trace via integration grids, was also initialized and needs to be implemented in future. 
