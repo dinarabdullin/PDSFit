@@ -1,7 +1,7 @@
 ''' Generate random points on a sphere '''
 
 import numpy as np
-from mathematics.spherical2cartesian import spherical2cartesian
+from mathematics.coordinate_system_conversions import spherical2cartesian
 
 def random_points_on_sphere(size):
 	r = np.ones(size)

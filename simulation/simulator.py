@@ -9,9 +9,10 @@ from supplement.definitions import const
 from spin_physics.spin import Spin
 from mathematics.random_points_on_sphere import random_points_on_sphere
 from mathematics.random_points_from_distribution import random_points_from_distribution
-from mathematics.spherical2cartesian import spherical2cartesian
+from mathematics.coordinate_system_conversions import spherical2cartesian, cartesian2spherical
+from mathematics.rotate_coordinate_system import rotate_coordinate_system
 from mathematics.histogram import histogram
-from mathematics.rotate_reference_frame import rotate_reference_frame
+from plots.plot_grids import plot_grids
 
 
 class Simulator():
@@ -126,12 +127,17 @@ class Simulator():
         for i in range(num_time_points):
             simulated_time_trace['s'][i] -= np.sum(modulation_depths * (1.0 - np.cos(2*np.pi * modulation_frequencies * experiment.t[i])))
         return simulated_time_trace
-        
+    
     def time_trace_from_dipolar_spectrum(self, experiment, modulation_frequencies, modulation_depths):
         ''' Converts a dipolar spectrum into a PDS time trace '''
+        new_modulation_frequencies = np.arange(np.amin(modulation_frequencies), np.amax(modulation_frequencies), 0.01)
+        new_modulation_depths = histogram(modulation_frequencies, bins=new_modulation_frequencies, weights=modulation_depths)
         simulated_time_trace = {}
         simulated_time_trace['t'] = experiment.t
-        simulated_time_trace['s'] = []
+        num_time_points = experiment.t.size
+        simulated_time_trace['s'] = np.ones(num_time_points)
+        for i in range(num_time_points):
+            simulated_time_trace['s'][i] -= np.sum(new_modulation_depths * (1.0 - np.cos(2*np.pi * new_modulation_frequencies * experiment.t[i])))
         return simulated_time_trace
     
     def compute_time_trace_via_monte_carlo(self, experiment, spins, variables):
@@ -151,11 +157,19 @@ class Simulator():
             # Rotation matrices transforming a reference frame into a spin frame
             spin_frame_rotations, weigths_spin_frame_rotations = self.set_spin_frame_rotations(variables['alpha_mean'][0], variables['alpha_width'][0], 
                 variables['beta_mean'][0], variables['beta_width'][0], variables['gamma_mean'][0], variables['gamma_width'][0], variables['rel_prob'][0])
-            print('Integration grids: %s\n' % str(datetime.timedelta(seconds = time.time()-time_start)))
+            print('Monte-Carlo samples: %s\n' % str(datetime.timedelta(seconds = time.time()-time_start)))
+            # Plot Monte-Carlo grids
+            rho_values, xi_values, phi_values = cartesian2spherical(r_orientations)
+            euler_angles = spin_frame_rotations.as_euler(self.euler_angles_convention, degrees=False)
+            alpha_values, beta_values, gamma_values = euler_angles[:,0], euler_angles[:,1], euler_angles[:,2]
+            # plot_grids(r_values, [], j_values, [], xi_values, weights_r_orientations, phi_values, [],
+                       # alpha_values, [], beta_values, weigths_spin_frame_rotations, gamma_values, [])
+            plot_grids(r_values, [], j_values, [], xi_values, [], phi_values, [],
+                       alpha_values, [], beta_values, [], gamma_values, [])
             time_start = time.time()
             # Orientations of the applied static magnetic field in both spin frames
             field_orientations_spin1 = self.field_orientations
-            field_orientations_spin2 = rotate_reference_frame(self.field_orientations, spin_frame_rotations, self.separate_grids)
+            field_orientations_spin2 = rotate_coordinate_system(self.field_orientations, spin_frame_rotations, self.separate_grids)
             # Resonance frequencies of both spins
             resonance_frequencies_spin1, effective_gfactors_spin1 = spins[0].res_freq(field_orientations_spin1, experiment.magnetic_field)
             resonance_frequencies_spin2, effective_gfactors_spin2 = spins[1].res_freq(field_orientations_spin2, experiment.magnetic_field)
@@ -214,8 +228,8 @@ class Simulator():
             print('Modulation frequencies: %s\n' % str(datetime.timedelta(seconds = time.time() - time_start)))
             time_start = time.time()
             # Time trace
-            simulated_time_trace = self.time_trace_from_dipolar_frequencies(experiment, modulation_frequencies, modulation_depths)
-            #simulated_time_trace = self.time_trace_from_dipolar_spectrum(experiment, modulation_frequencies, modulation_depths)
+            #simulated_time_trace = self.time_trace_from_dipolar_frequencies(experiment, modulation_frequencies, modulation_depths)
+            simulated_time_trace = self.time_trace_from_dipolar_spectrum(experiment, modulation_frequencies, modulation_depths)
             print('Time trace: %s\n' % str(datetime.timedelta(seconds = time.time() - time_start)))
             time_start = time.time()
         #elif len(spins) == 3:
