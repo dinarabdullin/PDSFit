@@ -1,4 +1,4 @@
-''' Load an experimental signal '''
+''' Load an experimental PDS time trace from a file'''
 
 import numpy as np
 

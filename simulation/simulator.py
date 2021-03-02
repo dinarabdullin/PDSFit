@@ -142,6 +142,7 @@ class Simulator():
     
     def compute_time_trace_via_monte_carlo(self, experiment, spins, variables):
         ''' Computes a PDS time trace via Monte-Carlo integration '''
+        print('Simulating the time trace of the experiment \'%s\'\n' % experiment.name)
         if len(spins) == 2:
             time_start = time.time()
             # Random orientations of the applied static magnetic field in a reference frame
@@ -162,10 +163,8 @@ class Simulator():
             rho_values, xi_values, phi_values = cartesian2spherical(r_orientations)
             euler_angles = spin_frame_rotations.as_euler(self.euler_angles_convention, degrees=False)
             alpha_values, beta_values, gamma_values = euler_angles[:,0], euler_angles[:,1], euler_angles[:,2]
-            # plot_grids(r_values, [], j_values, [], xi_values, weights_r_orientations, phi_values, [],
-                       # alpha_values, [], beta_values, weigths_spin_frame_rotations, gamma_values, [])
-            plot_grids(r_values, [], j_values, [], xi_values, [], phi_values, [],
-                       alpha_values, [], beta_values, [], gamma_values, [])
+            plot_grids(r_values, [], j_values, [], xi_values, weights_r_orientations, phi_values, [],
+                       alpha_values, [], beta_values, weigths_spin_frame_rotations, gamma_values, [])
             time_start = time.time()
             # Orientations of the applied static magnetic field in both spin frames
             field_orientations_spin1 = self.field_orientations
@@ -194,6 +193,7 @@ class Simulator():
             detection_probabilities_spin2 = detection_probabilities_spin2[indices_nonzero_probabilities]
             pump_probabilities_spin1 = pump_probabilities_spin1[indices_nonzero_probabilities]
             pump_probabilities_spin2 = pump_probabilities_spin2[indices_nonzero_probabilities]
+            print('Number of Monte-Carlo samples with non-zero weights: %d from %d' % (indices_nonzero_probabilities.size, self.mc_sample_size))
             print('Detection/pump probabilities: %s\n' % str(datetime.timedelta(seconds = time.time() - time_start)))
             time_start = time.time()
             # Modulation depths

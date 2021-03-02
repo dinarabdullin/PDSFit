@@ -16,6 +16,7 @@ class Ridme_5p_rect(Experiment):
         self.technique = 'ridme'
         
     def detection_probability(self, resonance_frequencies, weights=[]):
+        ''' Computes pump probabilities for different resonance frequencies '''
         frequency_offsets_squared = (self.detection_frequency - resonance_frequencies)**2
         rabi_frequencies_pi_half_pulse = np.sqrt(frequency_offsets_squared + self.bandwidth_detection_pi_half_pulse**2)
         rabi_frequencies_pi_pulse = np.sqrt(frequency_offsets_squared + self.bandwidth_detection_pi_pulse**2)
@@ -28,6 +29,7 @@ class Ridme_5p_rect(Experiment):
         return detection_probabilities
 
     def pump_probability(self, T1, g_anisotropy, g_eff):
+        ''' Computes pump probabilities for different g-factors '''
         size = g_eff.size 
         if g_anisotropy:
             exp_factor = np.exp(-g_eff * const['bohr_magneton'] * self.magnetic_field / (const['bolzmann_constant'] * self.temperature))
@@ -38,6 +40,7 @@ class Ridme_5p_rect(Experiment):
             return pump_probability * np.ones(size)
         
     def get_detection_bandwidth(self, ranges=()):
+        ''' Computes the bandwidth of detection pulses '''
         if ranges == ():
             frequencies = np.arange(self.detection_frequency - 10 * self.bandwidth_detection_pi_half_pulse, self.detection_frequency + 10 * self.bandwidth_detection_pi_half_pulse, self.frequency_increment_bandwidth)
         else:

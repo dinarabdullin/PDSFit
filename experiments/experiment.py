@@ -19,4 +19,5 @@ class Experiment:
         self.frequency_increment_bandwidth = 0.001 # in GHz
         
     def signal_from_file(self, filepath, signal_column):
+        ''' Load an experimental PDS time trace from a file'''
         self.t, self.s = load_experimental_signal(filepath, signal_column)

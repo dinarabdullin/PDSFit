@@ -13,6 +13,7 @@ def spherical2cartesian(rho, xi, phi):
 
 
 def cartesian2spherical(v):
+    ''' Convert Cartesian coordinates into spherical coordinates '''
     xy = v[:,0]**2 + v[:,1]**2
     rho = np.sqrt(xy + v[:,2]**2)
     xi = np.arctan2(np.sqrt(xy), v[:,2])

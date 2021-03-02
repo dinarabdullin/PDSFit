@@ -17,6 +17,7 @@ class Peldor_4p_rect(Experiment):
         self.technique = 'peldor'
         
     def detection_probability(self, resonance_frequencies, weights=[]):
+        ''' Computes detection probabilities for different resonance frequencies '''
         frequency_offsets_squared = (self.detection_frequency - resonance_frequencies)**2
         rabi_frequencies_pi_half_pulse = np.sqrt(frequency_offsets_squared + self.bandwidth_detection_pi_half_pulse**2)
         rabi_frequencies_pi_pulse = np.sqrt(frequency_offsets_squared + self.bandwidth_detection_pi_pulse**2)
@@ -30,6 +31,7 @@ class Peldor_4p_rect(Experiment):
         return detection_probabilities
 
     def pump_probability(self, resonance_frequencies, weights=[]):
+        ''' Computes pump probabilities for different resonance frequencies '''
         frequency_offsets_squared = (self.pump_frequency - resonance_frequencies)**2
         rabi_frequencies_pump_pulse = np.sqrt(frequency_offsets_squared + self.bandwidth_pump_pulse**2)
         pump_probabilities = 0.5 * (self.bandwidth_pump_pulse / rabi_frequencies_pump_pulse)**2 * (1 - np.cos(2*np.pi * rabi_frequencies_pump_pulse * self.pump_pulse_length))
@@ -41,6 +43,7 @@ class Peldor_4p_rect(Experiment):
         return pump_probabilities
         
     def get_detection_bandwidth(self, ranges=()):
+        ''' Computes the bandwidth of detection pulses '''
         if ranges == ():
             frequencies = np.arange(self.detection_frequency - 10 * self.bandwidth_detection_pi_half_pulse, self.detection_frequency + 10 * self.bandwidth_detection_pi_half_pulse, self.frequency_increment_bandwidth)
         else:
@@ -52,6 +55,7 @@ class Peldor_4p_rect(Experiment):
         return detection_bandwidth
 
     def get_pump_bandwidth(self, ranges=()):
+        ''' Computes the bandwidth of a pump pulse '''
         if ranges == ():
             frequencies = np.arange(self.pump_frequency - 10 * self.bandwidth_pump_pulse, self.pump_frequency + 10 * self.bandwidth_pump_pulse, self.frequency_increment_bandwidth)
         else:

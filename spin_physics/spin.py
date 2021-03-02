@@ -23,6 +23,7 @@ class Spin:
         self.count_transitions()
     
     def count_transitions(self):
+        ''' Compute the number of EPR transitions and their relative intensities '''
         self.num_trans = 1
         self.num_res_freq = 1
         self.int_res_freq = np.array([1.0])
@@ -40,60 +41,64 @@ class Spin:
         self.int_res_freq /= float(self.num_trans)
 
     def line_broadening(self, size):
+        ''' Simulates homogeneous broadering '''
         return const['MHz2GHz'] * self.lwpp * np.random.normal(0,1,size)
 
-    def g_effective(self, field_directions, size):   
+    def g_effective(self, field_orientations, size):
+        ''' Computes effective g-values for given magnetic field orientations'''
         if self.gStrain.size:
             if (self.gStrain[0] != 0) or (self.gStrain[1] != 0) or (self.gStrain[2] != 0):
                 gxx = self.g[0] + const["fwhm2sd"] * self.gStrain[0] * np.random.normal(0,1,size)  
                 gyy = self.g[1] + const["fwhm2sd"] * self.gStrain[1] * np.random.normal(0,1,size)
                 gzz = self.g[2] + const["fwhm2sd"] * self.gStrain[2] * np.random.normal(0,1,size)
                 g = np.transpose(np.vstack((gxx, gyy, gzz)))  #np.columnstack() does the same
-                g_eff = np.sqrt(np.sum(g**2 * field_directions**2, axis=1))
+                g_eff = np.sqrt(np.sum(g**2 * field_orientations**2, axis=1))
             else:
-                g_eff = np.sqrt(np.sum(self.g**2 * field_directions**2, axis=1))
+                g_eff = np.sqrt(np.sum(self.g**2 * field_orientations**2, axis=1))
         else:
-            g_eff = np.sqrt(np.sum(self.g**2 * field_directions**2, axis=1))
+            g_eff = np.sqrt(np.sum(self.g**2 * field_orientations**2, axis=1))
         return g_eff.reshape(size, 1)
     
-    def A_effective(self, field_directions, size, no_nucleus):
+    def A_effective(self, field_orientations, size, no_nucleus):
+        ''' Computes effective A-values for given magnetic field orientations'''
         if self.AStrain.size:
             if (self.AStrain[no_nucleus][0] != 0) or (self.AStrain[no_nucleus][1] != 0) or (self.AStrain[no_nucleus][2] != 0):
                 Axx = self.A[no_nucleus][0] + const["fwhm2sd"] * self.A[no_nucleus][0] * np.random.normal(0,1,size)  
                 Ayy = self.A[no_nucleus][1] + const["fwhm2sd"] * self.A[no_nucleus][1] * np.random.normal(0,1,size)
                 Azz = self.A[no_nucleus][2] + const["fwhm2sd"] * self.A[no_nucleus][2] * np.random.normal(0,1,size)
                 A = np.transpose(np.vstack((Axx, Ayy, Azz)))
-                A_eff = const['MHz2GHz']* np.sqrt(np.sum(A**2 * field_directions**2, axis=1))
+                A_eff = const['MHz2GHz']* np.sqrt(np.sum(A**2 * field_orientations**2, axis=1))
             else:
-                A_eff = const['MHz2GHz']* np.sqrt(np.sum(self.A[no_nucleus]**2 * field_directions**2, axis=1))
+                A_eff = const['MHz2GHz']* np.sqrt(np.sum(self.A[no_nucleus]**2 * field_orientations**2, axis=1))
         else:
-            A_eff = const['MHz2GHz']* np.sqrt(np.sum(self.A[no_nucleus]**2 * field_directions**2, axis=1))
+            A_eff = const['MHz2GHz']* np.sqrt(np.sum(self.A[no_nucleus]**2 * field_orientations**2, axis=1))
         return A_eff.reshape(size, 1)
 
-    def res_freq(self, field_directions, field_value):
+    def res_freq(self, field_orientations, field_value):
+        ''' Computes resonance frequencies for given magnetic field orientations'''
         # Number of field directions
-        num_field_directions = field_directions.shape[0]
+        num_field_orientations = field_orientations.shape[0]
         # Effective g-factors
-        g_eff = self.g_effective(field_directions, num_field_directions)
+        g_eff = self.g_effective(field_orientations, num_field_orientations)
         # Resonance frequencies
         f = []
         if self.n.size == 0:
             # Electron Zeeman 
             f = const['Fez'] * field_value * g_eff
             # Inhomogenious broadering
-            f += self.line_broadening((num_field_directions,1))
+            f += self.line_broadening((num_field_orientations,1))
         else:  
             # Electron Zeeman 
             fz = const['Fez'] * field_value * g_eff
             f = np.tile(fz, self.num_res_freq)
             # Inhomogenious broadering
-            fb = self.line_broadening((num_field_directions, self.num_res_freq))
+            fb = self.line_broadening((num_field_orientations, self.num_res_freq))
             f += fb
             # Hyperfine coupling
             num_repeat = 1
             num_tile = self.num_res_freq
             for i in range(len(self.n)):
-                Aeff = self.A_effective(field_directions, num_field_directions, i)
+                Aeff = self.A_effective(field_orientations, num_field_orientations, i)
                 I_eq = self.I[i] * self.n[i]
                 m_eq = np.arange(-I_eq, I_eq + 1)
                 num_res_freq_for_single_n = int(2 * self.I[i] * self.n[i] + 1)

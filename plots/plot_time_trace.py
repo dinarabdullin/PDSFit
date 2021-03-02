@@ -12,7 +12,7 @@ def plot_time_trace(t, s_sim, s_exp, save_figure=False, directory='', filename="
     axes.plot(t, s_sim, 'r--', label="sim")	
     axes.legend(loc='upper right', frameon=False)
     plt.xlim([min(t), max(t)])
-    plt.ylim([np.amin(s_sim)-0.1, 1.1])
+    #plt.ylim([np.amin(s_sim)-0.1, 1.1])
     plt.xlabel(r'$\mathit{t}$ ($\mathit{\mu s}$)')
     plt.ylabel('Echo intensity (arb.u.)')
     plt.tight_layout()
