@@ -1,2 +1,3 @@
-# osPeldorFit_proto
-Code isn't finished or working as intended yet.
+# osPDSFit
+# Data analysis for orientation-selective pulsed EPR dipolar spectroscopy signals
+# Status: under development
