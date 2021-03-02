@@ -262,39 +262,6 @@ class Simulator():
         return simulated_time_traces
     
     def epr_spectrum(self, spins, field_value):
-        ''' Computes an EPR spectrum of a spin system '''
-        # Random orientations of the static magnetic field
-        if self.integration_method == 'monte_carlo':
-            if self.field_orientations == []:
-                self.field_orientations = self.set_field_orientations()
-                self.weights_field_orientations = np.ones(self.field_orientations.shape[0])
-        # elif self.integration_method == 'grids':
-            # if self.field_orientations == []:
-                # self.field_orientations, self.weights_field_orientations = set_field_orientations_grid()
-        # Resonance frequencies and their probabilities
-        all_frequencies = []
-        all_probabilities = []
-        for spin in spins:
-            # Resonance frequencies
-            resonance_frequencies, effective_gvalues = spin.res_freq(self.field_orientations, field_value)
-            num_field_orientations = self.field_orientations.shape[0]
-            weights = self.weights_field_orientations.reshape(num_field_orientations,1) * spin.int_res_freq
-            # Frequency ranges
-            min_resonance_frequency = np.amin(resonance_frequencies)
-            max_resonance_frequency = np.amax(resonance_frequencies)
-            # Spectrum
-            frequencies = np.arange(np.around(min_resonance_frequency, 3), np.around(max_resonance_frequency)+self.frequency_increment_epr_spectrum, self.frequency_increment_epr_spectrum)
-            probabilities = histogram(resonance_frequencies, bins=frequencies, weights=weights)
-            all_frequencies.extend(frequencies)
-            all_probabilities.extend(probabilities)
-        min_frequency = np.amin(all_frequencies) - 0.150
-        max_frequency = np.amax(all_frequencies) + 0.150
-        spectrum = {}
-        spectrum['f'] = np.arange(min_frequency, max_frequency+self.frequency_increment_epr_spectrum, self.frequency_increment_epr_spectrum)
-        spectrum['s'] = histogram(all_frequencies, bins=spectrum['f'], weights=all_probabilities)
-        return spectrum
-    
-    def epr_spectrum(self, spins, field_value):
         ''' Computes an EPR spectrum of a spin system at a single magnetic field '''
         # Random orientations of the static magnetic field
         if self.integration_method == 'monte_carlo':
