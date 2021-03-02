@@ -1,2 +1,6 @@
-# osPeldorFit_proto
-Code isn't finished or working as intended yet.
+PeldorFit 2021
+=========
+
+Data analysis for orientation-selective pulsed EPR dipolar spectroscopy signals 
+
+Status: under development
