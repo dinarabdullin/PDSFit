@@ -142,8 +142,9 @@ class Simulator():
     
     def compute_time_trace_via_monte_carlo(self, experiment, spins, variables):
         ''' Computes a PDS time trace via Monte-Carlo integration '''
-        print('Simulating the time trace of the experiment \'%s\'\n' % experiment.name)
+        print('Computing the time trace of the experiment \'%s\'' % experiment.name)
         if len(spins) == 2:
+            timings = [['Timings:', '']]
             time_start = time.time()
             # Random orientations of the applied static magnetic field in a reference frame
             if self.field_orientations == []:
@@ -158,21 +159,21 @@ class Simulator():
             # Rotation matrices transforming a reference frame into a spin frame
             spin_frame_rotations, weigths_spin_frame_rotations = self.set_spin_frame_rotations(variables['alpha_mean'][0], variables['alpha_width'][0], 
                 variables['beta_mean'][0], variables['beta_width'][0], variables['gamma_mean'][0], variables['gamma_width'][0], variables['rel_prob'][0])
-            print('Monte-Carlo samples: %s\n' % str(datetime.timedelta(seconds = time.time()-time_start)))
-            # Plot Monte-Carlo grids
-            rho_values, xi_values, phi_values = cartesian2spherical(r_orientations)
-            euler_angles = spin_frame_rotations.as_euler(self.euler_angles_convention, degrees=False)
-            alpha_values, beta_values, gamma_values = euler_angles[:,0], euler_angles[:,1], euler_angles[:,2]
-            plot_grids(r_values, [], j_values, [], xi_values, weights_r_orientations, phi_values, [],
-                       alpha_values, [], beta_values, weigths_spin_frame_rotations, gamma_values, [])
+            timings.append(['Monte-Carlo samples', str(datetime.timedelta(seconds = time.time()-time_start))])
             time_start = time.time()
+            # # Plot Monte-Carlo grids
+            # rho_values, xi_values, phi_values = cartesian2spherical(r_orientations)
+            # euler_angles = spin_frame_rotations.as_euler(self.euler_angles_convention, degrees=False)
+            # alpha_values, beta_values, gamma_values = euler_angles[:,0], euler_angles[:,1], euler_angles[:,2]
+            # plot_grids(r_values, [], j_values, [], xi_values, weights_r_orientations, phi_values, [],
+                       # alpha_values, [], beta_values, weigths_spin_frame_rotations, gamma_values, [])
             # Orientations of the applied static magnetic field in both spin frames
             field_orientations_spin1 = self.field_orientations
             field_orientations_spin2 = rotate_coordinate_system(self.field_orientations, spin_frame_rotations, self.separate_grids)
             # Resonance frequencies of both spins
             resonance_frequencies_spin1, effective_gfactors_spin1 = spins[0].res_freq(field_orientations_spin1, experiment.magnetic_field)
             resonance_frequencies_spin2, effective_gfactors_spin2 = spins[1].res_freq(field_orientations_spin2, experiment.magnetic_field)
-            print('Resonance frequencies: %s\n' % str(datetime.timedelta(seconds = time.time() - time_start)))
+            timings.append(['Resonance frequencies', str(datetime.timedelta(seconds = time.time()-time_start))])
             time_start = time.time()
             # Detection probabilities
             detection_probabilities_spin1 = experiment.detection_probability(resonance_frequencies_spin1, spins[0].int_res_freq)
@@ -188,13 +189,15 @@ class Simulator():
                                                     experiment.pump_probability(spins[0].T1, spins[0].gAnisotropy, effective_gfactors_spin1), 0.0)
                 pump_probabilities_spin2 = np.where(detection_probabilities_spin1 > self.excitation_threshold,                                    
                                                     experiment.pump_probability(spins[1].T1, spins[1].gAnisotropy, effective_gfactors_spin2), 0.0)
+            else:
+                raise ValueError('\nUnsupported PDS technique \'%s\' is encountered!' % (experiment.technique))
+                sys.exit(1)
             indices_nonzero_probabilities = np.argwhere(np.logical_or(pump_probabilities_spin1 > self.excitation_threshold, pump_probabilities_spin2 > self.excitation_threshold)).flatten()
             detection_probabilities_spin1 = detection_probabilities_spin1[indices_nonzero_probabilities]
             detection_probabilities_spin2 = detection_probabilities_spin2[indices_nonzero_probabilities]
             pump_probabilities_spin1 = pump_probabilities_spin1[indices_nonzero_probabilities]
             pump_probabilities_spin2 = pump_probabilities_spin2[indices_nonzero_probabilities]
-            print('Number of Monte-Carlo samples with non-zero weights: %d from %d' % (indices_nonzero_probabilities.size, self.mc_sample_size))
-            print('Detection/pump probabilities: %s\n' % str(datetime.timedelta(seconds = time.time() - time_start)))
+            timings.append(['Detection/pump probabilities', str(datetime.timedelta(seconds = time.time()-time_start))])
             time_start = time.time()
             # Modulation depths
             if weights_r_orientations.size == self.mc_sample_size:
@@ -205,7 +208,7 @@ class Simulator():
             modulation_amplitudes = (detection_probabilities_spin1 * pump_probabilities_spin2 + detection_probabilities_spin2 * pump_probabilities_spin1) * \
                                      weights_r_orientations * weigths_spin_frame_rotations
             modulation_depths = modulation_amplitudes / np.sum(amplitudes)
-            print('Modulation depths: %s\n' % str(datetime.timedelta(seconds = time.time() - time_start)))
+            timings.append(['Modulation depths', str(datetime.timedelta(seconds = time.time()-time_start))])
             time_start = time.time()
             # Dipolar frequencies
             if r_values.shape[0] == self.mc_sample_size:
@@ -225,13 +228,16 @@ class Simulator():
                 # ...
             # elif spins[0].g_anisotropy_in_dipolar_coupling and spins[1].g_anisotropy_in_dipolar_coupling:
                 # ...
-            print('Modulation frequencies: %s\n' % str(datetime.timedelta(seconds = time.time() - time_start)))
+            timings.append(['Dipolar frequencies', str(datetime.timedelta(seconds = time.time()-time_start))])
             time_start = time.time()
             # Time trace
             #simulated_time_trace = self.time_trace_from_dipolar_frequencies(experiment, modulation_frequencies, modulation_depths)
             simulated_time_trace = self.time_trace_from_dipolar_spectrum(experiment, modulation_frequencies, modulation_depths)
-            print('Time trace: %s\n' % str(datetime.timedelta(seconds = time.time() - time_start)))
-            time_start = time.time()
+            timings.append(['PDS time trace', str(datetime.timedelta(seconds = time.time()-time_start))])
+            # Print timings
+            for instance in timings:
+                print('\t {:<30} {:<30}'.format(instance[0], instance[1]))
+            print('\t Number of Monte-Carlo samples with non-zero weights: %d out of %d\n' % (indices_nonzero_probabilities.size, self.mc_sample_size))
         #elif len(spins) == 3:
             # ...
         return simulated_time_trace
@@ -241,13 +247,20 @@ class Simulator():
     
     def compute_time_trace(self, experiment, spins, variables):
         ''' Computes a PDS time trace for a given set of variables '''
-        simulated_time_trace = {}
         if self.integration_method == 'monte_carlo':
             simulated_time_trace = self.compute_time_trace_via_monte_carlo(experiment, spins, variables)
         # elif self.integration_method == 'grids':
             # simulated_time_trace = self.compute_time_trace_via_grids(experiment, spins, variables)
-        return simulated_time_trace   
-   
+        return simulated_time_trace 
+    
+    def compute_time_traces(self, experiments, spins, variables):
+        ''' Computes PDS time traces for a given set of variables '''
+        simulated_time_traces = []
+        for experiment in experiments:
+            simulated_time_trace = self.compute_time_trace(experiment, spins, variables)
+            simulated_time_traces.append(simulated_time_trace)
+        return simulated_time_traces
+    
     def epr_spectrum(self, spins, field_value):
         ''' Computes an EPR spectrum of a spin system '''
         # Random orientations of the static magnetic field
@@ -280,3 +293,66 @@ class Simulator():
         spectrum['f'] = np.arange(min_frequency, max_frequency+self.frequency_increment_epr_spectrum, self.frequency_increment_epr_spectrum)
         spectrum['s'] = histogram(all_frequencies, bins=spectrum['f'], weights=all_probabilities)
         return spectrum
+    
+    def epr_spectrum(self, spins, field_value):
+        ''' Computes an EPR spectrum of a spin system at a single magnetic field '''
+        # Random orientations of the static magnetic field
+        if self.integration_method == 'monte_carlo':
+            if self.field_orientations == []:
+                self.field_orientations = self.set_field_orientations()
+                self.weights_field_orientations = np.ones(self.field_orientations.shape[0])
+        # elif self.integration_method == 'grids':
+            # if self.field_orientations == []:
+                # self.field_orientations, self.weights_field_orientations = set_field_orientations_grid()
+        # Resonance frequencies and their probabilities
+        all_frequencies = []
+        all_probabilities = []
+        for spin in spins:
+            # Resonance frequencies
+            resonance_frequencies, effective_gvalues = spin.res_freq(self.field_orientations, field_value)
+            num_field_orientations = self.field_orientations.shape[0]
+            weights = self.weights_field_orientations.reshape(num_field_orientations,1) * spin.int_res_freq
+            # Frequency ranges
+            min_resonance_frequency = np.amin(resonance_frequencies)
+            max_resonance_frequency = np.amax(resonance_frequencies)
+            # Spectrum
+            frequencies = np.arange(min_resonance_frequency, max_resonance_frequency+self.frequency_increment_epr_spectrum, self.frequency_increment_epr_spectrum)
+            probabilities = histogram(resonance_frequencies, bins=frequencies, weights=weights)
+            all_frequencies.extend(frequencies)
+            all_probabilities.extend(probabilities)
+        all_frequencies = np.array(all_frequencies)
+        all_probabilities = np.array(all_probabilities)
+        min_frequency = np.amin(all_frequencies) - 0.100
+        max_frequency = np.amax(all_frequencies) + 0.100
+        spectrum = {}
+        spectrum['f'] = np.arange(min_frequency, max_frequency+self.frequency_increment_epr_spectrum, self.frequency_increment_epr_spectrum)
+        spectrum['p'] = histogram(all_frequencies, bins=spectrum['f'], weights=all_probabilities)
+        return spectrum
+    
+    def epr_spectra(self, spins, experiments):
+        ''' Computes an EPR spectrum of a spin system at multiple magnetic fields '''
+        print('Computing the EPR spectrum of the spin system in the frequency domain...\n')
+        epr_spectra = []
+        for experiment in experiments:
+            epr_spectrum = self.epr_spectrum(spins, experiment.magnetic_field)
+            epr_spectra.append(epr_spectrum)
+        return epr_spectra
+    
+    def bandwidths(self, experiments):
+        ''' Computes the bandwidths of detection and pump pulses '''
+        print('Computing the bandwidths of detection and pump pulses...\n')
+        bandwidths = []
+        for experiment in experiments:
+            if experiment.technique == 'peldor':
+                bandwidths_single_experiment = {}
+                bandwidths_single_experiment['detection_bandwidth'] = experiment.get_detection_bandwidth()
+                bandwidths_single_experiment['pump_bandwidth'] = experiment.get_pump_bandwidth()
+                bandwidths.append(bandwidths_single_experiment)
+            elif experiment.technique == 'ridme':
+                bandwidths_single_experiment = {}
+                bandwidths_single_experiment['detection_bandwidth'] = experiment.get_detection_bandwidth()
+                bandwidths.append(bandwidths_single_experiment)
+            else:
+                raise ValueError('Unsupported PDS technique \'%s\' is encountered! ' % (experiment.technique))
+                sys.exit(1)
+        return bandwidths
