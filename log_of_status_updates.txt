@@ -35,13 +35,31 @@
 
 		4) next step: write a proper plot method for timetrace and compare the timetrace to C++ PeldorFit timetrace
 
-01.0.2021:	1) The config file was extended: variables 'experiment.mixing_time', 'spin.T1', 'spin.g_anisotropy_in_dipolar_coupling' were added.
+01.03.2021:	1) The config file was extended: variables 'experiment.mixing_time', 'spin.T1', 'spin.g_anisotropy_in_dipolar_coupling' were added.
 			2) The read_config method was changed accordingly to 1). 
 			3) The Spin.res_freq method's output was changed. 
-			3) The Peldor_4p_rect.compute_time_trace method was removed.
-			4) The Ridme_5p_rect class was created and included in experiment_types.
-			4) The Simulator class was modified: Many new methods were added. Among these, a 'compute_time_trace_via_monte_carlo' method, which allows to calculate a 
+			4) The Peldor_4p_rect.compute_time_trace method was removed.
+			5) The Ridme_5p_rect class was created and included in experiment_types.
+			6) The Simulator class was modified: Many new methods were added. Among these, a 'compute_time_trace_via_monte_carlo' method, which allows to calculate a 
 			time trace via Monte-Carlo integration. Currently, this method is limited by 2 spins and the assumption that the g-anisopropy of both spins have a negligible
             effect on the dipolar coupling frequencies calculated.
 			
-			The 'compute_time_trace_via_grids' method, which allows to calculate a time trace via integration grids, was also initialized and needs to be implemented in future. 
+			The 'compute_time_trace_via_grids' method, which allows to calculate a time trace via integration grids, was also initialized and needs to be implemented in future.
+
+04.03.2021:	1) The config file was extended: variables 'calculation_settings.fit_modulation_depth' and 'calculation_settings.interval_modulation_depth' were added to 
+               enable/disable re-scaling of the modulation depths of simulated PDS time traces in accordance to the experimental PDS time traces.
+			2) The read_config and experiment methods were changed accordingly to 1). 
+			3) New methods were added to the Simulator class: 
+				'compute_time_traces' - to simulate all eperimental PDS time traces at ones,
+				'epr_spectra' - to simulate the EPR spectrum of a spin system at multiple magnetic fields,
+				'bandwidths' - to compute the bandwidths of detection and pump pulses in all experiments
+			4) New plotting methods were developed, e.g. 'plot_bandwidths', 'plot_grids', and 'plot_time_traces'.
+			5) New output methods were developed, e.g. 'save_bandwidths' and 'save_time_traces'.
+			6) Special focus was laid on formating the code.
+			
+			IMPORTANT: Each attribute of the class and each function has to have a short description in the following form:
+				
+				def compute_time_trace_via_monte_carlo(self, experiment, spins, variables):
+					''' Computes a PDS time trace via Monte-Carlo integration '''
+					... code ...
+					
