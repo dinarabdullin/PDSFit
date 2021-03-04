@@ -26,18 +26,17 @@ class Ridme_5p_rect(Experiment):
         if weights != []:
             pump_probabilities = pump_probabilities * weights.reshape(weights.size,1)
             pump_probabilities = pump_probabilities.sum(axis=0)
-        return detection_probabilities
+        return detection_probabilities.flatten()
 
     def pump_probability(self, T1, g_anisotropy, g_eff):
         ''' Computes pump probabilities for different g-factors '''
-        size = g_eff.size 
         if g_anisotropy:
             exp_factor = np.exp(-g_eff * const['bohr_magneton'] * self.magnetic_field / (const['bolzmann_constant'] * self.temperature))
             pump_probabilities = 2 * exp_factor / (1 + exp_factor)**2 * (1 - np.exp(-self.mixing_time/T1))
             return pump_probabilities
         else:
             pump_probability = 0.5 * (1 - np.exp(-self.mixing_time/T1))
-            return pump_probability * np.ones(size)
+            return pump_probability * np.ones(g_eff.size)
         
     def get_detection_bandwidth(self, ranges=()):
         ''' Computes the bandwidth of detection pulses '''

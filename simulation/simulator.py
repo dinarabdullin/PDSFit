@@ -195,13 +195,16 @@ class Simulator():
                                                     experiment.pump_probability(resonance_frequencies_spin2, spins[1].int_res_freq), 0.0)   
             elif experiment.technique == 'ridme':
                 pump_probabilities_spin1 = np.where(detection_probabilities_spin2 > self.excitation_threshold,
-                                                    experiment.pump_probability(spins[0].T1, spins[0].gAnisotropy, effective_gfactors_spin1), 0.0)
+                                                    experiment.pump_probability(spins[0].T1, spins[0].g_anisotropy_in_dipolar_coupling, effective_gfactors_spin1), 0.0)
                 pump_probabilities_spin2 = np.where(detection_probabilities_spin1 > self.excitation_threshold,                                    
-                                                    experiment.pump_probability(spins[1].T1, spins[1].gAnisotropy, effective_gfactors_spin2), 0.0)
+                                                    experiment.pump_probability(spins[1].T1, spins[1].g_anisotropy_in_dipolar_coupling, effective_gfactors_spin2), 0.0)
             else:
                 raise ValueError('\nUnsupported PDS technique \'%s\' is encountered!' % (experiment.technique))
-                sys.exit(1)
-            indices_nonzero_probabilities = np.argwhere(np.logical_or(pump_probabilities_spin1 > self.excitation_threshold, pump_probabilities_spin2 > self.excitation_threshold)).flatten()
+                sys.exit(1)   
+            indices_nonzero_probabilities_spin1 = np.where(pump_probabilities_spin1 > self.excitation_threshold)[0]
+            indices_nonzero_probabilities_spin2 = np.where(pump_probabilities_spin2 > self.excitation_threshold)[0]
+            indices_nonzero_probabilities = np.unique(np.concatenate((indices_nonzero_probabilities_spin1, indices_nonzero_probabilities_spin2), axis=None))
+            indices_nonzero_probabilities = np.sort(indices_nonzero_probabilities, axis=None)
             detection_probabilities_spin1 = detection_probabilities_spin1[indices_nonzero_probabilities]
             detection_probabilities_spin2 = detection_probabilities_spin2[indices_nonzero_probabilities]
             pump_probabilities_spin1 = pump_probabilities_spin1[indices_nonzero_probabilities]

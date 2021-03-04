@@ -28,7 +28,7 @@ class Peldor_4p_rect(Experiment):
                 weights = np.array(weights).reshape(len(weights),1)
             detection_probabilities = detection_probabilities * weights
             detection_probabilities = detection_probabilities.sum(axis=1)
-        return detection_probabilities
+        return detection_probabilities.flatten()
 
     def pump_probability(self, resonance_frequencies, weights=[]):
         ''' Computes pump probabilities for different resonance frequencies '''
@@ -40,7 +40,7 @@ class Peldor_4p_rect(Experiment):
                 weights = np.array(weights).reshape(len(weights),1)
             pump_probabilities = pump_probabilities * weights
             pump_probabilities = pump_probabilities.sum(axis=1)
-        return pump_probabilities
+        return pump_probabilities.flatten()
         
     def get_detection_bandwidth(self, ranges=()):
         ''' Computes the bandwidth of detection pulses '''
