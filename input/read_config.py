@@ -176,6 +176,9 @@ def read_calculation_settings(config):
     calculation_settings['distributions']['gamma'] = config.calculation_settings.distributions.gamma
     calculation_settings['distributions']['j'] = config.calculation_settings.distributions.j   
     calculation_settings['excitation_treshold'] = float(config.calculation_settings.excitation_treshold)
+    calculation_settings['fit_modulation_depth'] = bool(config.calculation_settings.fit_modulation_depth)
+    if calculation_settings['fit_modulation_depth']:
+        calculation_settings['interval_modulation_depth'] = float(config.calculation_settings.interval_modulation_depth)
     return calculation_settings
 
 def read_output_settings(config):
@@ -201,7 +204,12 @@ def read_config(filepath):
         spins = read_spin_parameters(config)
         if mode['simulation']:
             simulation_settings = read_simulation_settings(config)
+        #elif mode['fitting']:
+        #elif mode['error_analysis']:
         calculation_settings = read_calculation_settings(config)
+        if calculation_settings['fit_modulation_depth']:
+            for experiment in experiments:
+                experiment.compute_modulation_depth(calculation_settings['interval_modulation_depth'])
         output_settings = read_output_settings(config)
     sys.stdout.write('[DONE]\n\n')  
     return mode, experiments, spins, simulation_settings, calculation_settings, output_settings

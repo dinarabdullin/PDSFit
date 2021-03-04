@@ -27,6 +27,7 @@ class Simulator():
             self.separate_grids = True
         self.distributions = calculation_settings['distributions']
         self.excitation_threshold = calculation_settings['excitation_treshold']
+        self.fit_modulation_depth = calculation_settings['fit_modulation_depth']
         self.frequency_increment_epr_spectrum = 0.001 # in GHz
         self.field_orientations = []
         self.weights_field_orientations = []
@@ -118,27 +119,35 @@ class Simulator():
         ''' alpha/beta/gamma-grid via Mitchell grid.
         It is used to compute rotation matrices transforming a reference frame into a spin frame '''   
     
-    def time_trace_from_dipolar_frequencies(self, experiment, modulation_frequencies, modulation_depths):
+    def time_trace_from_dipolar_frequencies(self, experiment, modulation_frequencies, modulation_depths, fit_modulation_depth):
         ''' Converts dipolar frequencies into a PDS time trace '''
+        if fit_modulation_depth:
+            scale_factor_modulation_depth = experiment.modulation_depth / np.sum(modulation_depths)
+        else:
+            scale_factor_modulation_depth = 1.0
         simulated_time_trace = {}
         simulated_time_trace['t'] = experiment.t
         num_time_points = experiment.t.size
         simulated_time_trace['s'] = np.ones(num_time_points)
         for i in range(num_time_points):
-            simulated_time_trace['s'][i] -= np.sum(modulation_depths * (1.0 - np.cos(2*np.pi * modulation_frequencies * experiment.t[i])))
-        return simulated_time_trace
+            simulated_time_trace['s'][i] -= scale_factor_modulation_depth * np.sum(modulation_depths * (1.0 - np.cos(2*np.pi * modulation_frequencies * experiment.t[i])))
+        return simulated_time_trace, scale_factor_modulation_depth
     
-    def time_trace_from_dipolar_spectrum(self, experiment, modulation_frequencies, modulation_depths):
+    def time_trace_from_dipolar_spectrum(self, experiment, modulation_frequencies, modulation_depths, fit_modulation_depth):
         ''' Converts a dipolar spectrum into a PDS time trace '''
         new_modulation_frequencies = np.arange(np.amin(modulation_frequencies), np.amax(modulation_frequencies), 0.01)
         new_modulation_depths = histogram(modulation_frequencies, bins=new_modulation_frequencies, weights=modulation_depths)
+        if fit_modulation_depth:
+            scale_factor_modulation_depth = experiment.modulation_depth / np.sum(new_modulation_depths)
+        else:
+            scale_factor_modulation_depth = 1.0
         simulated_time_trace = {}
         simulated_time_trace['t'] = experiment.t
         num_time_points = experiment.t.size
         simulated_time_trace['s'] = np.ones(num_time_points)
         for i in range(num_time_points):
-            simulated_time_trace['s'][i] -= np.sum(new_modulation_depths * (1.0 - np.cos(2*np.pi * new_modulation_frequencies * experiment.t[i])))
-        return simulated_time_trace
+            simulated_time_trace['s'][i] -= scale_factor_modulation_depth * np.sum(new_modulation_depths * (1.0 - np.cos(2*np.pi * new_modulation_frequencies * experiment.t[i])))
+        return simulated_time_trace, scale_factor_modulation_depth
     
     def compute_time_trace_via_monte_carlo(self, experiment, spins, variables):
         ''' Computes a PDS time trace via Monte-Carlo integration '''
@@ -231,8 +240,8 @@ class Simulator():
             timings.append(['Dipolar frequencies', str(datetime.timedelta(seconds = time.time()-time_start))])
             time_start = time.time()
             # Time trace
-            #simulated_time_trace = self.time_trace_from_dipolar_frequencies(experiment, modulation_frequencies, modulation_depths)
-            simulated_time_trace = self.time_trace_from_dipolar_spectrum(experiment, modulation_frequencies, modulation_depths)
+            #simulated_time_trace, scale_factor_modulation_depth = self.time_trace_from_dipolar_frequencies(experiment, modulation_frequencies, modulation_depths, self.fit_modulation_depth)
+            simulated_time_trace, scale_factor_modulation_depth = self.time_trace_from_dipolar_spectrum(experiment, modulation_frequencies, modulation_depths, self.fit_modulation_depth)
             timings.append(['PDS time trace', str(datetime.timedelta(seconds = time.time()-time_start))])
             # Print timings
             for instance in timings:
@@ -240,7 +249,7 @@ class Simulator():
             print('\t Number of Monte-Carlo samples with non-zero weights: %d out of %d\n' % (indices_nonzero_probabilities.size, self.mc_sample_size))
         #elif len(spins) == 3:
             # ...
-        return simulated_time_trace
+        return simulated_time_trace, scale_factor_modulation_depth
      
     def compute_time_trace_via_grids(self, experiment, spins, variables):
         ''' Computes a PDS time trace via integration grids '''
@@ -248,18 +257,20 @@ class Simulator():
     def compute_time_trace(self, experiment, spins, variables):
         ''' Computes a PDS time trace for a given set of variables '''
         if self.integration_method == 'monte_carlo':
-            simulated_time_trace = self.compute_time_trace_via_monte_carlo(experiment, spins, variables)
+            simulated_time_trace, scale_factor_modulation_depth = self.compute_time_trace_via_monte_carlo(experiment, spins, variables)
         # elif self.integration_method == 'grids':
             # simulated_time_trace = self.compute_time_trace_via_grids(experiment, spins, variables)
-        return simulated_time_trace 
+        return simulated_time_trace, scale_factor_modulation_depth
     
     def compute_time_traces(self, experiments, spins, variables):
         ''' Computes PDS time traces for a given set of variables '''
         simulated_time_traces = []
+        scale_factors = []
         for experiment in experiments:
-            simulated_time_trace = self.compute_time_trace(experiment, spins, variables)
+            simulated_time_trace, scale_factor_modulation_depth = self.compute_time_trace(experiment, spins, variables)
             simulated_time_traces.append(simulated_time_trace)
-        return simulated_time_traces
+            scale_factors.append(scale_factor_modulation_depth)
+        return simulated_time_traces, scale_factors
     
     def epr_spectrum(self, spins, field_value):
         ''' Computes an EPR spectrum of a spin system at a single magnetic field '''
