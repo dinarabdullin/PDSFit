@@ -31,6 +31,9 @@ class Simulator():
         self.frequency_increment_epr_spectrum = 0.001 # in GHz
         self.field_orientations = []
         self.weights_field_orientations = []
+        self.effective_gfactors_spin1 = []
+        self.detection_probabilities_spin1 = {}
+        self.pump_probabilities_spin1 = {}
         self.euler_angles_convention = 'ZXZ'
         
     def set_field_orientations(self): 
@@ -157,15 +160,16 @@ class Simulator():
         if self.field_orientations == []:
             self.field_orientations = self.set_field_orientations()
         # Distance values
-        r_values = self.set_r_values(variables['r_mean'][0], variables['r_width'][0], variables['rel_prob'][0])
+        r_values = self.set_r_values(variables['r_mean'][idx_spin2-1], variables['r_width'][idx_spin2-1], variables['rel_prob'][idx_spin2-1])
         # Exchange coupling values
-        j_values = self.set_j_values(variables['j_mean'][0], variables['j_width'][0], variables['rel_prob'][0])
+        j_values = self.set_j_values(variables['j_mean'][idx_spin2-1], variables['j_width'][idx_spin2-1], variables['rel_prob'][idx_spin2-1])
         # The orientations of a distance vector in a reference frame and corresponding weights
-        r_orientations, weights_r_orientations = self.set_r_orientations(variables['xi_mean'][0], variables['xi_width'][0], 
-            variables['phi_mean'][0], variables['phi_width'][0], variables['rel_prob'][0])
+        r_orientations, weights_r_orientations = self.set_r_orientations(variables['xi_mean'][idx_spin2-1], variables['xi_width'][idx_spin2-1], 
+            variables['phi_mean'][idx_spin2-1], variables['phi_width'][idx_spin2-1], variables['rel_prob'][idx_spin2-1])
         # Rotation matrices transforming a reference frame into a spin frame
-        spin_frame_rotations, weigths_spin_frame_rotations = self.set_spin_frame_rotations(variables['alpha_mean'][0], variables['alpha_width'][0], 
-            variables['beta_mean'][0], variables['beta_width'][0], variables['gamma_mean'][0], variables['gamma_width'][0], variables['rel_prob'][0])
+        spin_frame_rotations, weigths_spin_frame_rotations = self.set_spin_frame_rotations(variables['alpha_mean'][idx_spin2-1], variables['alpha_width'][idx_spin2-1], 
+            variables['beta_mean'][idx_spin2-1], variables['beta_width'][idx_spin2-1], variables['gamma_mean'][idx_spin2-1], 
+            variables['gamma_width'][idx_spin2-1], variables['rel_prob'][idx_spin2-1])
         timings.append(['Monte-Carlo samples', str(datetime.timedelta(seconds = time.time()-time_start))])
         time_start = time.time()
         # # Plot Monte-Carlo grids
@@ -177,25 +181,39 @@ class Simulator():
         # Orientations of the applied static magnetic field in both spin frames
         field_orientations_spin1 = self.field_orientations
         field_orientations_spin2 = rotate_coordinate_system(self.field_orientations, spin_frame_rotations, self.separate_grids)
-        # Resonance frequencies of both spins
-        resonance_frequencies_spin1, effective_gfactors_spin1 = spins[0].res_freq(field_orientations_spin1, experiment.magnetic_field)
-        resonance_frequencies_spin2, effective_gfactors_spin2 = spins[1].res_freq(field_orientations_spin2, experiment.magnetic_field)
+        # Resonance frequencies and/or effective g-values of both spins
+        if self.effective_gfactors_spin1 == []:
+            resonance_frequencies_spin1, effective_gfactors_spin1 = spins[idx_spin1].res_freq(field_orientations_spin1, experiment.magnetic_field)
+        else:
+            effective_gfactors_spin1 = self.effective_gfactors_spin1
+        resonance_frequencies_spin2, effective_gfactors_spin2 = spins[idx_spin2].res_freq(field_orientations_spin2, experiment.magnetic_field)
         timings.append(['Resonance frequencies', str(datetime.timedelta(seconds = time.time()-time_start))])
         time_start = time.time()
         # Detection probabilities
-        detection_probabilities_spin1 = experiment.detection_probability(resonance_frequencies_spin1, spins[0].int_res_freq)
-        detection_probabilities_spin2 = experiment.detection_probability(resonance_frequencies_spin2, spins[1].int_res_freq)
+        if self.detection_probabilities_spin1 == {}:
+            detection_probabilities_spin1 = experiment.detection_probability(resonance_frequencies_spin1, spins[idx_spin1].int_res_freq)
+        else:
+            detection_probabilities_spin1 = self.detection_probabilities_spin1[experiment.name]
+        detection_probabilities_spin2 = experiment.detection_probability(resonance_frequencies_spin2, spins[idx_spin2].int_res_freq)
         # Pump probabilities
-        if experiment.technique == 'peldor':
-            pump_probabilities_spin1 = np.where(detection_probabilities_spin2 > self.excitation_threshold,
-                                                experiment.pump_probability(resonance_frequencies_spin1, spins[0].int_res_freq), 0.0)
+        if experiment.technique == 'peldor': 
+            if self.pump_probabilities_spin1 == {}:
+                pump_probabilities_spin1 = np.where(detection_probabilities_spin2 > self.excitation_threshold,
+                                                    experiment.pump_probability(resonance_frequencies_spin1, spins[idx_spin1].int_res_freq), 0.0)
+            else:
+                pump_probabilities_spin1 = np.where(detection_probabilities_spin2 > self.excitation_threshold,
+                                                    self.pump_probabilities_spin1[experiment.name], 0.0)
             pump_probabilities_spin2 = np.where(detection_probabilities_spin1 > self.excitation_threshold,
-                                                experiment.pump_probability(resonance_frequencies_spin2, spins[1].int_res_freq), 0.0)   
+                                                experiment.pump_probability(resonance_frequencies_spin2, spins[idx_spin2].int_res_freq), 0.0)   
         elif experiment.technique == 'ridme':
-            pump_probabilities_spin1 = np.where(detection_probabilities_spin2 > self.excitation_threshold,
-                                                experiment.pump_probability(spins[0].T1, spins[0].g_anisotropy_in_dipolar_coupling, effective_gfactors_spin1), 0.0)
+            if self.pump_probabilities_spin1 == {}:
+                pump_probabilities_spin1 = np.where(detection_probabilities_spin2 > self.excitation_threshold,
+                                                    experiment.pump_probability(spins[idx_spin1].T1, spins[idx_spin1].g_anisotropy_in_dipolar_coupling, effective_gfactors_spin1), 0.0)
+            else:
+                pump_probabilities_spin1 = np.where(detection_probabilities_spin2 > self.excitation_threshold,
+                                                    self.pump_probabilities_spin1[experiment.name], 0.0)
             pump_probabilities_spin2 = np.where(detection_probabilities_spin1 > self.excitation_threshold,                                    
-                                                experiment.pump_probability(spins[1].T1, spins[1].g_anisotropy_in_dipolar_coupling, effective_gfactors_spin2), 0.0)
+                                                experiment.pump_probability(spins[idx_spin2].T1, spins[idx_spin2].g_anisotropy_in_dipolar_coupling, effective_gfactors_spin2), 0.0)
         else:
             raise ValueError('\nUnsupported PDS technique \'%s\' is encountered!' % (experiment.technique))
             sys.exit(1)   
@@ -228,15 +246,15 @@ class Simulator():
         field_orientations = self.field_orientations[indices_nonzero_probabilities]
         effective_gfactors_spin1 = effective_gfactors_spin1[indices_nonzero_probabilities]
         effective_gfactors_spin2 = effective_gfactors_spin2[indices_nonzero_probabilities]
-        if not spins[0].g_anisotropy_in_dipolar_coupling and not spins[1].g_anisotropy_in_dipolar_coupling:
+        if not spins[idx_spin1].g_anisotropy_in_dipolar_coupling and not spins[idx_spin2].g_anisotropy_in_dipolar_coupling:
             angular_term = 1.0 - 3.0 * np.sum(r_orientations * field_orientations, axis=1)**2
             dipolar_frequencies = const['Fdd'] * effective_gfactors_spin1 * effective_gfactors_spin2 * angular_term / r_values**3
             modulation_frequencies = dipolar_frequencies + j_values
-        # elif spins[0].g_anisotropy_in_dipolar_coupling and not spins[1].g_anisotropy_in_dipolar_coupling:
+        # elif spins[idx_spin1].g_anisotropy_in_dipolar_coupling and not spins[idx_spin2].g_anisotropy_in_dipolar_coupling:
             # ...
-        # elif not spins[0].g_anisotropy_in_dipolar_coupling and spins[1].g_anisotropy_in_dipolar_coupling:
+        # elif not spins[idx_spin1].g_anisotropy_in_dipolar_coupling and spins[idx_spin2].g_anisotropy_in_dipolar_coupling:
             # ...
-        # elif spins[0].g_anisotropy_in_dipolar_coupling and spins[1].g_anisotropy_in_dipolar_coupling:
+        # elif spins[idx_spin1].g_anisotropy_in_dipolar_coupling and spins[idx_spin2].g_anisotropy_in_dipolar_coupling:
             # ...
         timings.append(['Dipolar frequencies', str(datetime.timedelta(seconds = time.time()-time_start))])
         time_start = time.time()
@@ -258,7 +276,7 @@ class Simulator():
         print('Computing the time trace of the experiment \'%s\'' % experiment.name)
         if len(spins) == 2:
             if self.integration_method == 'monte_carlo':
-                simulated_time_trace, scale_factor_modulation_depth = self.compute_time_trace_via_monte_carlo(experiment, spins, variables)
+                simulated_time_trace, scale_factor_modulation_depth = self.compute_time_trace_via_monte_carlo(experiment, spins, variables, 0, 1)
             # elif self.integration_method == 'grids':
                 # simulated_time_trace = self.compute_time_trace_via_grids(experiment, spins, variables)
         #else:
@@ -337,3 +355,30 @@ class Simulator():
                 raise ValueError('Unsupported PDS technique \'%s\' is encountered! ' % (experiment.technique))
                 sys.exit(1)
         return bandwidths
+    
+    def precalculations(self, experiments, spins):
+        ''' Pre-compute the detection and pump probabilities for spin 1'''
+        print('Pre-compute the detection and pump probabilities for spin 1...\n')
+        if self.integration_method == 'monte_carlo':
+            if self.field_orientations == []:
+                # Random orientations of the static magnetic field
+                self.field_orientations = self.set_field_orientations()
+                self.weights_field_orientations = np.ones(self.field_orientations.shape[0])
+            # Orientations of the applied static magnetic field in the frame of spin 1
+            field_orientations_spin1 = self.field_orientations 
+            if self.detection_probabilities_spin1 != {}:
+                for experiment in experiments:
+                    # Resonance frequencies and effective g-values of spin 1
+                    resonance_frequencies_spin1, self.effective_gfactors_spin1 = spins[0].res_freq(field_orientations_spin1, experiment.magnetic_field)
+                    # Detection probabilities
+                    self.detection_probabilities_spin1[experiment.name] = experiment.detection_probability(resonance_frequencies_spin1, spins[0].int_res_freq)
+                    # Pump probabilities
+                    if experiment.technique == 'peldor': 
+                        self.pump_probabilities_spin1[experiment.name] = experiment.pump_probability(resonance_frequencies_spin1, spins[0].int_res_freq)    
+                    elif experiment.technique == 'ridme':
+                        self.pump_probabilities_spin1[experiment.name] = experiment.pump_probability(spins[0].T1, spins[0].g_anisotropy_in_dipolar_coupling, self.effective_gfactors_spin1)
+                    else:
+                        raise ValueError('\nUnsupported PDS technique \'%s\' is encountered!' % (experiment.technique))
+                        sys.exit(1)
+        # elif self.integration_method == 'grids':
+            # ...

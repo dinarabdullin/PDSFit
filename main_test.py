@@ -21,9 +21,9 @@ if __name__ == '__main__':
     #parser.add_argument('filepath', help='Path to the configuration file')
     #args = parser.parse_args()
     #filepath_config = args.filepath
-    filepath_config = 'examples/example01_nitroxide_biradical_Wband_PELDOR/config_ex01.cfg'
+    #filepath_config = 'examples/example01_nitroxide_biradical_Wband_PELDOR/config_ex01.cfg'
     #filepath_config = 'examples/example01_nitroxide_biradical_Wband_PELDOR/config_ex01_broad_distr.cfg'
-    #filepath_config = 'examples/example02_ls_iron(III)_trityl_Qband_RIDME/config_ex02.cfg'
+    filepath_config = 'examples/example02_ls_iron(III)_trityl_Qband_RIDME/config_ex02.cfg'
     mode, experiments, spins, simulation_settings, calculation_settings, output_settings = read_config(filepath_config)
 
     # Make an output directory
@@ -34,6 +34,9 @@ if __name__ == '__main__':
 
     # Init simulator
     simulator = Simulator(calculation_settings)
+    
+    # Run precalculations
+    simulator.precalculations(experiments, spins)
     
     # Run calculations
     if mode['simulation']:

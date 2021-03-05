@@ -188,9 +188,8 @@ def read_output_settings(config):
     output_settings['save_figures'] = bool(config.output.save_figures)
     return output_settings
   
-def read_config(filepath):  
-    sys.stdout.write('\n') 
-    sys.stdout.write('Reading out the configuration file... ') 
+def read_config(filepath): 
+    print('\nReading out the configuration file...\n') 
     mode = {}
     experiments = []
     spins = []
@@ -210,6 +209,5 @@ def read_config(filepath):
         if calculation_settings['fit_modulation_depth']:
             for experiment in experiments:
                 experiment.compute_modulation_depth(calculation_settings['interval_modulation_depth'])
-        output_settings = read_output_settings(config)
-    sys.stdout.write('[DONE]\n\n')  
+        output_settings = read_output_settings(config) 
     return mode, experiments, spins, simulation_settings, calculation_settings, output_settings
