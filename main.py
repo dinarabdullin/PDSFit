@@ -2,10 +2,11 @@
 
 import argparse
 from datetime import time
-
+import sys
 from input.read_config import read_config
 from simulation.simulator import Simulator
-from output.make_output_directory import make_output_directory 
+from output.make_output_directory import make_output_directory
+from output.logger import Logger, ContextManager
 from output.save_epr_spectrum import save_epr_spectrum
 from output.save_bandwidths import save_bandwidths
 from output.save_time_traces import save_time_traces
@@ -24,6 +25,9 @@ if __name__ == '__main__':
 
     # Make an output directory
     make_output_directory(output_settings, filepath_config)
+    
+    # Make a log file
+    sys.stdout = ContextManager(output_settings['directory']+'logfile.log')
 
     # Init simulator
     simulator = Simulator(calculation_settings)
