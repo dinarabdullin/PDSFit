@@ -2,6 +2,7 @@
 
 import numpy as np
 
+
 def golden_spiral_grid_points(size):
     v = []
     indices = np.arange(0, size, dtype=float) + 0.5

@@ -21,9 +21,10 @@ if __name__ == '__main__':
     #parser.add_argument('filepath', help='Path to the configuration file')
     #args = parser.parse_args()
     #filepath_config = args.filepath
-    #filepath_config = 'examples/example01_nitroxide_biradical_Wband_PELDOR/config_ex01.cfg'
-    #filepath_config = 'examples/example01_nitroxide_biradical_Wband_PELDOR/config_ex01_broad_distr.cfg'
-    filepath_config = 'examples/example02_ls_iron(III)_trityl_Qband_RIDME/config_ex02.cfg'
+    #filepath_config = 'examples/nitroxide_biradical_Wband_PELDOR/config.cfg'
+    #filepath_config = 'examples/nitroxide_biradical_Wband_PELDOR/config_broad_distr.cfg'
+    #filepath_config = 'examples/lowspin_iron_trityl_Qband_RIDME/config.cfg'
+    filepath_config = 'examples/copper_trinuclear_Xband_PELDOR/config.cfg'
     mode, experiments, spins, simulation_settings, calculation_settings, output_settings = read_config(filepath_config)
 
     # Make an output directory
@@ -56,7 +57,7 @@ if __name__ == '__main__':
         plot_bandwidths(bandwidths, experiments, epr_spectra, True, output_settings['directory'])
         
         # Simulate the PDS time traces
-        simulated_time_traces, scale_factors = simulator.compute_time_traces(experiments, spins, simulation_settings['parameters'])
+        simulated_time_traces, modulation_depth_scale_factors = simulator.compute_time_traces(experiments, spins, simulation_settings['parameters'])
         # Save the time traces
         save_time_traces(simulated_time_traces, experiments, output_settings['directory'])
         # Plot the time traces

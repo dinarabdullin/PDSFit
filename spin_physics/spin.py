@@ -109,3 +109,17 @@ class Spin:
                 fh = Aeff * m
                 f += fh
         return f, g_eff.flatten()
+    
+    def quantization_axis(self, field_orientations, g_eff=[]):
+        ''' Computes quantization axes for given magnetic field orientations'''
+        # Number of field directions
+        num_field_orientations = field_orientations.shape[0]
+        # Effective g-factors
+        if g_eff == []:
+            g_eff = self.g_effective(field_orientations, num_field_orientations)
+        else:
+            g_eff = g_eff.reshape((num_field_orientations,1))
+        # Principal components of the g-matrix
+        g = np.tile(self.g, (num_field_orientations,1)) 
+        quantization_axes = (g / g_eff)**2 * field_orientations
+        return quantization_axes

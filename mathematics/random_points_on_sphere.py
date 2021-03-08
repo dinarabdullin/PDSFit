@@ -3,6 +3,7 @@
 import numpy as np
 from mathematics.coordinate_system_conversions import spherical2cartesian
 
+
 def random_points_on_sphere(size):
 	r = np.ones(size)
 	theta = np.arccos(2.0 * np.random.random_sample(size) - 1.0)

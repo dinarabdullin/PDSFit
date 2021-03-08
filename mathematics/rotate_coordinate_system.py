@@ -2,6 +2,7 @@
 
 import numpy as np
 
+
 def rotate_coordinate_system(vectors, rotation_matrices, separate_dimensions):
     if not separate_dimensions:
         return rotation_matrices.apply(vectors)

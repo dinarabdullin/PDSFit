@@ -2,6 +2,7 @@
 
 import numpy as np
 
+
 def histogram(a, bins=10, range=None, normed=None, weights=None, density=None):
     if type(bins) is np.ndarray:
         increment = bins[1] - bins[0]

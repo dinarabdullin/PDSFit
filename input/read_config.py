@@ -189,7 +189,7 @@ def read_output_settings(config):
     return output_settings
   
 def read_config(filepath): 
-    print('\nReading out the configuration file...\n') 
+    print('\nReading out the configuration file...') 
     mode = {}
     experiments = []
     spins = []
