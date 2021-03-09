@@ -1,0 +1,47 @@
+
+Pre-compute the detection and pump probabilities for spin 1...
+
+Computing the EPR spectrum of the spin system in the frequency domain...
+
+Computing the bandwidths of detection and pump pulses...
+
+Computing the time trace of the experiment 'offset 1'
+	 Number of Monte-Carlo samples with non-zero weights: 148043 out of 1000000
+	 Timings:                                                     
+	 Monte-Carlo samples            0:00:00.453018                
+	 Resonance frequencies          0:00:00.671716                
+	 Detection/pump probabilities   0:00:01.015418                
+	 Modulation depths              0:00:00.015618                
+	 Dipolar frequencies            0:00:00.015621                
+	 PDS time trace                 0:00:00.015589                
+
+Computing the time trace of the experiment 'offset 2'
+	 Number of Monte-Carlo samples with non-zero weights: 204740 out of 1000000
+	 Timings:                                                     
+	 Monte-Carlo samples            0:00:00.484261                
+	 Resonance frequencies          0:00:00.624853                
+	 Detection/pump probabilities   0:00:01.031009                
+	 Modulation depths              0:00:00.015619                
+	 Dipolar frequencies            0:00:00.015621                
+	 PDS time trace                 0:00:00.031210                
+
+Computing the time trace of the experiment 'offset 3'
+	 Number of Monte-Carlo samples with non-zero weights: 149916 out of 1000000
+	 Timings:                                                     
+	 Monte-Carlo samples            0:00:00.501260                
+	 Resonance frequencies          0:00:00.651748                
+	 Detection/pump probabilities   0:00:01.050800                
+	 Modulation depths              0:00:00                       
+	 Dipolar frequencies            0:00:00.031244                
+	 PDS time trace                 0:00:00.015620                
+
+Computing the time trace of the experiment 'offset 4'
+	 Number of Monte-Carlo samples with non-zero weights: 227823 out of 1000000
+	 Timings:                                                     
+	 Monte-Carlo samples            0:00:00.453019                
+	 Resonance frequencies          0:00:00.656128                
+	 Detection/pump probabilities   0:00:01.046630                
+	 Modulation depths              0:00:00                       
+	 Dipolar frequencies            0:00:00.031236                
+	 PDS time trace                 0:00:00.015592                
+DONE!

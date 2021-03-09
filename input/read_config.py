@@ -180,6 +180,7 @@ def read_calculation_settings(config):
     calculation_settings['distributions']['gamma'] = config.calculation_settings.distributions.gamma
     calculation_settings['distributions']['j'] = config.calculation_settings.distributions.j   
     calculation_settings['excitation_treshold'] = float(config.calculation_settings.excitation_treshold)
+    calculation_settings['euler_angles_convention'] = config.calculation_settings.euler_angles_convention
     calculation_settings['fit_modulation_depth'] = bool(config.calculation_settings.fit_modulation_depth)
     if calculation_settings['fit_modulation_depth']:
         calculation_settings['interval_modulation_depth'] = float(config.calculation_settings.interval_modulation_depth)

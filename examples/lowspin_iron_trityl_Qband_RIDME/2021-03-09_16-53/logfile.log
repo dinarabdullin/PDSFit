@@ -1,0 +1,17 @@
+
+Pre-compute the detection and pump probabilities for spin 1...
+
+Computing the EPR spectrum of the spin system in the frequency domain...
+
+Computing the bandwidths of detection and pump pulses...
+
+Computing the time trace of the experiment 'offset 1'
+	 Number of Monte-Carlo samples with non-zero weights: 827320 out of 1000000
+	 Timings:                                                     
+	 Monte-Carlo samples            0:00:00.671747                
+	 Resonance frequencies          0:00:00.296808                
+	 Detection/pump probabilities   0:00:00.406156                
+	 Modulation depths              0:00:00.015620                
+	 Dipolar frequencies            0:00:00.124966                
+	 PDS time trace                 0:00:00.062492                
+DONE!

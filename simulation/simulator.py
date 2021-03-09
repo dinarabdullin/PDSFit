@@ -24,13 +24,13 @@ class Simulator():
             self.separate_grids = True
         self.distributions = calculation_settings['distributions']
         self.excitation_threshold = calculation_settings['excitation_treshold']
+        self.euler_angles_convention = calculation_settings['euler_angles_convention']
         self.fit_modulation_depth = calculation_settings['fit_modulation_depth']
         self.frequency_increment_epr_spectrum = 0.001 # in GHz
         self.field_orientations = []
         self.effective_gfactors_spin1 = []
         self.detection_probabilities_spin1 = {}
         self.pump_probabilities_spin1 = {}
-        self.euler_angles_convention = 'ZXZ'
         
     def set_field_orientations(self): 
         ''' Random points on a sphere '''
