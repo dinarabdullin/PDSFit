@@ -41,10 +41,9 @@
 			4) The Peldor_4p_rect.compute_time_trace method was removed.
 			5) The Ridme_5p_rect class was created and included in experiment_types.
 			6) The Simulator class was modified: Many new methods were added. Among these, a 'compute_time_trace_via_monte_carlo' method, which allows to calculate a 
-			time trace via Monte-Carlo integration. Currently, this method is limited by 2 spins and the assumption that the g-anisopropy of both spins have a negligible
-            effect on the dipolar coupling frequencies calculated.
-			
-			The 'compute_time_trace_via_grids' method, which allows to calculate a time trace via integration grids, was also initialized and needs to be implemented in future.
+			   time trace via Monte-Carlo integration. Currently, this method is limited by 2 spins and the assumption that the g-anisopropy of both spins have a negligible
+               effect on the dipolar coupling frequencies calculated.
+			   The 'compute_time_trace_via_grids' method, which allows to calculate a time trace via integration grids, was also initialized and needs to be implemented in future.
 
 04.03.2021:	1) The config file was extended: variables 'calculation_settings.fit_modulation_depth' and 'calculation_settings.interval_modulation_depth' were added to 
                enable/disable re-scaling of the modulation depths of simulated PDS time traces in accordance to the experimental PDS time traces.
@@ -56,10 +55,56 @@
 			4) New plotting methods were developed, e.g. 'plot_bandwidths', 'plot_grids', and 'plot_time_traces'.
 			5) New output methods were developed, e.g. 'save_bandwidths' and 'save_time_traces'.
 			6) Special focus was laid on formating the code.
-			
-			IMPORTANT: Each attribute of the class and each function has to have a short description in the following form:
-				
-				def compute_time_trace_via_monte_carlo(self, experiment, spins, variables):
-					''' Computes a PDS time trace via Monte-Carlo integration '''
+			7) IMPORTANT: Each attribute of the class and each function has to have a short description in the following form:
+			   def compute_time_trace_via_monte_carlo(self, experiment, spins, variables):
+			        ''' Computes a PDS time trace via Monte-Carlo integration '''
 					... code ...
-					
+
+09.03.2021:	1) Simulator class was updated:
+				a) The method 'precalculations' was added. It allows to pre-compute 'field_orientations', 'effective_gfactors_spin1', 
+				'detection_probabilities_spin1' and 'pump_probabilities_spin1' for spin #1. This will save computation time during 
+				the fitting.
+				b) The method 'compute_time_trace_via_monte_carlo' was extended to anisotropic spin centers. Now, one has
+				   four options for the spin pair: 
+				   I) spins 1 and 2 have almost isotropic g-factors
+				   II) spins 1 has an almost isotropic g-factor, spin 2 has an anisotropic g-factor
+				   III) spins 2 has an almost isotropic g-factor, spin 1 has an anisotropic g-factor
+				   IV) spins 1 and 2 have anisotropic g-factors 
+				c) The method 'compute_time_trace' was extended to the multi-spin (number of spins > 2) case.
+				d) To allow c), a new method called 'compute_time_trace_via_monte_carlo_multispin' was developed.
+				e) The possibility to match the modulation depths of the experimental and simulated time traces was added to 
+				   the 'compute_time_trace' method. It is implemented via a new method called 'rescale_modulation_depth'.
+				f) The methods 'set_r_orientations' and 'set_spin_frame_rotations' were rewritten. The sine-weights were
+				   deprecated and, instead, a random generator with an arbitrary distribution function was implemented (see point 2)).
+			
+			2) The methods in 'random_points_from_distribution' and 'distributions' were extended and allow now to generate random points 
+			   from uniform/normal/von Mises (unimodal or multimodal) distributions or sine-weighted uniform/normal/von Mises 
+			   (unimodal or multimodal) distributions.	
+			
+			3) To support 1b, the Spin class was extended with a method called 'quantization_axis'.
+			
+			4) Some plot methods were updated to make the generated figures look nicer.
+			
+			5) The examples folder was updated. Now we have four examples:
+				a) nitroxide_biradical_Wband_PELDOR:
+					- PELDOR experiment
+					- 2 spins: nitroxide & nitroxide
+					- both nitroxide spins have an almost isotropic g-factor
+					- unimodal distance and angle distributions
+				b) azurin_t21r1_Xband_PELDOR
+					- PELDOR experiment
+					- 2 spins: nitroxide & Cu(II)
+					- both spins have an almost isotropic g-factor
+					- bimodal distance and angle distributions (2 conformations of the nitrixide spin label)
+				c) lowspin_iron_trityl_Qband_RIDME:
+					- RIDME experiment
+					- 2 spins: nitroxide & low-spin Fe(III)
+					- nitroxide spin have an almost isotropic g-factor, low-spin Fe(III) has an anisotropic g-factor
+					- unimodal distance and angle distributions
+				d) copper_trinuclear_Xband_PELDOR
+					- PELDOR experiment
+					- 3 spins: Cu(II) & Cu(II) & Cu(II)
+					- all Cu(II) spins have an almost isotropic g-factor
+					- unimodal distance and angle distributions for each spin pair
+				
+				

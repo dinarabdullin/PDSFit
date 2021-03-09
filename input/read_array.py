@@ -1,10 +1,11 @@
-''' Read a libconfig array '''
-
 import libconf
+
 
 data_types = {'float': float, 'int': int, 'str': str}
 
+
 def read_array(array_obj, data_type, scale=1):
+    ''' Read a libconfig array '''
     lc_array = []
     if (array_obj != []):
         for i in array_obj:

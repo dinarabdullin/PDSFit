@@ -1,15 +1,15 @@
-''' 
-Plots the bandwidths of detection and pump pulses.
-If the EPR spectrum of the spin system is provided, the bandwidths will be overlayed with the EPR spectrum 
-'''
-
 import numpy as np
-import plots.set_backend
+import plots.set_matplotlib
 import matplotlib.pyplot as plt
-import plots.set_style
-from plots.best_layout import best_layout  
-   
+from plots.best_layout import best_layout
+from plots.plt_set_fullscreen import plt_set_fullscreen 
+
+
 def plot_bandwidths_single_experiment(fig, bandwidths, experiment, spectrum=[], save_figure=False, directory=''):
+    ''' 
+    Plots the bandwidths of detection and pump pulses a single experiment.
+    If the EPR spectrum of the spin system is provided, the bandwidths are overlayed with the EPR spectrum. 
+    '''
     if fig == None:
         new_fig = plt.figure(facecolor='w', edgecolor='w')
         axes = new_fig.gca() 
@@ -36,24 +36,31 @@ def plot_bandwidths_single_experiment(fig, bandwidths, experiment, spectrum=[], 
     if fig == None:   
         plt.tight_layout()
         plt.draw()
+        plt.pause(0.000001)
         if save_figure:
             filepath = directory + 'bandwidths_' + experiment.name + ".png"
             plt.savefig(filepath, format='png', dpi=600)
 
 
 def plot_bandwidths(bandwidths, experiments, spectra=[], save_figure=False, directory=''):
+    ''' 
+    Plots the bandwidths of detection and pump pulses for multiple experiments .
+    If the EPR spectrum of the spin system is provided, the bandwidths are overlayed with the EPR spectrum. 
+    '''  
     fig = plt.figure(figsize=[10,8], facecolor='w', edgecolor='w')
     figsize = fig.get_size_inches()*fig.dpi
     num_subplots = len(experiments)
     layout = best_layout(figsize[0], figsize[1], num_subplots)
     for i in range(num_subplots):
-        plt.subplot(layout[0], layout[1], i+1)
+        plt.subplot(layout[1], layout[0], i+1)
         if (spectra != []) and (len(spectra) == num_subplots):
             plot_bandwidths_single_experiment(fig, bandwidths[i], experiments[i], spectra[i])
         else:
             plot_bandwidths_single_experiment(fig, bandwidths[i], experiments[i])
     plt.tight_layout()
+    plt_set_fullscreen()
     plt.draw()
+    plt.pause(0.000001)
     if save_figure:
         filepath = directory + 'bandwidths.png'
         plt.savefig(filepath, format='png', dpi=600)

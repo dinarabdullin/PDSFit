@@ -1,6 +1,5 @@
-''' Save the bandwidths of detection and pump pulses'''
-
 def save_bandwidths(bandwidths, experiments, directory):
+    ''' Save the bandwidths of detection and pump pulses'''
     for i in range(len(experiments)):
         for key in bandwidths[i]:
             filepath = directory + key + '_' + experiments[i].name + ".dat"

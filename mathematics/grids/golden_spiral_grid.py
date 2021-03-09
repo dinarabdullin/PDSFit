@@ -1,9 +1,8 @@
-''' Golden spiral grid '''
-
 import numpy as np
 
 
 def golden_spiral_grid_points(size):
+    ''' Golden spiral grid '''
     v = []
     indices = np.arange(0, size, dtype=float) + 0.5
     phi = np.arccos(1 - 2*indices/float(size))

@@ -1,5 +1,4 @@
 ''' Coordinate system conversions '''
-
 import numpy as np
 
 

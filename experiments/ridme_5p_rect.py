@@ -1,11 +1,11 @@
-''' Class for 5-pulse RIDME with rectangular pulses '''
-
 from time import time
 import numpy as np
 from experiments.experiment import Experiment
 from supplement.definitions import const
 
+
 class Ridme_5p_rect(Experiment):
+    ''' Class for 5-pulse RIDME with rectangular pulses '''
     
     def __init__(self, name, technique, magnetic_field, detection_frequency, detection_pulse_lengths, pump_frequency, pump_pulse_lengths, mixing_time, temperature):
         super().__init__(name, technique, magnetic_field, detection_frequency, detection_pulse_lengths, pump_frequency, pump_pulse_lengths, mixing_time, temperature)

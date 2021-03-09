@@ -1,11 +1,11 @@
-''' Make an output directory '''
-
 import os
 import errno
 import datetime
 import shutil
 
+
 def make_output_directory(output_settings, filepath_config):
+    ''' Make an output directory '''
     if output_settings['save_data']:
         parent_directory = output_settings['directory']
         config_directory, config_name = os.path.split(os.path.abspath(filepath_config))

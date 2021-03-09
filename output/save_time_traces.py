@@ -1,6 +1,5 @@
-''' Save simulated PDS time traces '''
-
 def save_time_traces(simulated_time_traces, experiments, directory):
+    ''' Save simulated PDS time traces '''
     for i in range(len(experiments)):
         filepath = directory + 'time_trace_' + experiments[i].name + ".dat"
         file = open(filepath, 'w')

@@ -1,5 +1,3 @@
-'''Simulator class '''
-
 import numpy as np
 from scipy.spatial.transform import Rotation
 import time
@@ -12,7 +10,9 @@ from mathematics.coordinate_system_conversions import spherical2cartesian, carte
 from mathematics.rotate_coordinate_system import rotate_coordinate_system
 from mathematics.histogram import histogram
 
+
 class Simulator():
+    '''Simulator class '''
 
     def __init__(self, calculation_settings):
         self.integration_method = calculation_settings['integration_method']

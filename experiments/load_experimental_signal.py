@@ -1,8 +1,8 @@
-''' Load an experimental PDS time trace from a file'''
-
 import numpy as np
 
+
 def load_experimental_signal(filepath, signal_column):
+    ''' Load an experimental PDS time trace from a file'''
     x = []
     y = []
     file = open(filepath, 'r')

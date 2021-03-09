@@ -17,7 +17,7 @@ def normal_distribution(x, args):
     if width == 0:
         return np.where(x == mean, 1.0, 0.0)
     else:
-        return np.exp(-0.5 * ((x - mean)/width)**2) / (sqrt(2*np.pi) * width)
+        return np.exp(-0.5 * ((x - mean)/width)**2) / (np.sqrt(2*np.pi) * width)
 
 
 def vonmises_distribution(x, args):
@@ -39,7 +39,7 @@ def multimodal_normal_distribution(x, args):
         if width[0] == 0:
             return np.where(x == mean[0], 1.0, 0.0)
         else:
-            return np.exp(-0.5 * ((x - mean[0])/width[0])**2) / (sqrt(2*np.pi) * width[0])    
+            return np.exp(-0.5 * ((x - mean[0])/width[0])**2) / (np.sqrt(2*np.pi) * width[0])    
     else:
         last_weight = 1.0
         y = np.zeros(x.size)
@@ -52,7 +52,7 @@ def multimodal_normal_distribution(x, args):
             if width[i] == 0:
                 y = y + weight * np.where(x == mean[i], 1.0, 0.0)
             else:   
-                y = y + weight * exp(-0.5 * ((x - mean[i])/width[i])**2) / (sqrt(2*np.pi) * width[i])
+                y = y + weight * np.exp(-0.5 * ((x - mean[i])/width[i])**2) / (np.sqrt(2*np.pi) * width[i])
         return y
 
 
@@ -99,7 +99,7 @@ def sine_weighted_multimodal_normal_distribution(x, args):
         if width[0] == 0:
             return np.where(x == mean[0], 1.0, 0.0)
         else:
-            return np.exp(-0.5 * ((x - mean[0])/width[0])**2) / (sqrt(2*np.pi) * width[0]) * np.abs(np.sin(x))    
+            return np.exp(-0.5 * ((x - mean[0])/width[0])**2) / (np.sqrt(2*np.pi) * width[0]) * np.abs(np.sin(x))    
     else:
         last_weight = 1.0
         y = np.zeros(x.size)
@@ -112,7 +112,7 @@ def sine_weighted_multimodal_normal_distribution(x, args):
             if width[i] == 0:
                 y = y + weight * np.where(x == mean[i], 1.0, 0.0) * np.abs(np.sin(x))
             else:   
-                y = y + weight * exp(-0.5 * ((x - mean[i])/width[i])**2) / (sqrt(2*np.pi) * width[i]) * np.abs(np.sin(x))
+                y = y + weight * np.exp(-0.5 * ((x - mean[i])/width[i])**2) / (np.sqrt(2*np.pi) * width[i]) * np.abs(np.sin(x))
         return y
 
 

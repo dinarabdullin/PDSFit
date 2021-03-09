@@ -1,11 +1,10 @@
-''' Spin class '''
-
 import numpy as np
 from math import sqrt
-
 from supplement.definitions import const
 
+
 class Spin:
+    ''' Spin class ''' 
 
     def __init__(self, g, n, I, A, gStrain, AStrain, lwpp, T1, g_anisotropy_in_dipolar_coupling):
         self.g = g
@@ -21,7 +20,7 @@ class Spin:
         self.num_res_freq = 0
         self.int_res_freq = []
         self.count_transitions()
-    
+
     def count_transitions(self):
         ''' Compute the number of EPR transitions and their relative intensities '''
         self.num_trans = 1
@@ -58,7 +57,7 @@ class Spin:
         else:
             g_eff = np.sqrt(np.sum(self.g**2 * field_orientations**2, axis=1))
         return g_eff.reshape(size, 1)
-    
+
     def A_effective(self, field_orientations, size, no_nucleus):
         ''' Computes effective A-values for given magnetic field orientations'''
         if self.AStrain.size:
@@ -109,7 +108,7 @@ class Spin:
                 fh = Aeff * m
                 f += fh
         return f, g_eff.flatten()
-    
+
     def quantization_axis(self, field_orientations, g_eff=[]):
         ''' Computes quantization axes for given magnetic field orientations'''
         # Number of field directions

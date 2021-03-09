@@ -32,6 +32,9 @@ if __name__ == '__main__':
     # Init simulator
     simulator = Simulator(calculation_settings)
     
+    # Run precalculations
+    simulator.precalculations(experiments, spins)
+    
     # Run calculations
     if mode['simulation']:
     
@@ -50,7 +53,7 @@ if __name__ == '__main__':
         plot_bandwidths(bandwidths, experiments, epr_spectra, True, output_settings['directory'])
         
         # Simulate the PDS time traces
-        simulated_time_traces = simulator.compute_time_traces(experiments, spins, simulation_settings['parameters'])
+        simulated_time_traces, modulation_depth_scale_factors = simulator.compute_time_traces(experiments, spins, simulation_settings['parameters'])
         # Save the time traces
         save_time_traces(simulated_time_traces, experiments, output_settings['directory'])
         # Plot the time traces

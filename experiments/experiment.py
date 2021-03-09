@@ -1,9 +1,9 @@
-''' Experiment class '''
-
 import numpy as np
 from experiments.load_experimental_signal import load_experimental_signal
 
+
 class Experiment:
+    ''' Experiment class '''
     
     def __init__(self, name, technique, magnetic_field, detection_frequency, detection_pulse_lengths, pump_frequency, pump_pulse_lengths, mixing_time, temperature):
         self.name = name

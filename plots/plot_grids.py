@@ -1,12 +1,10 @@
-''' Plot integration grids '''
-
 import numpy as np
-
-import plots.set_backend
-import matplotlib.pyplot as plt
-import plots.set_style
 from supplement.definitions import const
 from mathematics.histogram import histogram
+import plots.set_matplotlib
+import matplotlib.pyplot as plt
+from plots.plt_set_fullscreen import plt_set_fullscreen 
+
 
 r_increment = 0.01 # nm
 r_border = 0.5 # nm
@@ -16,7 +14,9 @@ a_increment = 1 # MHz
 a_border = 10 # deg
 threshold = 1.0e-10
 
+
 def grid_statistics(points, weights, increment, border=0.0, scale=1.0):
+    ''' Compute grid statistics ''' 
     points *= scale
     if points.size == 1 or all(v - points[0] < threshold for v in points):
         values = np.arange(points[0]-border, points[0]+border, increment)
@@ -30,6 +30,7 @@ def grid_statistics(points, weights, increment, border=0.0, scale=1.0):
 
 
 def plot_grid(fig, x, y, axes_labels = ['Parameter (arb. u.)', 'Relative probability (arb. u.)']):
+    ''' Plot an integration grid ''' 
     axes = fig.gca()
     axes.plot(x, y / np.amax(y), 'k-')
     axes.set_xlim(np.amin(x), np.amax(x))
@@ -38,7 +39,8 @@ def plot_grid(fig, x, y, axes_labels = ['Parameter (arb. u.)', 'Relative probabi
 
 
 def plot_grids(r_values, r_weights, xi_values, xi_weights, phi_values, phi_weights, alpha_values, alpha_weights, 
-               beta_values, beta_weights, gamma_values, gamma_weights, j_values=[], j_weights=[]):                   
+               beta_values, beta_weights, gamma_values, gamma_weights, j_values=[], j_weights=[]):   
+    ''' Plot integration grids '''            
     fig = plt.figure(facecolor='w', edgecolor='w')
     # P(r)
     r_axis, r_prob = grid_statistics(r_values, r_weights, r_increment, border=r_border)
@@ -70,4 +72,6 @@ def plot_grids(r_values, r_weights, xi_values, xi_weights, phi_values, phi_weigh
         plt.subplot(2, 4, 7)
         plot_grid(fig, j_axis, j_prob, [r'$\mathit{J}$ (MHz)', r'$\mathit{P(J)}$ (arb. u.)'])
     plt.tight_layout()
+    plt_set_fullscreen()
     plt.draw()
+    plt.pause(0.000001)

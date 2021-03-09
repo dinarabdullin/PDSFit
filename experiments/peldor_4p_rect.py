@@ -1,10 +1,10 @@
-''' Class for 4-pulse ELDOR with rectangular pulses '''
-
 from time import time
 import numpy as np
 from experiments.experiment import Experiment
 
+
 class Peldor_4p_rect(Experiment):
+    ''' Class for 4-pulse ELDOR with rectangular pulses '''
     
     def __init__(self, name, technique, magnetic_field, detection_frequency, detection_pulse_lengths, pump_frequency, pump_pulse_lengths, mixing_time, temperature):
         super().__init__(name, technique, magnetic_field, detection_frequency, detection_pulse_lengths, pump_frequency, pump_pulse_lengths, mixing_time, temperature)

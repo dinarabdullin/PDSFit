@@ -1,11 +1,12 @@
-''' Read a libconfig list '''
-
 import libconf
 from input.read_array import read_array
 
+
 data_types = {'float': float, 'int': int, 'str': str}
 
+
 def read_list(list_obj, data_type, scale=1):
+    ''' Read a libconfig list '''
     if isinstance(data_type, str):
         data_type = (data_type,)
     lc_list = []

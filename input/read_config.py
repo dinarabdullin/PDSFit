@@ -1,16 +1,14 @@
-''' Read input data from a configuration file '''
-
 import io
 import sys
 import libconf
 import numpy as np
-
 sys.path.append('..')
 from input.read_array import read_array
 from input.read_list import read_list
 from experiments.experiment_types import experiment_types
 from spin_physics.spin import Spin
 from supplement.definitions import const
+
 
 def read_calculation_mode(config):
     mode = {}
@@ -31,6 +29,7 @@ def read_calculation_mode(config):
         raise ValueError('Invalid mode!')
         sys.exit(1)
     return mode
+
 
 def read_experimental_parameters(config):
     experiments = []
@@ -58,6 +57,7 @@ def read_experimental_parameters(config):
             sys.exit(1)  
     return experiments
 
+
 def read_array(array_obj, data_type, scale=1.0):
     array = []
     data_types = {'float': float, 'int': int, 'str': str, 'list': list}
@@ -68,6 +68,7 @@ def read_array(array_obj, data_type, scale=1.0):
             else:
                 array.append(data_types[data_type](c))
     return array
+
     
 def read_spin_parameters(config):
     spins = []
@@ -109,6 +110,7 @@ def read_spin_parameters(config):
         sys.exit(1)
     return spins
 
+
 def validate_simulation_parameters(simulation_parameters, parameter1, parameter2):
     if len(simulation_parameters[parameter1][0]) == 0:
         raise ValueError('Parameter %s must have at least one value!' % (parameter1))
@@ -123,6 +125,7 @@ def validate_simulation_parameters(simulation_parameters, parameter1, parameter2
         if len(simulation_parameters[parameter1][i]) != len(simulation_parameters[parameter2][i]):
             raise ValueError('Parameters %s and %s must have same dimensions!' % (parameter1, parameter2))
             sys.exit(1)   
+
 
 def read_simulation_settings(config):
     simulation_settings = {}
@@ -150,6 +153,7 @@ def read_simulation_settings(config):
     validate_simulation_parameters(simulation_settings['parameters'], 'gamma_mean', 'gamma_width')
     validate_simulation_parameters(simulation_settings['parameters'], 'j_mean', 'j_width')
     return simulation_settings
+
 
 def read_calculation_settings(config):
     calculation_settings = {}
@@ -181,14 +185,17 @@ def read_calculation_settings(config):
         calculation_settings['interval_modulation_depth'] = float(config.calculation_settings.interval_modulation_depth)
     return calculation_settings
 
+
 def read_output_settings(config):
     output_settings = {}
     output_settings['directory'] = config.output.directory
     output_settings['save_data'] = bool(config.output.save_data)
     output_settings['save_figures'] = bool(config.output.save_figures)
     return output_settings
+
   
 def read_config(filepath): 
+    ''' Read input data from a configuration file '''
     print('\nReading out the configuration file...') 
     mode = {}
     experiments = []

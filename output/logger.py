@@ -1,6 +1,7 @@
 import traceback
 import sys
 
+
 class Logger(object):
     '''
     Write all results being printed on stdout from the python source to file to the logfile.
@@ -18,6 +19,7 @@ class Logger(object):
 
     def flush(self):
         pass
+
 
 class ContextManager(object):
     '''

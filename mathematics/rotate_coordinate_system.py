@@ -1,9 +1,8 @@
-''' Rotate a reference coordinate frame using a rotation matrix '''
-
 import numpy as np
 
 
 def rotate_coordinate_system(vectors, rotation_matrices, separate_dimensions):
+    ''' Rotate a reference coordinate frame using a rotation matrix '''
     if not separate_dimensions:
         return rotation_matrices.apply(vectors)
     else:

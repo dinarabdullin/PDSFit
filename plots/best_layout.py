@@ -1,25 +1,28 @@
-''' Find the best layout of multiple subplots for a given screen size'''
+import numpy as np
 
-import math
 
-def best_square_size(w, h, n):
-    ''' 
+def best_square_size(x, y, n):
+    '''
     Given a rectangle with width and height, fill it with n squares of equal size such 
     that the squares cover as much of the rectangle's area as possible. 
     The size of a single square should be returned.
-    Source:
-    https://stackoverflow.com/questions/6463297/algorithm-to-fill-rectangle-with-small-squares
+    Source: https://math.stackexchange.com/questions/466198/algorithm-to-get-the-maximum-size-of-n-squares-that-fit-into-a-rectangle-with-a
     '''
-    hi, lo = float(max(w, h)), 0.0
-    while abs(hi - lo) > 0.000001:
-        mid = (lo+hi)/2.0
-        midval = math.floor(w / mid) * math.floor(h / mid)
-        if midval >= n:
-            lo = mid
-        elif midval < n: 
-            hi = mid
-    return min(w/math.floor(w/lo), h/math.floor(h/lo))
+    x, y, n = float(x), float(y), float(n)
+    px = np.ceil(np.sqrt(n * x / y))
+    if np.floor(px * y / x) * px  < n:
+            sx = y / np.ceil(px * y / x)
+    else:
+            sx = x/px
+    py = np.ceil(np.sqrt(n * y / x))
+    if np.floor(py * x / y) * py < n:
+            sy = x / np.ceil(x * py / y)
+    else:
+            sy = y / py
+    return max(sx,sy)
+
 
 def best_layout(w, h, n):
+    ''' Find the best layout of multiple subplots for a given screen size'''
     a = best_square_size(w, h, n)
-    return [math.floor(w/a), math.floor(h/a)]
+    return [int(w/a), int(h/a)]
