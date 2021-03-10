@@ -83,6 +83,8 @@ class Simulator():
         beta_values = random_points_from_sine_weighted_distribution(self.distributions['beta'], beta_mean, beta_width, rel_prob, self.mc_sample_size)
         gamma_values = random_points_from_distribution(self.distributions['gamma'], gamma_mean, gamma_width, rel_prob, self.mc_sample_size)
         spin_frame_rotations = Rotation.from_euler(self.euler_angles_convention, np.column_stack((alpha_values, beta_values, gamma_values)))
+        # Convert active rotations to passive rotations
+        spin_frame_rotations = spin_frame_rotations.inv()
         return spin_frame_rotations
     
     def set_spin_frame_rotations_grid(self, alpha_mean, alpha_width, beta_mean, beta_width, gamma_mean, gamma_width, rel_prob):
@@ -165,7 +167,7 @@ class Simulator():
         # # Plot Monte-Carlo grids
         # from plots.plot_grids import plot_grids
         # rho_values, xi_values, phi_values = cartesian2spherical(r_orientations)
-        # euler_angles = spin_frame_rotations_spin2.as_euler(self.euler_angles_convention, degrees=False)
+        # euler_angles = spin_frame_rotations_spin2.inv().as_euler(self.euler_angles_convention, degrees=False)
         # alpha_values, beta_values, gamma_values = euler_angles[:,0], euler_angles[:,1], euler_angles[:,2]
         # plot_grids(r_values, [], xi_values, [], phi_values, [], alpha_values, [], beta_values, [], gamma_values, [], j_values, [])
         # Orientations of the applied static magnetic field in both spin frames
@@ -203,10 +205,7 @@ class Simulator():
                 pump_probabilities_spin1 = np.where(detection_probabilities_spin2 > self.excitation_threshold,
                                                     self.pump_probabilities_spin1[experiment.name], 0.0)
             pump_probabilities_spin2 = np.where(detection_probabilities_spin1 > self.excitation_threshold,                                    
-                                                experiment.pump_probability(spins[1].T1, spins[1].g_anisotropy_in_dipolar_coupling, effective_gfactors_spin2), 0.0)
-        else:
-            raise ValueError('\nUnsupported PDS technique \'%s\' is encountered!' % (experiment.technique))
-            sys.exit(1)   
+                                                experiment.pump_probability(spins[1].T1, spins[1].g_anisotropy_in_dipolar_coupling, effective_gfactors_spin2), 0.0)   
         indices_nonzero_probabilities_spin1 = np.where(pump_probabilities_spin1 > self.excitation_threshold)[0]
         indices_nonzero_probabilities_spin2 = np.where(pump_probabilities_spin2 > self.excitation_threshold)[0]
         indices_nonzero_probabilities = np.unique(np.concatenate((indices_nonzero_probabilities_spin1, indices_nonzero_probabilities_spin2), axis=None))
@@ -326,10 +325,7 @@ class Simulator():
                     pump_probabilities_spin1 = np.where(detection_probabilities_spin2 > self.excitation_threshold,
                                                         self.pump_probabilities_spin1[experiment.name], 0.0)
                 pump_probabilities_spin2 = np.where(detection_probabilities_spin1 > self.excitation_threshold,                                    
-                                                    experiment.pump_probability(spins[idx_spin2].T1, spins[idx_spin2].g_anisotropy_in_dipolar_coupling, effective_gfactors_spin2), 0.0)
-            else:
-                raise ValueError('\nUnsupported PDS technique \'%s\' is encountered!' % (experiment.technique))
-                sys.exit(1)   
+                                                    experiment.pump_probability(spins[idx_spin2].T1, spins[idx_spin2].g_anisotropy_in_dipolar_coupling, effective_gfactors_spin2), 0.0)   
             indices_nonzero_probabilities_spin1 = np.where(pump_probabilities_spin1 > self.excitation_threshold)[0]
             indices_nonzero_probabilities_spin2 = np.where(pump_probabilities_spin2 > self.excitation_threshold)[0]
             indices_nonzero_probabilities = np.unique(np.concatenate((indices_nonzero_probabilities_spin1, indices_nonzero_probabilities_spin2), axis=None))
@@ -443,10 +439,7 @@ class Simulator():
                 pump_probabilities_spin1 = np.where(detection_probabilities_spin2 > self.excitation_threshold,
                                                     experiment.pump_probability(spins[idx_spin1].T1, spins[idx_spin1].g_anisotropy_in_dipolar_coupling, effective_gfactors_spin1), 0.0)
                 pump_probabilities_spin2 = np.where(detection_probabilities_spin1 > self.excitation_threshold,                                    
-                                                    experiment.pump_probability(spins[idx_spin2].T1, spins[idx_spin2].g_anisotropy_in_dipolar_coupling, effective_gfactors_spin2), 0.0)
-            else:
-                raise ValueError('\nUnsupported PDS technique \'%s\' is encountered!' % (experiment.technique))
-                sys.exit(1)   
+                                                    experiment.pump_probability(spins[idx_spin2].T1, spins[idx_spin2].g_anisotropy_in_dipolar_coupling, effective_gfactors_spin2), 0.0) 
             indices_nonzero_probabilities_spin1 = np.where(pump_probabilities_spin1 > self.excitation_threshold)[0]
             indices_nonzero_probabilities_spin2 = np.where(pump_probabilities_spin2 > self.excitation_threshold)[0]
             indices_nonzero_probabilities = np.unique(np.concatenate((indices_nonzero_probabilities_spin1, indices_nonzero_probabilities_spin2), axis=None))
@@ -612,9 +605,6 @@ class Simulator():
                 bandwidths_single_experiment = {}
                 bandwidths_single_experiment['detection_bandwidth'] = experiment.get_detection_bandwidth()
                 bandwidths.append(bandwidths_single_experiment)
-            else:
-                raise ValueError('Unsupported PDS technique \'%s\' is encountered! ' % (experiment.technique))
-                sys.exit(1)
         return bandwidths
     
     def precalculations(self, experiments, spins):
@@ -637,8 +627,5 @@ class Simulator():
                         self.pump_probabilities_spin1[experiment.name] = experiment.pump_probability(resonance_frequencies_spin1, spins[0].int_res_freq)    
                     elif experiment.technique == 'ridme':
                         self.pump_probabilities_spin1[experiment.name] = experiment.pump_probability(spins[0].T1, spins[0].g_anisotropy_in_dipolar_coupling, self.effective_gfactors_spin1)
-                    else:
-                        raise ValueError('\nUnsupported PDS technique \'%s\' is encountered!' % (experiment.technique))
-                        sys.exit(1)
         # elif self.integration_method == 'grids':
             # ...

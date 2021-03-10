@@ -1,7 +1,6 @@
 ''' Main file of PeldorFit '''
 
 import argparse
-from datetime import time
 import sys
 from input.read_config import read_config
 from simulation.simulator import Simulator
@@ -21,7 +20,7 @@ if __name__ == '__main__':
     parser.add_argument('filepath', help="Path to the configuration file")
     args = parser.parse_args()
     filepath_config = args.filepath
-    mode, experiments, spins, simulation_settings, calculation_settings, output_settings = read_config(filepath_config)
+    mode, experiments, spins, simulation_settings, fitting_settings, error_analysis_settings, calculation_settings, output_settings = read_config(filepath_config)
 
     # Make an output directory
     make_output_directory(output_settings, filepath_config)

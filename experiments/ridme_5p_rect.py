@@ -7,14 +7,21 @@ from supplement.definitions import const
 class Ridme_5p_rect(Experiment):
     ''' Class for 5-pulse RIDME with rectangular pulses '''
     
-    def __init__(self, name, technique, magnetic_field, detection_frequency, detection_pulse_lengths, pump_frequency, pump_pulse_lengths, mixing_time, temperature):
-        super().__init__(name, technique, magnetic_field, detection_frequency, detection_pulse_lengths, pump_frequency, pump_pulse_lengths, mixing_time, temperature)
-        self.detection_pi_half_pulse_length = self.detection_pulse_lengths[0]
-        self.detection_pi_pulse_length = self.detection_pulse_lengths[1]
+    def __init__(self, name):
+        super().__init__(name)
+        self.technique = 'ridme'
+    
+    def set_parameters(self, magnetic_field, detection_frequency, detection_pulse_lengths, mixing_time, temperature):
+        ''' Set the parameters of the experiment '''
+        self.magnetic_field = magnetic_field
+        self.detection_frequency = detection_frequency
+        self.detection_pi_half_pulse_length = detection_pulse_lengths[0]
+        self.detection_pi_pulse_length = detection_pulse_lengths[1]
+        self.mixing_time = mixing_time
+        self.temperature = temperature
         self.bandwidth_detection_pi_half_pulse = 1 / (4 * self.detection_pi_half_pulse_length)
         self.bandwidth_detection_pi_pulse = 1 / (2 * self.detection_pi_pulse_length)
-        self.technique = 'ridme'
-        
+
     def detection_probability(self, resonance_frequencies, weights=[]):
         ''' Computes pump probabilities for different resonance frequencies '''
         frequency_offsets_squared = (self.detection_frequency - resonance_frequencies)**2

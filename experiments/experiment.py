@@ -5,16 +5,8 @@ from experiments.load_experimental_signal import load_experimental_signal
 class Experiment:
     ''' Experiment class '''
     
-    def __init__(self, name, technique, magnetic_field, detection_frequency, detection_pulse_lengths, pump_frequency, pump_pulse_lengths, mixing_time, temperature):
+    def __init__(self, name):
         self.name = name
-        self.technique = technique
-        self.magnetic_field = magnetic_field
-        self.detection_frequency = detection_frequency
-        self.detection_pulse_lengths = detection_pulse_lengths
-        self.pump_frequency = pump_frequency
-        self.pump_pulse_lengths = pump_pulse_lengths
-        self.mixing_time = mixing_time
-        self.temperature = temperature
         self.t = []
         self.s = []
         self.modulation_depth = 0.0

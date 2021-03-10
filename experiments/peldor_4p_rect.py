@@ -6,16 +6,22 @@ from experiments.experiment import Experiment
 class Peldor_4p_rect(Experiment):
     ''' Class for 4-pulse ELDOR with rectangular pulses '''
     
-    def __init__(self, name, technique, magnetic_field, detection_frequency, detection_pulse_lengths, pump_frequency, pump_pulse_lengths, mixing_time, temperature):
-        super().__init__(name, technique, magnetic_field, detection_frequency, detection_pulse_lengths, pump_frequency, pump_pulse_lengths, mixing_time, temperature)
-        self.detection_pi_half_pulse_length = self.detection_pulse_lengths[0]
-        self.detection_pi_pulse_length = self.detection_pulse_lengths[1]
-        self.pump_pulse_length = self.pump_pulse_lengths[0]
+    def __init__(self, name):
+        super().__init__(name)
+        self.technique = 'peldor'
+    
+    def set_parameters(self, magnetic_field, detection_frequency, detection_pulse_lengths, pump_frequency, pump_pulse_lengths):
+        ''' Set the parameters of the experiment '''
+        self.magnetic_field = magnetic_field
+        self.detection_frequency = detection_frequency
+        self.detection_pi_half_pulse_length = detection_pulse_lengths[0]
+        self.detection_pi_pulse_length = detection_pulse_lengths[1]
+        self.pump_frequency = pump_frequency
+        self.pump_pulse_length = pump_pulse_lengths[0]
         self.bandwidth_detection_pi_half_pulse = 1 / (4 * self.detection_pi_half_pulse_length)
         self.bandwidth_detection_pi_pulse = 1 / (2 * self.detection_pi_pulse_length)
         self.bandwidth_pump_pulse = 1 / (2 * self.pump_pulse_length)
-        self.technique = 'peldor'
-        
+    
     def detection_probability(self, resonance_frequencies, weights=[]):
         ''' Computes detection probabilities for different resonance frequencies '''
         frequency_offsets_squared = (self.detection_frequency - resonance_frequencies)**2

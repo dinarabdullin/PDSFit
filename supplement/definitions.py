@@ -49,3 +49,9 @@ const['relative_intensities'] = [
 	[1, 6, 21, 56, 120, 216, 336, 456, 546, 580, 546, 456, 336, 216, 120, 56, 21, 6, 1]],   #n = 6
 ]
 
+# Supported distributions
+const['distribution_types'] = ['uniform', 'normal', 'vonmises']
+
+# Supported Euler angles conventions
+const['euler_angles_conventions'] = ['ZXZ', 'XYX', 'YZY', 'ZYZ', 'XZX', 'YXY']
+

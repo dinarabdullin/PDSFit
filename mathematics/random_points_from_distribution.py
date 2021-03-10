@@ -87,9 +87,6 @@ def random_points_from_distribution(distribution_type, mean, width, rel_prob, si
         return random_points_from_multimodal_normal_distribution(mean, width, rel_prob, size)
     elif distribution_type == "vonmises":
         return random_points_from_multimodal_vonmises_distribution(mean, width, rel_prob, size)
-    else:
-        raise ValueError('Invalid type of distribution!')
-        sys.exit(1)
 
 
 def random_points_from_arbitrary_distribution(f, args):
@@ -126,9 +123,6 @@ def random_points_from_sine_weighted_distribution(distribution_type, mean, width
             return random_points_from_arbitrary_distribution(sine_weighted_multimodal_normal_distribution, args)(uniform_samples)
         elif distribution_type == "vonmises":
             return random_points_from_arbitrary_distribution(sine_weighted_multimodal_vonmises_distribution, args)(uniform_samples)
-        else:
-            raise ValueError('Invalid type of distribution!')
-            sys.exit(1)
 
 
 def test():

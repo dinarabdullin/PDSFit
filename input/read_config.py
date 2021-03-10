@@ -5,6 +5,7 @@ import numpy as np
 sys.path.append('..')
 from input.read_array import read_array
 from input.read_list import read_list
+from input.validate_simulation_parameters import validate_simulation_parameters
 from experiments.experiment_types import experiment_types
 from spin_physics.spin import Spin
 from supplement.definitions import const
@@ -35,39 +36,38 @@ def read_experimental_parameters(config):
     experiments = []
     for instance in config.experiments:
         name = instance.name
-        technique = instance.technique
-        magnetic_field = float(instance.magnetic_field)
-        detection_frequency = float(instance.detection_frequency)
-        detection_pulse_lengths = []
-        for pulse_length in instance.detection_pulse_lengths:
-            detection_pulse_lengths.append(float(pulse_length)) 
-        pump_frequency = float(instance.pump_frequency)
-        pump_pulse_lengths = []
-        for pulse_length in instance.pump_pulse_lengths:
-            pump_pulse_lengths.append(float(pulse_length))
-        mixing_time = float(instance.mixing_time)
-        temperature = float(instance.temperature)
+        technique = instance.technique 
         if technique in experiment_types:
-            exp = experiment_types[technique](name, technique, magnetic_field, detection_frequency, detection_pulse_lengths, 
-                                              pump_frequency, pump_pulse_lengths, mixing_time, temperature)
+            exp = experiment_types[technique](name)
             exp.signal_from_file(instance.filename, 1)
+            magnetic_field = float(instance.magnetic_field)
+            detection_frequency = float(instance.detection_frequency)
+            detection_pulse_lengths = []
+            for pulse_length in instance.detection_pulse_lengths:
+                detection_pulse_lengths.append(float(pulse_length))
+            if exp.technique == 'peldor':
+                pump_frequency = float(instance.pump_frequency)
+                pump_pulse_lengths = []
+                for pulse_length in instance.pump_pulse_lengths:
+                    pump_pulse_lengths.append(float(pulse_length))
+            elif exp.technique == 'ridme':
+                mixing_time = float(instance.mixing_time)
+                temperature = float(instance.temperature)
+            if exp.technique == 'peldor':
+                exp.set_parameters(magnetic_field, detection_frequency, detection_pulse_lengths, pump_frequency, pump_pulse_lengths)
+            elif exp.technique == 'ridme':
+                exp.set_parameters(magnetic_field, detection_frequency, detection_pulse_lengths, mixing_time, temperature)
+            else:
+                raise ValueError('Unsurpoted technique!')
+                sys.exit(1)
             experiments.append(exp)
         else:
-            raise ValueError('Invalid name of experiment!')
+            raise ValueError('Invalid type of experiment!')
             sys.exit(1)  
+    if experiments == []:
+        raise ValueError('At least one experiment has to be provided!')
+        sys.exit(1)
     return experiments
-
-
-def read_array(array_obj, data_type, scale=1.0):
-    array = []
-    data_types = {'float': float, 'int': int, 'str': str, 'list': list}
-    if array_obj != []:
-        for c in array_obj:
-            if (data_type == 'float') or (data_type == 'int'):
-                array.append(data_types[data_type](c * scale))
-            else:
-                array.append(data_types[data_type](c))
-    return array
 
     
 def read_spin_parameters(config):
@@ -105,26 +105,10 @@ def read_spin_parameters(config):
         g_anisotropy_in_dipolar_coupling = bool(instance.g_anisotropy_in_dipolar_coupling)
         spin = Spin(g, n, I, A, gStrain, AStrain, lwpp, T1, g_anisotropy_in_dipolar_coupling)
         spins.append(spin)
-    if len(spins) != 2 and len(spins) != 3:
-        raise ValueError('Invalid number of spins! Currently the number of spins is limited by 2 or 3.')
+    if len(spins) < 2:
+        raise ValueError('Number of spins has to be larger than 2!')
         sys.exit(1)
     return spins
-
-
-def validate_simulation_parameters(simulation_parameters, parameter1, parameter2):
-    if len(simulation_parameters[parameter1][0]) == 0:
-        raise ValueError('Parameter %s must have at least one value!' % (parameter1))
-        sys.exit(1)
-    if len(simulation_parameters[parameter2][0]) == 0:
-        raise ValueError('Parameter %s must have at least one value!' % (parameter2))
-        sys.exit(1)
-    if len(simulation_parameters[parameter1]) != len(simulation_parameters[parameter2]):
-        raise ValueError('Parameters %s and %s must have same dimensions!' % (parameter1, parameter2))
-        sys.exit(1)   
-    for i in range(len(simulation_parameters[parameter1])):
-        if len(simulation_parameters[parameter1][i]) != len(simulation_parameters[parameter2][i]):
-            raise ValueError('Parameters %s and %s must have same dimensions!' % (parameter1, parameter2))
-            sys.exit(1)   
 
 
 def read_simulation_settings(config):
@@ -151,6 +135,7 @@ def read_simulation_settings(config):
     validate_simulation_parameters(simulation_settings['parameters'], 'alpha_mean', 'alpha_width')
     validate_simulation_parameters(simulation_settings['parameters'], 'beta_mean', 'beta_width')
     validate_simulation_parameters(simulation_settings['parameters'], 'gamma_mean', 'gamma_width')
+    validate_simulation_parameters(simulation_settings['parameters'], 'rel_prob')
     validate_simulation_parameters(simulation_settings['parameters'], 'j_mean', 'j_width')
     return simulation_settings
 
@@ -178,9 +163,16 @@ def read_calculation_settings(config):
     calculation_settings['distributions']['alpha'] = config.calculation_settings.distributions.alpha
     calculation_settings['distributions']['beta'] = config.calculation_settings.distributions.beta
     calculation_settings['distributions']['gamma'] = config.calculation_settings.distributions.gamma
-    calculation_settings['distributions']['j'] = config.calculation_settings.distributions.j   
+    calculation_settings['distributions']['j'] = config.calculation_settings.distributions.j
+    for key in calculation_settings['distributions']:
+        if not calculation_settings['distributions'][key] in const['distribution_types']:
+            raise ValueError('Unsurpoted type of distribution for %s' % (key))
+            sys.exit(1)
     calculation_settings['excitation_treshold'] = float(config.calculation_settings.excitation_treshold)
     calculation_settings['euler_angles_convention'] = config.calculation_settings.euler_angles_convention
+    if not calculation_settings['euler_angles_convention'] in const['euler_angles_conventions']:
+        raise ValueError('Unsurpoted Euler angles convention')
+        sys.exit(1)
     calculation_settings['fit_modulation_depth'] = bool(config.calculation_settings.fit_modulation_depth)
     if calculation_settings['fit_modulation_depth']:
         calculation_settings['interval_modulation_depth'] = float(config.calculation_settings.interval_modulation_depth)
@@ -202,6 +194,8 @@ def read_config(filepath):
     experiments = []
     spins = []
     simulation_settings = {}
+    fitting_settings = {}
+    error_analysis_settings = {}
     calculation_settings = {}
     output_settings = {}
     with io.open(filepath) as file:
@@ -212,10 +206,12 @@ def read_config(filepath):
         if mode['simulation']:
             simulation_settings = read_simulation_settings(config)
         #elif mode['fitting']:
+        #   ...
         #elif mode['error_analysis']:
+        #   ...
         calculation_settings = read_calculation_settings(config)
         if calculation_settings['fit_modulation_depth']:
             for experiment in experiments:
                 experiment.compute_modulation_depth(calculation_settings['interval_modulation_depth'])
         output_settings = read_output_settings(config) 
-    return mode, experiments, spins, simulation_settings, calculation_settings, output_settings
+    return mode, experiments, spins, simulation_settings, fitting_settings, error_analysis_settings, calculation_settings, output_settings
