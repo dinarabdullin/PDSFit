@@ -27,7 +27,10 @@ def vonmises_distribution(x, args):
         return np.where(x == mean, 1.0, 0.0)
     else:
         kappa =  1 / width**2
-        return np.exp(kappa * np.cos(x - mean)) / (2*np.pi * i0(kappa))
+        if np.isfinite(i0(kappa)):
+            return np.exp(kappa * np.cos(x - mean)) / (2*np.pi * i0(kappa))
+        else:
+            return np.where(x == mean, 1.0, 0.0)
 
 
 def multimodal_normal_distribution(x, args):
@@ -66,7 +69,10 @@ def multimodal_vonmises_distribution(x, args):
             return np.where(x == mean[0], 1.0, 0.0)
         else:
             kappa =  1 / width[0]**2
-            return np.exp(kappa * np.cos(x - mean[0])) / (2*np.pi * i0(kappa))    
+            if np.isfinite(i0(kappa)):
+                return np.exp(kappa * np.cos(x - mean[0])) / (2*np.pi * i0(kappa))
+            else:
+                return np.where(x == mean[0], 1.0, 0.0)
     else:
         last_weight = 1.0
         y = np.zeros(x.size)
@@ -80,7 +86,10 @@ def multimodal_vonmises_distribution(x, args):
                 y = y + weight * np.where(x == mean[i], 1.0, 0.0)
             else:   
                 kappa =  1 / width[i]**2
-                y = y + weight * np.exp(kappa * np.cos(x - mean[i])) / (2*np.pi * i0(kappa)) 
+                if np.isfinite(i0(kappa)):
+                    y = y + weight * np.exp(kappa * np.cos(x - mean[i])) / (2*np.pi * i0(kappa)) 
+                else:
+                    y = y + weight * np.where(x == mean[i], 1.0, 0.0)
         return y
 
 
@@ -126,7 +135,10 @@ def sine_weighted_multimodal_vonmises_distribution(x, args):
             return np.where(x == mean[0], 1.0, 0.0)
         else:
             kappa =  1 / width[0]**2
-            return np.exp(kappa * np.cos(x - mean[0])) / (2*np.pi * i0(kappa)) * np.abs(np.sin(x))   
+            if np.isfinite(i0(kappa)):
+                return np.exp(kappa * np.cos(x - mean[0])) / (2*np.pi * i0(kappa)) * np.abs(np.sin(x))
+            else:
+                return np.where(x == mean[0], 1.0, 0.0)
     else:
         last_weight = 1.0
         y = np.zeros(x.size)
@@ -140,5 +152,8 @@ def sine_weighted_multimodal_vonmises_distribution(x, args):
                 y = y + weight * np.where(x == mean[i], 1.0, 0.0) * np.abs(np.sin(x))
             else:   
                 kappa =  1 / width[i]**2
-                y = y + weight * np.exp(kappa * np.cos(x - mean[i])) / (2*np.pi * i0(kappa)) * np.abs(np.sin(x))
+                if np.isfinite(i0(kappa)):
+                    y = y + weight * np.exp(kappa * np.cos(x - mean[i])) / (2*np.pi * i0(kappa)) * np.abs(np.sin(x))
+                else:
+                    y = y + weight * np.where(x == mean[i], 1.0, 0.0) * np.abs(np.sin(x))
         return y

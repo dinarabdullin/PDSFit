@@ -2,6 +2,7 @@
 
 import numpy as np
 from scipy import interpolate
+from scipy.special import i0
 try:
     from mathematics.distributions import sine_weigthed_uniform_distribution, sine_weighted_multimodal_normal_distribution, sine_weighted_multimodal_vonmises_distribution
 except:
@@ -108,6 +109,8 @@ def random_points_from_arbitrary_distribution(f, args):
 
 def random_points_from_sine_weighted_distribution(distribution_type, mean, width, rel_prob, size):
     if all(w == 0 for w in width):
+        return random_points_from_distribution(distribution_type, mean, width, rel_prob, size)
+    elif all(np.isfinite(i0(1/w**2)) == False for w in width):
         return random_points_from_distribution(distribution_type, mean, width, rel_prob, size)
     else:
         args={}

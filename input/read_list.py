@@ -1,24 +1,23 @@
 import libconf
-from input.read_array import read_array
 
 
-data_types = {'float': float, 'int': int, 'str': str}
+supported_data_types = {'float': float, 'int': int}
 
 
-def read_list(list_obj, data_type, scale=1):
-    ''' Read a libconfig list '''
-    if isinstance(data_type, str):
-        data_type = (data_type,)
+def read_list(list_object, data_type, scale=1):
+    ''' 
+    Read a libconfig list. 
+    The type of the parameter values, 'data_type', can be float or int.
+    Each of the parameter values is scaled by a factor 'scale'.
+    '''
     lc_list = []
-    if (list_obj != ()):
-        for i in list_obj:
-            if (data_type[0] == 'float'):
-                lc_list.append(data_types[data_type[0]](i * scale))
-            elif (data_type[0] == 'int'):
-                lc_list.append(data_types[data_type[0]](i * scale))
-            elif (data_type[0] == 'str'):
-                lc_list.append(data_types[data_type[0]](i))
-            elif (data_type[0] == 'array'):
-                lc_array = read_array(i, data_type[1], scale)
-                lc_list.append(lc_array)       
+    if (list_object != []):
+        for component in list_object:
+            if (data_type == 'float'):
+                lc_list.append((supported_data_types[data_type])(component) * (supported_data_types[data_type])(scale))
+            elif (data_type == 'int'):
+                lc_list.append((supported_data_types[data_type])(component) * (supported_data_types[data_type])(scale))
+            else:
+                raise ValueError('Unsupported format!')
+                sys.exit(1) 
     return lc_list

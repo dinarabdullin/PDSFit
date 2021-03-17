@@ -9,6 +9,7 @@ from mathematics.random_points_from_distribution import random_points_from_distr
 from mathematics.coordinate_system_conversions import spherical2cartesian, cartesian2spherical
 from mathematics.rotate_coordinate_system import rotate_coordinate_system
 from mathematics.histogram import histogram
+from mathematics.chi2 import chi2
 
 
 class Simulator():
@@ -26,6 +27,9 @@ class Simulator():
         self.excitation_threshold = calculation_settings['excitation_treshold']
         self.euler_angles_convention = calculation_settings['euler_angles_convention']
         self.fit_modulation_depth = calculation_settings['fit_modulation_depth']
+        if self.fit_modulation_depth:
+            self.scale_range_modulation_depth = calculation_settings['scale_range_modulation_depth']
+        self.scale_chi2_by_modulation_depth = calculation_settings['scale_chi2_by_modulation_depth']
         self.frequency_increment_epr_spectrum = 0.001 # in GHz
         self.field_orientations = []
         self.effective_gfactors_spin1 = []
@@ -137,12 +141,17 @@ class Simulator():
     def rescale_modulation_depth(self, time_trace, current_modulation_depth, new_modulation_depth):
         ''' Rescales the modulation depth of a PDS time trace'''
         scale_factor = new_modulation_depth / current_modulation_depth
+        if self.scale_range_modulation_depth != []:
+            if scale_factor < self.scale_range_modulation_depth[0]:
+                scale_factor = self.scale_range_modulation_depth[0]
+            elif scale_factor > self.scale_range_modulation_depth[1]:
+                scale_factor = self.scale_range_modulation_depth[1]
         new_time_trace = np.ones(time_trace.shape) - time_trace
         new_time_trace = scale_factor * new_time_trace
         new_time_trace = np.ones(time_trace.shape) - new_time_trace
-        return new_time_trace
+        return new_time_trace, scale_factor
     
-    def compute_time_trace_via_monte_carlo(self, experiment, spins, variables):
+    def compute_time_trace_via_monte_carlo(self, experiment, spins, variables, display_messages=False):
         ''' Computes a PDS time trace via Monte-Carlo integration '''
         timings = [['Timings:', '']]
         time_start = time.time()
@@ -216,7 +225,6 @@ class Simulator():
         pump_probabilities_spin2 = pump_probabilities_spin2[indices_nonzero_probabilities]
         timings.append(['Detection/pump probabilities', str(datetime.timedelta(seconds = time.time()-time_start))])
         time_start = time.time()
-        print('\t Number of Monte-Carlo samples with non-zero weights: {0} out of {1}'.format(indices_nonzero_probabilities.size, self.mc_sample_size))
         # Modulation depths
         amplitudes = detection_probabilities_spin1 + detection_probabilities_spin2
         modulation_amplitudes = detection_probabilities_spin1 * pump_probabilities_spin2 + \
@@ -263,15 +271,16 @@ class Simulator():
         #simulated_time_trace = self.time_trace_from_dipolar_frequencies(experiment, modulation_frequencies, modulation_depths)
         simulated_time_trace = self.time_trace_from_dipolar_spectrum(experiment, modulation_frequencies, modulation_depths)
         timings.append(['PDS time trace', str(datetime.timedelta(seconds = time.time()-time_start))])
-        # Print timings
-        for instance in timings:
-            print('\t {:<30} {:<30}'.format(instance[0], instance[1]))
+        # Messages
+        if display_messages:
+            print('Number of Monte-Carlo samples with non-zero weights: {0} out of {1}'.format(indices_nonzero_probabilities.size, self.mc_sample_size))
+            for instance in timings:
+                print('{:<30} {:<30}'.format(instance[0], instance[1]))
         return simulated_time_trace, total_modulation_depth
     
-    def compute_time_trace_via_monte_carlo_multispin(self, experiment, spins, variables, idx_spin1=0, idx_spin2=1):
+    def compute_time_trace_via_monte_carlo_multispin(self, experiment, spins, variables, idx_spin1=0, idx_spin2=1, display_messages=False):
         ''' Computes a PDS time trace via Monte-Carlo integration (multi-spin version) '''
         if idx_spin1 == 0:
-            print('\t Spins no. {0} and {1}'.format(idx_spin1, idx_spin2))
             timings = [['Timings:', '']]
             time_start = time.time()
             # Random orientations of the applied static magnetic field in the reference frame
@@ -336,7 +345,6 @@ class Simulator():
             pump_probabilities_spin2 = pump_probabilities_spin2[indices_nonzero_probabilities]
             timings.append(['Detection/pump probabilities', str(datetime.timedelta(seconds = time.time()-time_start))])
             time_start = time.time()
-            print('\t Number of Monte-Carlo samples with non-zero weights: {0} out of {1}'.format(indices_nonzero_probabilities.size, self.mc_sample_size))
             # Modulation depths
             amplitudes = detection_probabilities_spin1 + detection_probabilities_spin2
             modulation_amplitudes = detection_probabilities_spin1 * pump_probabilities_spin2 + \
@@ -380,12 +388,14 @@ class Simulator():
             # Time trace
             simulated_time_trace = self.time_trace_from_dipolar_spectrum(experiment, dipolar_frequencies, modulation_depths)
             timings.append(['PDS time trace', str(datetime.timedelta(seconds = time.time()-time_start))])
-            # Print timings
-            for instance in timings:
-                print('\t {:<30} {:<30}'.format(instance[0], instance[1]))
+            # Messages
+            if display_messages:
+                print('Spins no. {0} and {1}'.format(idx_spin1, idx_spin2))
+                print('Number of Monte-Carlo samples with non-zero weights: {0} out of {1}'.format(indices_nonzero_probabilities.size, self.mc_sample_size))
+                for instance in timings:
+                    print('\t {:<30} {:<30}'.format(instance[0], instance[1]))
             return simulated_time_trace, total_modulation_depth
         else:
-            print('\t Spins no. {0} and {1}'.format(idx_spin1, idx_spin2))
             timings = [['Timings:', '']]
             time_start = time.time()
             # Random orientations of the applied static magnetic field in the reference frame
@@ -449,8 +459,7 @@ class Simulator():
             pump_probabilities_spin1 = pump_probabilities_spin1[indices_nonzero_probabilities]
             pump_probabilities_spin2 = pump_probabilities_spin2[indices_nonzero_probabilities]
             timings.append(['Detection/pump probabilities', str(datetime.timedelta(seconds = time.time()-time_start))])
-            time_start = time.time()
-            print('\t Number of Monte-Carlo samples with non-zero weights: {0} out of {1}'.format(indices_nonzero_probabilities.size, self.mc_sample_size))
+            time_start = time.time() 
             # Modulation depths
             amplitudes = detection_probabilities_spin1 + detection_probabilities_spin2
             modulation_amplitudes = detection_probabilities_spin1 * pump_probabilities_spin2 + \
@@ -501,17 +510,21 @@ class Simulator():
             # Time trace
             simulated_time_trace = self.time_trace_from_dipolar_spectrum(experiment, dipolar_frequencies, modulation_depths)
             timings.append(['PDS time trace', str(datetime.timedelta(seconds = time.time()-time_start))])
-            # Print timings
-            for instance in timings:
-                print('\t {:<30} {:<30}'.format(instance[0], instance[1]))
+            # Messages
+            if display_messages:
+                print('\t Spins no. {0} and {1}'.format(idx_spin1, idx_spin2))
+                print('\t Number of Monte-Carlo samples with non-zero weights: {0} out of {1}'.format(indices_nonzero_probabilities.size, self.mc_sample_size))
+                for instance in timings:
+                    print('\t {:<30} {:<30}'.format(instance[0], instance[1]))
             return simulated_time_trace, total_modulation_depth
     
     def compute_time_trace_via_grids(self, experiment, spins, variables, idx_spin1=0, idx_spin2=1):
         ''' Computes a PDS time trace via integration grids '''
     
-    def compute_time_trace(self, experiment, spins, variables):
+    def compute_time_trace(self, experiment, spins, variables, display_messages=True):
         ''' Computes a PDS time trace for a given set of variables '''
-        print('\nComputing the time trace of the experiment \'{0}\''.format(experiment.name))
+        if display_messages:
+            print('\nComputing the time trace of the experiment \'{0}\'...'.format(experiment.name))
         num_spins = len(spins)
         if num_spins == 2:
             if self.integration_method == 'monte_carlo':
@@ -532,19 +545,25 @@ class Simulator():
                     simulated_time_trace['s'] = simulated_time_trace['s'] * two_spin_time_trace['s']
                     residual_amplitude = residual_amplitude * (1.0 - two_spin_modulation_depth)
             modulation_depth = 1.0 - residual_amplitude
+        # Rescale the modulation depth
         if self.fit_modulation_depth:
-            modulation_depth_scale_factor = experiment.modulation_depth / modulation_depth
-            simulated_time_trace['s'] = self.rescale_modulation_depth(simulated_time_trace['s'], modulation_depth, experiment.modulation_depth)
+            simulated_time_trace['s'], modulation_depth_scale_factor = self.rescale_modulation_depth(simulated_time_trace['s'], modulation_depth, experiment.modulation_depth)
+            if display_messages:
+                print('Scale factor of the modulation depth: {0:<15.3}'.format(modulation_depth_scale_factor))
         else:
             modulation_depth_scale_factor = 1.0
+        # Compute chi2
+        if display_messages:
+            chi2_value = chi2(simulated_time_trace['s'], experiment.s, experiment.noise_std)
+            print('Chi2: {0:<15.3}'.format(chi2_value))
         return simulated_time_trace, modulation_depth_scale_factor
     
-    def compute_time_traces(self, experiments, spins, variables):
+    def compute_time_traces(self, experiments, spins, variables, display_messages=True):
         ''' Computes PDS time traces for a given set of variables '''
         simulated_time_traces = []
         modulation_depth_scale_factors = []
         for experiment in experiments:
-            simulated_time_trace, modulation_depth_scale_factor = self.compute_time_trace(experiment, spins, variables)
+            simulated_time_trace, modulation_depth_scale_factor = self.compute_time_trace(experiment, spins, variables, display_messages)
             simulated_time_traces.append(simulated_time_trace)
             modulation_depth_scale_factors.append(modulation_depth_scale_factor)
         return simulated_time_traces, modulation_depth_scale_factors

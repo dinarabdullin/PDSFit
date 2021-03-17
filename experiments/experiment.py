@@ -18,6 +18,10 @@ class Experiment:
         if self.t[0] != 0:
             self.t = self.t - self.t[0]
     
+    def set_noise_std(self, noise_std):
+        ''' Set the standard deviation of noise in the experimental PDS time trace '''
+        self.noise_std = noise_std
+    
     def compute_modulation_depth(self, interval):
         ''' Computes the modulation depth of a PDS time trace '''
         length_t_axis = self.t[-1] - self.t[0]

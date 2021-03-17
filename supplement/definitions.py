@@ -55,3 +55,59 @@ const['distribution_types'] = ['uniform', 'normal', 'vonmises']
 # Supported Euler angles conventions
 const['euler_angles_conventions'] = ['ZXZ', 'XYX', 'YZY', 'ZYZ', 'XZX', 'YXY']
 
+# Names of fitting parameters
+const['fitting_parameters_names'] = [
+    'r_mean',
+    'r_width', 
+    'xi_mean', 
+    'xi_width', 
+    'phi_mean', 
+    'phi_width',
+    'alpha_mean', 
+    'alpha_width', 
+    'beta_mean', 
+    'beta_width',
+    'gamma_mean', 
+    'gamma_width', 
+    'rel_prob',
+    'j_mean', 
+    'j_width'
+    ]
+
+# Scale factors for fitting parameters
+const['fitting_parameters_scales'] = {
+    'r_mean'      : 1.0,
+    'r_width'     : 1.0, 
+    'xi_mean'     : const['deg2rad'],
+    'xi_width'    : const['deg2rad'], 
+    'phi_mean'    : const['deg2rad'], 
+    'phi_width'   : const['deg2rad'],
+    'alpha_mean'  : const['deg2rad'],
+    'alpha_width' : const['deg2rad'],  
+    'beta_mean'   : const['deg2rad'], 
+    'beta_width'  : const['deg2rad'],
+    'gamma_mean'  : const['deg2rad'], 
+    'gamma_width' : const['deg2rad'],
+    'rel_prob'    : 1.0,
+    'j_mean'      : 1.0, 
+    'j_width'     : 1.0
+    }
+    
+# Long names of fitting parameters    
+const['fitting_parameters_names_and_units'] = {
+	'r_mean'      : 'r mean (nm)',
+	'r_width'     : 'r width (nm)', 
+	'xi_mean'     : 'xi mean (deg)',
+	'xi_width'    : 'xi width (deg)', 
+	'phi_mean'    : 'phi mean (deg)', 
+	'phi_width'   : 'phi width (deg)',
+    'alpha_mean'  : 'alpha mean (deg)',
+    'alpha_width' : 'alpha width (deg)',
+    'beta_mean'   : 'beta mean (deg)',
+    'beta_width'  : 'beta width (deg)',
+    'gamma_mean'  : 'gamma mean (deg)',
+    'gamma_width' : 'gamma width (deg)',
+    'rel_prob'    : 'rel_prob',
+    'j_mean'      : 'J mean (deg)', 
+    'j_width'     : 'J width (deg)'
+    }
