@@ -6,11 +6,14 @@ sys.path.append('..')
 from input.read_tuple import read_tuple
 from input.read_list import read_list
 from input.read_parameter import read_parameter
-from input.validate_simulation_parameters import validate_simulation_parameters
+from input.check_size import compare_size, nonzero_size
 from input.parameter_id import ParameterID
+from input.parameter_idx import ParameterIndex
 from experiments.experiment_types import experiment_types
 from spin_physics.spin import Spin
 from fitting.optimization_methods import optimization_methods
+from error_analysis.error_analyzer import ErrorAnalyzer
+from simulation.simulator import Simulator
 from supplement.definitions import const
 
 
@@ -25,7 +28,7 @@ def read_calculation_mode(config):
     elif switch == 1:
         mode['simulation'] = 0
         mode['fitting'] = 1
-        mode['error_analysis'] = 0
+        mode['error_analysis'] = 1
     elif switch == 2:
         mode['simulation'] = 0
         mode['fitting'] = 0
@@ -43,29 +46,29 @@ def read_experimental_parameters(config):
         name = instance.name
         technique = instance.technique 
         if technique in experiment_types:
-            exp = experiment_types[technique](name)
-            exp.signal_from_file(instance.filename, 1)
+            experiment = experiment_types[technique](name)
+            experiment.signal_from_file(instance.filename, 1)
             noise_std = float(instance.noise_std)
-            exp.set_noise_std(noise_std)
+            experiment.set_noise_std(noise_std)
             magnetic_field = float(instance.magnetic_field)
             detection_frequency = float(instance.detection_frequency)
             detection_pulse_lengths = []
             for pulse_length in instance.detection_pulse_lengths:
                 detection_pulse_lengths.append(float(pulse_length))
-            if exp.technique == 'peldor':
+            if experiment.technique == 'peldor':
                 pump_frequency = float(instance.pump_frequency)
                 pump_pulse_lengths = []
                 for pulse_length in instance.pump_pulse_lengths:
                     pump_pulse_lengths.append(float(pulse_length))
-                exp.set_parameters(magnetic_field, detection_frequency, detection_pulse_lengths, pump_frequency, pump_pulse_lengths)
-            elif exp.technique == 'ridme':
+                experiment.set_parameters(magnetic_field, detection_frequency, detection_pulse_lengths, pump_frequency, pump_pulse_lengths)
+            elif experiment.technique == 'ridme':
                 mixing_time = float(instance.mixing_time)
                 temperature = float(instance.temperature)
-                exp.set_parameters(magnetic_field, detection_frequency, detection_pulse_lengths, mixing_time, temperature)  
+                experiment.set_parameters(magnetic_field, detection_frequency, detection_pulse_lengths, mixing_time, temperature)  
             else:
                 raise ValueError('Unsupported technique!')
                 sys.exit(1)
-            experiments.append(exp)
+            experiments.append(experiment)
         else:
             raise ValueError('Invalid type of experiment!')
             sys.exit(1)  
@@ -136,14 +139,28 @@ def read_simulation_parameters(config):
     simulation_parameters['rel_prob'] = read_parameter(config.simulation_parameters.rel_prob, 'float')
     simulation_parameters['j_mean'] = read_parameter(config.simulation_parameters.j_mean, 'float')
     simulation_parameters['j_width'] = read_parameter(config.simulation_parameters.j_width, 'float')
-    validate_simulation_parameters(simulation_parameters, 'r_mean', 'r_width')
-    validate_simulation_parameters(simulation_parameters, 'xi_mean', 'xi_width')
-    validate_simulation_parameters(simulation_parameters, 'phi_mean', 'phi_width')
-    validate_simulation_parameters(simulation_parameters, 'alpha_mean', 'alpha_width')
-    validate_simulation_parameters(simulation_parameters, 'beta_mean', 'beta_width')
-    validate_simulation_parameters(simulation_parameters, 'gamma_mean', 'gamma_width')
-    validate_simulation_parameters(simulation_parameters, 'rel_prob')
-    validate_simulation_parameters(simulation_parameters, 'j_mean', 'j_width')
+    nonzero_size(simulation_parameters['r_mean'], 'r_mean', 2)
+    nonzero_size(simulation_parameters['r_width'], 'r_mean', 2)
+    nonzero_size(simulation_parameters['xi_mean'], 'xi_mean', 2)
+    nonzero_size(simulation_parameters['xi_width'], 'xi_mean', 2)
+    nonzero_size(simulation_parameters['phi_mean'], 'phi_mean', 2)
+    nonzero_size(simulation_parameters['phi_width'], 'phi_mean', 2)
+    nonzero_size(simulation_parameters['alpha_mean'], 'alpha_mean', 2)
+    nonzero_size(simulation_parameters['alpha_width'], 'alpha_mean', 2)
+    nonzero_size(simulation_parameters['beta_mean'], 'beta_mean', 2)
+    nonzero_size(simulation_parameters['beta_width'], 'beta_mean', 2)
+    nonzero_size(simulation_parameters['gamma_mean'], 'gamma_mean', 2)
+    nonzero_size(simulation_parameters['gamma_width'], 'gamma_mean', 2)
+    nonzero_size(simulation_parameters['rel_prob'], 'rel_prob', 2)
+    nonzero_size(simulation_parameters['j_mean'], 'j_mean', 2)
+    nonzero_size(simulation_parameters['j_width'], 'j_mean', 2)
+    compare_size(simulation_parameters['r_mean'], simulation_parameters['r_width'], 'r_mean', 'r_width', 2)
+    compare_size(simulation_parameters['xi_mean'], simulation_parameters['xi_width'], 'xi_mean', 'xi_width', 2)
+    compare_size(simulation_parameters['phi_mean'], simulation_parameters['phi_width'], 'phi_mean', 'phi_width', 2)
+    compare_size(simulation_parameters['alpha_mean'], simulation_parameters['alpha_width'], 'alpha_mean', 'alpha_width', 2)
+    compare_size(simulation_parameters['beta_mean'], simulation_parameters['beta_width'], 'beta_mean', 'beta_width', 2)
+    compare_size(simulation_parameters['gamma_mean'], simulation_parameters['gamma_width'], 'gamma_mean', 'gamma_width', 2)
+    compare_size(simulation_parameters['j_mean'], simulation_parameters['j_width'], 'j_mean', 'j_width', 2)
     return simulation_parameters
 
 
@@ -186,6 +203,7 @@ def read_fitting_parameters(config):
 
 def read_fitting_settings(config):
     ''' Read out the fitting settings '''
+    optimizer = None
     method = config.fitting_settings.optimization_method
     display_graphics = int(config.fitting_settings.display_graphics)
     if method in optimization_methods:
@@ -196,12 +214,55 @@ def read_fitting_settings(config):
             crossover_probability = float(config.fitting_settings.ga_parameters.crossover_probability)
             mutation_probability = float(config.fitting_settings.ga_parameters.mutation_probability)
             parent_selection = str(config.fitting_settings.ga_parameters.parent_selection)
-            optimizer.set_intrinsic_parameters(number_of_generations, generation_size, crossover_probability,
-                                               mutation_probability, parent_selection)   
+            optimizer.set_intrinsic_parameters(number_of_generations, generation_size, crossover_probability, mutation_probability, parent_selection)   
     else:
         raise ValueError('Unsupported optimization method!')
         sys.exit(1)
     return optimizer
+
+
+def read_error_analysis_parameters(config):
+    ''' Read out the error analysis parameters '''
+    error_analysis_parameters = []
+    parameters = read_tuple(config.error_analysis_parameters.parameters, ('array','str'))
+    if len(parameters) != 0:
+        spin_pairs = read_tuple(config.error_analysis_parameters.spin_pairs, ('array','int'))
+        if len(spin_pairs) != 0:
+            compare_size(parameters, spin_pairs, 'parameters', 'spin_pairs', 2)
+        components = read_tuple(config.error_analysis_parameters.components, ('array','int'))
+        if len(components) != 0:
+            compare_size(parameters, components, 'parameters', 'components', 2)
+        for i in range(len(parameters)):
+            parameter_idx_list = []
+            for j in range(len(parameters[i])):
+                parameter = parameters[i][j]
+                if len(spin_pairs) != 0:
+                    spin_pair = spin_pairs[i][j]-1
+                else:
+                    spin_pair = 0
+                if len(components) != 0:
+                    component = components[i][j]-1
+                else:
+                    component = 0
+                parameter_idx = ParameterIndex(parameter, spin_pair, component)
+                parameter_idx_list.append(parameter_idx)
+            error_analysis_parameters.append(parameter_idx_list)
+    return error_analysis_parameters
+
+
+def read_error_analysis_settings(config):
+    ''' Read out the error analysis settings '''
+    error_analysis_parameters = {}
+    error_analysis_parameters['sample_size'] = int(config.error_analysis_settings.sample_size)
+    error_analysis_parameters['confidence_interval'] = float(config.error_analysis_settings.confidence_interval)
+    error_analysis_parameters['confidence_interval'] = ''
+    if (int(config.mode) == 2):
+        error_analysis_parameters['filepath_optimized_parameters'] = int(config.error_analysis_settings.filepath_optimized_parameters)
+        if error_analysis_parameters['filepath_optimized_parameters'] == '':
+            raise ValueError('A file with the optimized fitting parameters has to be provided!')
+            sys.exit(1)
+    error_analyzer = ErrorAnalizer(error_analysis_parameters)
+    return error_analyzer
 
 
 def read_calculation_settings(config):
@@ -246,7 +307,8 @@ def read_calculation_settings(config):
             raise ValueError('Invalid format of scale_range_modulation_depth!')
             sys.exit(1)
     calculation_settings['scale_chi2_by_modulation_depth'] = int(config.calculation_settings.scale_chi2_by_modulation_depth)
-    return calculation_settings
+    simulator = Simulator(calculation_settings)
+    return simulator
 
 
 def read_output_settings(config):
@@ -267,8 +329,8 @@ def read_config(filepath):
     simulation_parameters = {}
     fitting_parameters = {}
     optimizer = None
-    error_analysis_settings = {}
-    calculation_settings = {}
+    error_analysis_parameters = []
+    error_analyzer = None
     output_settings = {}
     with io.open(filepath) as file:
         config = libconf.load(file)
@@ -280,11 +342,12 @@ def read_config(filepath):
         elif mode['fitting']:
             fitting_parameters = read_fitting_parameters(config)
             optimizer = read_fitting_settings(config)
-        #elif mode['error_analysis']:
-        #   ...
-        calculation_settings = read_calculation_settings(config)
-        if calculation_settings['fit_modulation_depth']:
+        elif mode['error_analysis']:
+            error_analysis_parameters = read_error_analysis_parameters(config)
+            error_analyzer = read_error_analysis_settings(config)
+        simulator = read_calculation_settings(config)
+        if simulator.fit_modulation_depth:
             for experiment in experiments:
-                experiment.compute_modulation_depth(calculation_settings['interval_modulation_depth'])
+                experiment.compute_modulation_depth(simulator.interval_modulation_depth)
         output_settings = read_output_settings(config) 
-    return mode, experiments, spins, simulation_parameters, fitting_parameters, optimizer, error_analysis_settings, calculation_settings, output_settings
+    return mode, experiments, spins, simulation_parameters, fitting_parameters, optimizer, error_analysis_parameters, error_analyzer, simulator, output_settings

@@ -2,7 +2,7 @@ import libconf
 from input.read_list import read_list
 
 
-supported_data_types = {'float': float, 'int': int}
+supported_data_types = {'float': float, 'int': int, 'str': str}
 
 
 def read_tuple(tuple_object, data_type, scale=1):
@@ -18,6 +18,8 @@ def read_tuple(tuple_object, data_type, scale=1):
                 lc_tuple.append(supported_data_types[data_type[0]](component) * supported_data_types[data_type[0]](scale))
             elif data_type[0] == 'int':
                 lc_tuple.append(supported_data_types[data_type[0]](component) * supported_data_types[data_type[0]](scale))
+            elif data_type[0] == 'str':
+                lc_tuple.append(supported_data_types[data_type[0]](component))
             elif data_type[0] == 'array':
                 lc_list = read_list(component, data_type[1], scale)
                 lc_tuple.append(lc_list)

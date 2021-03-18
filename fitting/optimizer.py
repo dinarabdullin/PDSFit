@@ -6,6 +6,6 @@ class Optimizer():
         self.display_graphics = display_graphics
         self.optimized_variables = []
         self.goodness_of_fit = []
-    
+        
     def get_fit(self, fit_function, **kwargs):
         return (fit_function)(self.optimized_variables, **kwargs)

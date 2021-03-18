@@ -28,6 +28,7 @@ class Simulator():
         self.euler_angles_convention = calculation_settings['euler_angles_convention']
         self.fit_modulation_depth = calculation_settings['fit_modulation_depth']
         if self.fit_modulation_depth:
+            self.interval_modulation_depth = calculation_settings['interval_modulation_depth']
             self.scale_range_modulation_depth = calculation_settings['scale_range_modulation_depth']
         self.scale_chi2_by_modulation_depth = calculation_settings['scale_chi2_by_modulation_depth']
         self.frequency_increment_epr_spectrum = 0.001 # in GHz

@@ -4,8 +4,6 @@ import argparse
 import sys
 import multiprocessing
 from input.read_config import read_config
-from simulation.simulator import Simulator
-from fitting.optimizer import Optimizer
 from fitting.scoring_function import scoring_function, fit_function
 from output.make_output_directory import make_output_directory
 from output.logger import Logger, ContextManager
@@ -15,6 +13,7 @@ from output.save_fitting_output import save_fitting_output
 from plots.plot_simulation_output import plot_simulation_output
 from plots.plot_fitting_output import plot_fitting_output
 from plots.keep_figures_visible import keep_figures_visible
+
 
 if __name__ == '__main__':
     # Add support for when a program which uses multiprocessing has been frozen to produce a Windows executable
@@ -26,17 +25,14 @@ if __name__ == '__main__':
     parser.add_argument('filepath', help="Path to the configuration file")
     args = parser.parse_args()
     filepath_config = args.filepath
-    mode, experiments, spins, simulation_parameters, fitting_parameters, \
-    optimizer, error_analysis_settings, calculation_settings, output_settings = read_config(filepath_config) 
+    mode, experiments, spins, simulation_parameters, fitting_parameters, optimizer, \
+    error_analysis_parameters, error_analyzer, simulator, output_settings = read_config(filepath_config)
     
     # Make an output directory
     make_output_directory(output_settings, filepath_config)
     
     # Make a log file
     sys.stdout = ContextManager(output_settings['directory']+'logfile.log')
-
-    # Init simulator
-    simulator = Simulator(calculation_settings)
     
     # Run precalculations
     simulator.precalculations(experiments, spins)
@@ -62,10 +58,10 @@ if __name__ == '__main__':
 
     # Run fitting
     elif mode['fitting']:
-
+    
         # Optimize the fitting parameters
         optimized_parameters, goodness_of_fit = optimizer.optimize(scoring_function, fitting_parameters['ranges'], simulator=simulator, 
-                                                                   experiments=experiments, spins=spins, fitting_parameters=fitting_parameters)
+                                                                   experiments=experiments, spins=spins, fitting_parameters=fitting_parameters)                                                         
         
         # Display the fitted and fixed parameters
         print_fitting_parameters(fitting_parameters['indices'], optimized_parameters, fitting_parameters['values'])

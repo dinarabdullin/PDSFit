@@ -1,7 +1,7 @@
 import libconf
 
 
-supported_data_types = {'float': float, 'int': int}
+supported_data_types = {'float': float, 'int': int, 'str': str}
 
 
 def read_list(list_object, data_type, scale=1):
@@ -13,10 +13,12 @@ def read_list(list_object, data_type, scale=1):
     lc_list = []
     if (list_object != []):
         for component in list_object:
-            if (data_type == 'float'):
+            if data_type == 'float':
                 lc_list.append((supported_data_types[data_type])(component) * (supported_data_types[data_type])(scale))
-            elif (data_type == 'int'):
+            elif data_type == 'int':
                 lc_list.append((supported_data_types[data_type])(component) * (supported_data_types[data_type])(scale))
+            elif data_type == 'str':
+                lc_list.append((supported_data_types[data_type])(component))
             else:
                 raise ValueError('Unsupported format!')
                 sys.exit(1) 

@@ -5,7 +5,7 @@ import numpy as np
 from fitting.optimizer import Optimizer
 from fitting.ga.generation import Generation
 from plots.plot_fitting_output import plot_goodness_of_fit, update_goodness_of_fit_plot, close_goodness_of_fit_plot
-
+    
 
 class GeneticAlgorithm(Optimizer):
     ''' Genetic Algorithm class '''
@@ -24,6 +24,7 @@ class GeneticAlgorithm(Optimizer):
     def optimize(self, scoring_function, ranges, **kwargs):
         ''' Perform an optimization '''
         print('\nStarting the optimization via genetic algirithm...')
+        time_start = time.time()
         score_vs_generation = []
         for i in range(self.number_of_generations):     
             if (i == 0):
