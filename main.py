@@ -1,23 +1,14 @@
-''' Main file of PeldorFit '''
-
 import argparse
-import sys
+from functools import partial
 import multiprocessing
 from input.read_config import read_config
-from fitting.scoring_function import scoring_function, fit_function
-from output.make_output_directory import make_output_directory
-from output.logger import Logger, ContextManager
-from output.save_simulation_output import save_simulation_output
-from output.print_fitting_output import print_fitting_parameters, print_modulation_depth_scale_factors
-from output.save_fitting_output import save_fitting_output
-from plots.plot_simulation_output import plot_simulation_output
-from plots.plot_fitting_output import plot_fitting_output
+from fitting.objective_function import objective_function, fit_function
+from output.fitting.print_fitting_parameters import print_fitting_parameters
+from output.fitting.print_modulation_depth_scale_factors import print_modulation_depth_scale_factors
 from plots.keep_figures_visible import keep_figures_visible
 
 
 if __name__ == '__main__':
-    # Add support for when a program which uses multiprocessing has been frozen to produce a Windows executable
-    # Source: https://docs.python.org/3/library/multiprocessing.html
     multiprocessing.freeze_support()
 
     # Read out the config file 
@@ -26,13 +17,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     filepath_config = args.filepath
     mode, experiments, spins, simulation_parameters, fitting_parameters, optimizer, \
-    error_analysis_parameters, error_analyzer, simulator, output_settings = read_config(filepath_config)
-    
-    # Make an output directory
-    make_output_directory(output_settings, filepath_config)
-    
-    # Make a log file
-    sys.stdout = ContextManager(output_settings['directory']+'logfile.log')
+    error_analysis_parameters, error_analyzer, simulator, data_saver, plotter = read_config(filepath_config)
     
     # Run precalculations
     simulator.precalculations(experiments, spins)
@@ -50,36 +35,44 @@ if __name__ == '__main__':
         simulated_time_traces, modulation_depth_scale_factors = simulator.compute_time_traces(experiments, spins, simulation_parameters)
         
         # Save the simulation output
-        if output_settings['save_data']:
-            save_simulation_output(epr_spectra, bandwidths, simulated_time_traces, experiments, output_settings['directory'])
+        data_saver.save_simulation_output(epr_spectra, bandwidths, simulated_time_traces, experiments)
         
         # Plot the simulation output
-        plot_simulation_output(epr_spectra, bandwidths, simulated_time_traces, experiments, output_settings['save_figures'], output_settings['directory'])
+        plotter.plot_simulation_output(epr_spectra, bandwidths, simulated_time_traces, experiments)
 
     # Run fitting
     elif mode['fitting']:
+        
+        # Partial functions to calculate the fit and the goodness of fit
+        partial_fit_function = partial(fit_function, simulator=simulator, experiments=experiments, spins=spins, fitting_parameters=fitting_parameters)
+        partial_objective_function = partial(objective_function, simulator=simulator, experiments=experiments, spins=spins, fitting_parameters=fitting_parameters)
     
         # Optimize the fitting parameters
-        optimized_parameters, goodness_of_fit = optimizer.optimize(scoring_function, fitting_parameters['ranges'], simulator=simulator, 
-                                                                   experiments=experiments, spins=spins, fitting_parameters=fitting_parameters)                                                         
+        optimized_parameters, score = optimizer.optimize(fitting_parameters['ranges'], partial_objective_function)                                                         
         
         # Display the fitted and fixed parameters
         print_fitting_parameters(fitting_parameters['indices'], optimized_parameters, fitting_parameters['values'])
         
         # Compute the fit to the experimental PDS time traces
-        simulated_time_traces, modulation_depth_scale_factors = optimizer.get_fit(fit_function, simulator=simulator, experiments=experiments, 
-                                                                                  spins=spins, fitting_parameters=fitting_parameters)
+        simulated_time_traces, modulation_depth_scale_factors = optimizer.get_fit(partial_fit_function)
         
         # Display the scale factors of modulation depths
         if simulator.fit_modulation_depth:
             print_modulation_depth_scale_factors(modulation_depth_scale_factors, experiments)
 
         # Save the fitting output
-        if output_settings['save_data']:
-            save_fitting_output(goodness_of_fit, optimized_parameters, [], fitting_parameters, simulated_time_traces, experiments, output_settings['directory'])
+        data_saver.save_fitting_output(score, optimized_parameters, [], simulated_time_traces, fitting_parameters, experiments)
         
         # Plot the fitting output
-        plot_fitting_output(goodness_of_fit, simulated_time_traces, experiments, output_settings['save_figures'], output_settings['directory'])
+        plotter.plot_fitting_output(score, simulated_time_traces, experiments)
+        
+        # Run the error analysis
+        numerical_error, score_threshold, score_vs_parameter_sets, parameters_errors =  error_analyzer.run_error_analysis(error_analysis_parameters, 
+                                                                                        optimized_parameters, fitting_parameters, partial_objective_function)
+        
+        # Plot the error analysis output
+        plotter.plot_error_analysis_output(error_analysis_parameters, score_vs_parameter_sets, optimized_parameters, fitting_parameters, 
+                                           score_threshold, numerical_error)
         
     #elif mode['error_analysis']:
     

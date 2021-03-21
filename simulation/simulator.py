@@ -1,7 +1,8 @@
-import numpy as np
-from scipy.spatial.transform import Rotation
+import sys
 import time
 import datetime
+import numpy as np
+from scipy.spatial.transform import Rotation
 from supplement.definitions import const
 from spin_physics.spin import Spin
 from mathematics.random_points_on_sphere import random_points_on_sphere

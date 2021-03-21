@@ -5,7 +5,7 @@ class Optimizer():
         self.name = name
         self.display_graphics = display_graphics
         self.optimized_variables = []
-        self.goodness_of_fit = []
+        self.score = []
         
-    def get_fit(self, fit_function, **kwargs):
-        return (fit_function)(self.optimized_variables, **kwargs)
+    def get_fit(self, fit_function):
+        return (fit_function)(self.optimized_variables)

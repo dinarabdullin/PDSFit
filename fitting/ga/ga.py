@@ -4,7 +4,7 @@ import datetime
 import numpy as np
 from fitting.optimizer import Optimizer
 from fitting.ga.generation import Generation
-from plots.plot_fitting_output import plot_goodness_of_fit, update_goodness_of_fit_plot, close_goodness_of_fit_plot
+from fitting.ga.plot_score import plot_score, update_score_plot, close_score_plot
     
 
 class GeneticAlgorithm(Optimizer):
@@ -21,7 +21,7 @@ class GeneticAlgorithm(Optimizer):
         self.mutation_probability = mutation_probability
         self.parent_selection = parent_selection
     
-    def optimize(self, scoring_function, ranges, **kwargs):
+    def optimize(self, ranges, objective_function):
         ''' Perform an optimization '''
         print('\nStarting the optimization via genetic algirithm...')
         time_start = time.time()
@@ -35,7 +35,7 @@ class GeneticAlgorithm(Optimizer):
                 # Create the next generation
                 generation.produce_offspring(ranges, self.parent_selection, self.crossover_probability, self.mutation_probability)
             # Score the generation
-            generation.score_chromosomes(scoring_function, **kwargs)
+            generation.score_chromosomes(objective_function)
             # Sort chromosomes according to their score
             generation.sort_chromosomes() 
             # Save the best score in each optimization step
@@ -43,17 +43,17 @@ class GeneticAlgorithm(Optimizer):
             # Display graphics
             if self.display_graphics:
                 if (i == 0):   
-                    fig_score = plot_goodness_of_fit(np.array(score_vs_generation))
+                    fig_score = plot_score(np.array(score_vs_generation))
                 elif ((i > 0) and (i < self.number_of_generations-1)):
-                    update_goodness_of_fit_plot(fig_score, np.array(score_vs_generation))
+                    update_score_plot(fig_score, np.array(score_vs_generation))
                 elif (i == self.number_of_generations-1):
-                    close_goodness_of_fit_plot(fig_score)                
+                    close_score_plot(fig_score)                
             sys.stdout.write('\r')
             sys.stdout.write('Optimization step %d / %d: chi2 = %f' % (i+1, self.number_of_generations, score_vs_generation[i]))
             sys.stdout.flush()
         self.optimized_variables = generation.chromosomes[0].genes
-        self.goodness_of_fit = np.array(score_vs_generation)
+        self.score = np.array(score_vs_generation)
         time_finish = time.time()
         time_elapsed = str(datetime.timedelta(seconds = time_finish - time_start))
         print('\nThe optimization is finished. Total duration: %s' % (time_elapsed))
-        return self.optimized_variables, self.goodness_of_fit
+        return self.optimized_variables, self.score

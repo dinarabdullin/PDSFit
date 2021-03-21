@@ -108,6 +108,25 @@ const['fitting_parameters_names_and_units'] = {
     'gamma_mean'  : 'gamma mean (deg)',
     'gamma_width' : 'gamma width (deg)',
     'rel_prob'    : 'rel_prob',
-    'j_mean'      : 'J mean (deg)', 
-    'j_width'     : 'J width (deg)'
+    'j_mean'      : 'J mean (MHz)', 
+    'j_width'     : 'J width (MHz)'
+    }
+
+# Axes' labels of fitting parameters    
+const['fitting_parameters_labels'] = {
+	'r_mean'      : [r'$\langle\mathit{r}\rangle$', '(nm)'],
+	'r_width'     : [r'$\mathit{\Delta r}$', '(nm)'], 
+	'xi_mean'     : [r'$\langle\mathit{\xi}\rangle$', '$^\circ$'],
+	'xi_width'    : [r'$\mathit{\Delta\xi}$', '$^\circ$'], 
+	'phi_mean'    : [r'$\langle\mathit{\varphi}\rangle$', '$^\circ$'], 
+	'phi_width'   : [r'$\mathit{\Delta\varphi}$', '$^\circ$'],
+    'alpha_mean'  : [r'$\langle\mathit{\alpha}\rangle$', '$^\circ$'],
+    'alpha_width' : [r'$\mathit{\Delta\alpha}$', '$^\circ$'], 
+    'beta_mean'   : [r'$\langle\mathit{\beta}\rangle$', '$^\circ$'],
+    'beta_width'  : [r'$\mathit{\Delta\beta}$', '$^\circ$'], 
+    'gamma_mean'  : [r'$\langle\mathit{\gamma}\rangle$', '$^\circ$'],
+    'gamma_width' : [r'$\mathit{\Delta\gamma}$', '$^\circ$'],
+    'rel_prob'    : [r'Relative weight'],
+    'j_mean'      : [r'$\langle\mathit{J}\rangle$', '(MHz)'],
+    'j_width'     : [r'$\mathit{\Delta J}$', '(MHz)']
     }

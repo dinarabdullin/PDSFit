@@ -1,9 +1,7 @@
 import numpy as np
 from copy import deepcopy
 from multiprocessing import Pool
-from functools import partial
 from fitting.ga.chromosome import Chromosome
-from fitting.scoring_function import scoring_function
 
 
 class Generation:
@@ -78,19 +76,18 @@ class Generation:
         else:
             self.chromosomes = offspring[:-1]
             
-    def score_chromosomes(self, scoring_function, **kwargs):
-        func = partial(scoring_function, **kwargs)
+    def score_chromosomes(self, objective_function):
         variables = []
         for i in range(self.size): 
             variables.append(self.chromosomes[i].genes)
         self.pool = Pool()
-        score = self.pool.map(func, variables)
+        score = self.pool.map(objective_function, variables)
         self.pool.close()
         self.pool.join()
         for i in range(self.size):
             self.chromosomes[i].score = score[i]
         # for i in range(self.size):
-            # self.chromosomes[i].score = scoring_function(self.chromosomes[i].genes, **kwargs)
+            # self.chromosomes[i].score = objective_function(self.chromosomes[i].genes)
         
     def sort_chromosomes(self):
         self.chromosomes.sort()

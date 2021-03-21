@@ -1,19 +1,23 @@
-import io
+import os
 import sys
+import io
 import libconf
 import numpy as np
 sys.path.append('..')
 from input.read_tuple import read_tuple
 from input.read_list import read_list
-from input.read_parameter import read_parameter
 from input.check_size import compare_size, nonzero_size
+from input.read_parameter import read_parameter
+from input.parameter_object import ParameterObject
 from input.parameter_id import ParameterID
-from input.parameter_idx import ParameterIndex
 from experiments.experiment_types import experiment_types
 from spin_physics.spin import Spin
+from simulation.simulator import Simulator
 from fitting.optimization_methods import optimization_methods
 from error_analysis.error_analyzer import ErrorAnalyzer
-from simulation.simulator import Simulator
+from output.data_saver import DataSaver
+from output.logger import Logger
+from plots.plotter import Plotter
 from supplement.definitions import const
 
 
@@ -28,7 +32,7 @@ def read_calculation_mode(config):
     elif switch == 1:
         mode['simulation'] = 0
         mode['fitting'] = 1
-        mode['error_analysis'] = 1
+        mode['error_analysis'] = 0
     elif switch == 2:
         mode['simulation'] = 0
         mode['fitting'] = 0
@@ -176,28 +180,28 @@ def read_fitting_parameters(config):
         optimize_list = read_parameter(config.fitting_parameters[parameter]['optimize'], 'int')
         range_list = read_tuple(config.fitting_parameters[parameter]['range'], ('array','float'), const['fitting_parameters_scales'][parameter])
         value_list = read_tuple(config.fitting_parameters[parameter]['value'], ('float',), const['fitting_parameters_scales'][parameter])
-        parameter_id_list = []
+        parameter_objects_list = []
         range_index = 0
         value_index = 0
         for i in range(len(optimize_list)):
-            parameter_id_sublist = []
+            parameter_objects_sublist = []
             for j in range(len(optimize_list[i])):
                 if optimize_list[i][j] == 1:
-                    parameter_id = ParameterID(optimize_list[i][j], no_fitting_parameter)
-                    parameter_id_sublist.append(parameter_id)
+                    parameter_object = ParameterObject(optimize_list[i][j], no_fitting_parameter)
+                    parameter_objects_sublist.append(parameter_object)
                     parameter_range = range_list[range_index]
                     fitting_parameters['ranges'].append(parameter_range)
                     range_index += 1
                     no_fitting_parameter += 1
                 elif optimize_list[i][j]  == 0:
-                    parameter_id = ParameterID(optimize_list[i][j], no_fixed_parameter)
-                    parameter_id_sublist.append(parameter_id)
+                    parameter_object = ParameterObject(optimize_list[i][j], no_fixed_parameter)
+                    parameter_objects_sublist.append(parameter_object)
                     parameter_value = value_list[value_index]
                     fitting_parameters['values'].append(parameter_value)
                     value_index += 1
                     no_fixed_parameter += 1
-            parameter_id_list.append(parameter_id_sublist)
-        fitting_parameters['indices'][parameter] = parameter_id_list
+            parameter_objects_list.append(parameter_objects_sublist)
+        fitting_parameters['indices'][parameter] = parameter_objects_list
     return fitting_parameters
     
 
@@ -221,7 +225,7 @@ def read_fitting_settings(config):
     return optimizer
 
 
-def read_error_analysis_parameters(config):
+def read_error_analysis_parameters(config, fitting_parameters):
     ''' Read out the error analysis parameters '''
     error_analysis_parameters = []
     parameters = read_tuple(config.error_analysis_parameters.parameters, ('array','str'))
@@ -233,7 +237,7 @@ def read_error_analysis_parameters(config):
         if len(components) != 0:
             compare_size(parameters, components, 'parameters', 'components', 2)
         for i in range(len(parameters)):
-            parameter_idx_list = []
+            parameter_id_list = []
             for j in range(len(parameters[i])):
                 parameter = parameters[i][j]
                 if len(spin_pairs) != 0:
@@ -244,28 +248,39 @@ def read_error_analysis_parameters(config):
                     component = components[i][j]-1
                 else:
                     component = 0
-                parameter_idx = ParameterIndex(parameter, spin_pair, component)
-                parameter_idx_list.append(parameter_idx)
-            error_analysis_parameters.append(parameter_idx_list)
+                parameter_id = ParameterID(parameter, spin_pair, component)
+                parameter_id_list.append(parameter_id)
+            error_analysis_parameters.append(parameter_id_list)
+    # Check that the fitting and error analysis parameters are consistent with each other
+    for i in range(len(error_analysis_parameters)):
+        for j in range(len(error_analysis_parameters[i])):
+            parameter_id = error_analysis_parameters[i][j]
+            try:
+                if parameter_id.is_optimized(fitting_parameters['indices']) == 0:
+                    raise ValueError('The parameters of error analysis must be in the fitting parameters list!')
+                    sys.exit(1)  
+            except IndexError:
+                print('At least one parameter of error analysis is absent in the fitting parameters list!')
+                sys.exit(1)
     return error_analysis_parameters
 
 
-def read_error_analysis_settings(config):
+def read_error_analysis_settings(config, mode):
     ''' Read out the error analysis settings '''
     error_analysis_parameters = {}
     error_analysis_parameters['sample_size'] = int(config.error_analysis_settings.sample_size)
     error_analysis_parameters['confidence_interval'] = float(config.error_analysis_settings.confidence_interval)
-    error_analysis_parameters['confidence_interval'] = ''
-    if (int(config.mode) == 2):
-        error_analysis_parameters['filepath_optimized_parameters'] = int(config.error_analysis_settings.filepath_optimized_parameters)
+    error_analysis_parameters['filepath_optimized_parameters'] = ''
+    if mode['error_analysis']:
+        error_analysis_parameters['filepath_optimized_parameters'] = config.error_analysis_settings.filepath_optimized_parameters
         if error_analysis_parameters['filepath_optimized_parameters'] == '':
             raise ValueError('A file with the optimized fitting parameters has to be provided!')
             sys.exit(1)
-    error_analyzer = ErrorAnalizer(error_analysis_parameters)
+    error_analyzer = ErrorAnalyzer(error_analysis_parameters)
     return error_analyzer
 
 
-def read_calculation_settings(config):
+def read_calculation_settings(config, experiments):
     ''' Read out the calculation settings '''
     calculation_settings = {}
     calculation_settings['integration_method'] = config.calculation_settings.integration_method
@@ -305,33 +320,35 @@ def read_calculation_settings(config):
         calculation_settings['scale_range_modulation_depth'] = read_list(config.calculation_settings.scale_range_modulation_depth, 'float')
         if (len(calculation_settings['scale_range_modulation_depth']) != 0) and (len(calculation_settings['scale_range_modulation_depth']) != 2):
             raise ValueError('Invalid format of scale_range_modulation_depth!')
-            sys.exit(1)
+            sys.exit(1)            
     calculation_settings['scale_chi2_by_modulation_depth'] = int(config.calculation_settings.scale_chi2_by_modulation_depth)
     simulator = Simulator(calculation_settings)
+    if simulator.fit_modulation_depth:
+            for experiment in experiments:
+                experiment.compute_modulation_depth(simulator.interval_modulation_depth)
     return simulator
 
 
-def read_output_settings(config):
+def read_output_settings(config, mode, filepath_config):
     ''' Read out the output settings '''
-    output_settings = {}
-    output_settings['directory'] = config.output.directory
-    output_settings['save_data'] = bool(config.output.save_data)
-    output_settings['save_figures'] = bool(config.output.save_figures)
-    return output_settings
+    save_data = bool(config.output.save_data)
+    save_figures = bool(config.output.save_figures)
+    output_directory = config.output.directory
+    data_saver = DataSaver(save_data, save_figures)
+    data_saver.create_output_directory(output_directory, filepath_config)
+    if data_saver.directory != '':
+        sys.stdout = Logger(data_saver.directory+'logfile.log')
+    return data_saver
 
   
 def read_config(filepath): 
     ''' Read input data from a configuration file '''
     print('\nReading out the configuration file...') 
-    mode = {}
-    experiments = []
-    spins = []
     simulation_parameters = {}
     fitting_parameters = {}
     optimizer = None
     error_analysis_parameters = []
     error_analyzer = None
-    output_settings = {}
     with io.open(filepath) as file:
         config = libconf.load(file)
         mode = read_calculation_mode(config)
@@ -339,15 +356,12 @@ def read_config(filepath):
         spins = read_spin_parameters(config)
         if mode['simulation']:
             simulation_parameters = read_simulation_parameters(config)
-        elif mode['fitting']:
+        elif mode['fitting'] or mode['error_analysis']:
             fitting_parameters = read_fitting_parameters(config)
             optimizer = read_fitting_settings(config)
-        elif mode['error_analysis']:
-            error_analysis_parameters = read_error_analysis_parameters(config)
-            error_analyzer = read_error_analysis_settings(config)
-        simulator = read_calculation_settings(config)
-        if simulator.fit_modulation_depth:
-            for experiment in experiments:
-                experiment.compute_modulation_depth(simulator.interval_modulation_depth)
-        output_settings = read_output_settings(config) 
-    return mode, experiments, spins, simulation_parameters, fitting_parameters, optimizer, error_analysis_parameters, error_analyzer, simulator, output_settings
+            error_analysis_parameters = read_error_analysis_parameters(config, fitting_parameters)
+            error_analyzer = read_error_analysis_settings(config, mode)
+        simulator = read_calculation_settings(config, experiments)
+        data_saver = read_output_settings(config, mode, filepath) 
+        plotter = Plotter(data_saver)
+    return mode, experiments, spins, simulation_parameters, fitting_parameters, optimizer, error_analysis_parameters, error_analyzer, simulator, data_saver, plotter
