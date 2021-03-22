@@ -30,7 +30,7 @@ class ErrorAnalyzer():
             time_finish = time.time()
             time_elapsed = str(datetime.timedelta(seconds = time_finish - time_start))
             print('The error analysis is finished. Total duration: {0}'.format(time_elapsed))
-            return numerical_error, score_threshold, score_vs_parameter_sets, parameters_errors
+            return score_vs_parameter_sets, numerical_error, score_threshold, parameters_errors
     
     def compute_score_vs_parameter_sets(self, error_analysis_parameters, optimized_parameters, fitting_parameters, objective_function):
         ''' Computes the score as a function of fitting parameters '''

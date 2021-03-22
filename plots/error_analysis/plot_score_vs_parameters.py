@@ -97,8 +97,8 @@ def plot_score_vs_parameters(error_analysis_parameters, score_vs_parameter_sets,
             print('The score cannot be yet plotted as function of three or more parameters!')
     plt.tight_layout()
     plt_set_fullscreen() 
-    plt.subplots_adjust(right=0.85)
-    cax = plt.axes([0.86, 0.3, 0.02, 0.4]) # left, bottom, width, height  
+    plt.subplots_adjust(bottom=0.10, top=0.90, right=0.80)
+    cax = plt.axes([0.85, 0.3, 0.02, 0.4]) # left, bottom, width, height  
     plt.colorbar(im, cax=cax, orientation='vertical')
     plt.text(0.90, 1.05, r'$\mathit{\chi^2}$', transform=cax.transAxes)
     plt.draw()

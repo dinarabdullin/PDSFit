@@ -66,9 +66,18 @@ if __name__ == '__main__':
         # Plot the fitting output
         plotter.plot_fitting_output(score, simulated_time_traces, experiments)
         
+        # Prior to the error analysis, check that the calculated chi2 is normalized by the variance of noise.
+        # For this, the std of noise must be nonzero for all experiments. 
+        # If the std of noise is equal 0 for some (or all) experiments, compute it using the obtained fits as a noise-free signal.
+        for i in range(len(experiments)):
+            experiments[i].reset_noise_std(simulated_time_traces[i]['s'])
+        
+        # Re-set the partial function to calculate the fit 
+        partial_fit_function = partial(fit_function, simulator=simulator, experiments=experiments, spins=spins, fitting_parameters=fitting_parameters)
+        
         # Run the error analysis
-        numerical_error, score_threshold, score_vs_parameter_sets, parameters_errors =  error_analyzer.run_error_analysis(error_analysis_parameters, 
-                                                                                        optimized_parameters, fitting_parameters, partial_objective_function)
+        score_vs_parameter_sets, numerical_error, score_threshold, parameters_errors = error_analyzer.run_error_analysis(error_analysis_parameters, 
+                                                                                       optimized_parameters, fitting_parameters, partial_objective_function)
         
         # Plot the error analysis output
         plotter.plot_error_analysis_output(error_analysis_parameters, score_vs_parameter_sets, optimized_parameters, fitting_parameters, 

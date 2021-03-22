@@ -22,6 +22,11 @@ class Experiment:
         ''' Set the standard deviation of noise in the experimental PDS time trace '''
         self.noise_std = noise_std
     
+    def reset_noise_std(self, s_noise_free):
+        ''' Re-set the standard deviation of noise in the experimental PDS time trace '''
+        if self.noise_std == 0 or np.isnan(self.noise_std):
+            self.noise_std = np.std(self.s - s_noise_free)
+
     def compute_modulation_depth(self, interval):
         ''' Computes the modulation depth of a PDS time trace '''
         length_t_axis = self.t[-1] - self.t[0]

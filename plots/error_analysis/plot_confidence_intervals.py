@@ -82,7 +82,7 @@ def plot_confidence_intervals(error_analysis_parameters, score_vs_parameter_sets
     fig.legend(handles, labels, loc='center right', frameon=False)
     fig.tight_layout()
     plt_set_fullscreen()
-    fig.subplots_adjust(right=0.75)
+    fig.subplots_adjust(right=0.80)
     plt.draw()
     plt.pause(0.000001)
     return fig

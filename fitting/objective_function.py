@@ -36,12 +36,14 @@ def objective_function(variables, simulator, experiments, spins, fitting_paramet
     # Compute the fit
     simulated_time_traces, modulation_depth_scale_factors = fit_function(variables, simulator, experiments, spins, fitting_parameters)
     # Compute the score
-    total_score = 0.0
     if simulator.scale_chi2_by_modulation_depth:
         sum_modulation_depth_scale_factors = sum(modulation_depth_scale_factors)
+    total_score = 0.0
+    num_experiments = len(experiments)
     for i in range(len(experiments)):   
         score = chi2(simulated_time_traces[i]['s'], experiments[i].s, experiments[i].noise_std)
         if simulator.scale_chi2_by_modulation_depth:
             score = score * modulation_depth_scale_factors[i] / sum_modulation_depth_scale_factors
         total_score += score
+    total_score = total_score / float(num_experiments)
     return total_score
