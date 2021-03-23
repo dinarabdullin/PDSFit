@@ -1,7 +1,7 @@
 def save_simulated_time_trace(simulated_time_trace, experimental_time_trace, filepath):
     ''' Saves a simulated PDS time trace '''
     file = open(filepath, 'w')
-    t = simulated_time_trace['s']
+    t = simulated_time_trace['t']
     s_sim = simulated_time_trace['s']
     s_exp = experimental_time_trace
     if s_exp != []:

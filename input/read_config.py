@@ -32,7 +32,7 @@ def read_calculation_mode(config):
     elif switch == 1:
         mode['simulation'] = 0
         mode['fitting'] = 1
-        mode['error_analysis'] = 0
+        mode['error_analysis'] = 1
     elif switch == 2:
         mode['simulation'] = 0
         mode['fitting'] = 0
@@ -43,9 +43,10 @@ def read_calculation_mode(config):
     return mode
 
 
-def read_experimental_parameters(config):
+def read_experimental_parameters(config, mode):
     ''' Read out the experimental parameters '''
     experiments = []
+    list_noise_std = []
     for instance in config.experiments:
         name = instance.name
         technique = instance.technique 
@@ -53,6 +54,7 @@ def read_experimental_parameters(config):
             experiment = experiment_types[technique](name)
             experiment.signal_from_file(instance.filename, 1)
             noise_std = float(instance.noise_std)
+            list_noise_std.append(noise_std)
             experiment.set_noise_std(noise_std)
             magnetic_field = float(instance.magnetic_field)
             detection_frequency = float(instance.detection_frequency)
@@ -79,6 +81,18 @@ def read_experimental_parameters(config):
     if experiments == []:
         raise ValueError('At least one experiment has to be provided!')
         sys.exit(1)
+    list_noise_std = np.array(list_noise_std)
+    indices_zero_values = np.where(list_noise_std==0)[0]
+    if mode['fitting']:
+        if (indices_zero_values.size != 0) and (indices_zero_values.size != list_noise_std.size):
+            for experiment in experiments:
+                experiment.set_noise_std(0)
+            print('Zero is encountered among the standard deviations of noise!')
+            print('To avoid problems with the scoring, the standard deviation of noise is set to 0 for all experiments.')
+    if mode['error_analysis']: 
+        if indices_zero_values.size != 0:
+            mode['error_analysis'] = 0
+            print('Error analysis is disabled! To enable error analysis, provide non-zero standard deviations of noise for all experiments.')
     return experiments
 
     
@@ -177,41 +191,49 @@ def read_fitting_parameters(config):
     no_fitting_parameter = 0
     no_fixed_parameter = 0  
     for parameter in const['fitting_parameters_names']:
-        optimize_list = read_parameter(config.fitting_parameters[parameter]['optimize'], 'int')
-        range_list = read_tuple(config.fitting_parameters[parameter]['range'], ('array','float'), const['fitting_parameters_scales'][parameter])
-        value_list = read_tuple(config.fitting_parameters[parameter]['value'], ('float',), const['fitting_parameters_scales'][parameter])
-        parameter_objects_list = []
-        range_index = 0
-        value_index = 0
-        for i in range(len(optimize_list)):
-            parameter_objects_sublist = []
-            for j in range(len(optimize_list[i])):
-                if optimize_list[i][j] == 1:
-                    parameter_object = ParameterObject(optimize_list[i][j], no_fitting_parameter)
-                    parameter_objects_sublist.append(parameter_object)
-                    parameter_range = range_list[range_index]
+        list_optimize = read_parameter(config.fitting_parameters[parameter]['optimize'], 'int')
+        list_range = read_tuple(config.fitting_parameters[parameter]['range'], ('array','float'), const['fitting_parameters_scales'][parameter])
+        list_value = read_tuple(config.fitting_parameters[parameter]['value'], ('float',), const['fitting_parameters_scales'][parameter])
+        list_parameter_objects = []
+        index_range = 0
+        index_value = 0
+        for i in range(len(list_optimize)):
+            sublist_parameter_objects = []
+            for j in range(len(list_optimize[i])):
+                if list_optimize[i][j] == 1:
+                    parameter_object = ParameterObject(list_optimize[i][j], no_fitting_parameter)
+                    sublist_parameter_objects.append(parameter_object)
+                    parameter_range = list_range[index_range]
                     fitting_parameters['ranges'].append(parameter_range)
-                    range_index += 1
+                    index_range += 1
                     no_fitting_parameter += 1
-                elif optimize_list[i][j]  == 0:
-                    parameter_object = ParameterObject(optimize_list[i][j], no_fixed_parameter)
-                    parameter_objects_sublist.append(parameter_object)
-                    parameter_value = value_list[value_index]
+                elif list_optimize[i][j]  == 0:
+                    parameter_object = ParameterObject(list_optimize[i][j], no_fixed_parameter)
+                    sublist_parameter_objects.append(parameter_object)
+                    parameter_value = list_value[index_value]
                     fitting_parameters['values'].append(parameter_value)
-                    value_index += 1
+                    index_value += 1
                     no_fixed_parameter += 1
-            parameter_objects_list.append(parameter_objects_sublist)
-        fitting_parameters['indices'][parameter] = parameter_objects_list
+            list_parameter_objects.append(sublist_parameter_objects)
+        fitting_parameters['indices'][parameter] = list_parameter_objects
     return fitting_parameters
     
 
-def read_fitting_settings(config):
+def read_fitting_settings(config, experiments):
     ''' Read out the fitting settings '''
     optimizer = None
     method = config.fitting_settings.optimization_method
     display_graphics = int(config.fitting_settings.display_graphics)
-    if method in optimization_methods:
-        optimizer = optimization_methods[method](method, display_graphics)
+    goodness_of_fit = config.fitting_settings.goodness_of_fit
+    if (goodness_of_fit == "chi2") or (goodness_of_fit == "reduced_chi2"):
+        list_noise_std = []
+        for experiment in experiments:
+            list_noise_std.append(experiment.noise_std)
+        indices_zero_values = np.where(list_noise_std==0)[0]
+        if indices_zero_values.size != 0:
+            goodness_of_fit = "chi2_noise_std_1"
+    if method in optimization_methods and goodness_of_fit in const['goodness_of_fit_names']:
+        optimizer = optimization_methods[method](method, display_graphics, goodness_of_fit)
         if optimizer.name == 'ga':
             number_of_generations = int(config.fitting_settings.ga_parameters.number_of_generations)
             generation_size = int(config.fitting_settings.ga_parameters.generation_size)
@@ -220,7 +242,7 @@ def read_fitting_settings(config):
             parent_selection = str(config.fitting_settings.ga_parameters.parent_selection)
             optimizer.set_intrinsic_parameters(number_of_generations, generation_size, crossover_probability, mutation_probability, parent_selection)   
     else:
-        raise ValueError('Unsupported optimization method!')
+        raise ValueError('Unsupported optimization method or/and goodness-of-fit parameter!')
         sys.exit(1)
     return optimizer
 
@@ -237,7 +259,7 @@ def read_error_analysis_parameters(config, fitting_parameters):
         if len(components) != 0:
             compare_size(parameters, components, 'parameters', 'components', 2)
         for i in range(len(parameters)):
-            parameter_id_list = []
+            list_parameter_id = []
             for j in range(len(parameters[i])):
                 parameter = parameters[i][j]
                 if len(spin_pairs) != 0:
@@ -249,8 +271,8 @@ def read_error_analysis_parameters(config, fitting_parameters):
                 else:
                     component = 0
                 parameter_id = ParameterID(parameter, spin_pair, component)
-                parameter_id_list.append(parameter_id)
-            error_analysis_parameters.append(parameter_id_list)
+                list_parameter_id.append(parameter_id)
+            error_analysis_parameters.append(list_parameter_id)
     # Check that the fitting and error analysis parameters are consistent with each other
     for i in range(len(error_analysis_parameters)):
         for j in range(len(error_analysis_parameters[i])):
@@ -271,7 +293,7 @@ def read_error_analysis_settings(config, mode):
     error_analysis_parameters['sample_size'] = int(config.error_analysis_settings.sample_size)
     error_analysis_parameters['confidence_interval'] = float(config.error_analysis_settings.confidence_interval)
     error_analysis_parameters['filepath_optimized_parameters'] = ''
-    if mode['error_analysis']:
+    if not mode['fitting'] and mode['error_analysis']:
         error_analysis_parameters['filepath_optimized_parameters'] = config.error_analysis_settings.filepath_optimized_parameters
         if error_analysis_parameters['filepath_optimized_parameters'] == '':
             raise ValueError('A file with the optimized fitting parameters has to be provided!')
@@ -320,8 +342,7 @@ def read_calculation_settings(config, experiments):
         calculation_settings['scale_range_modulation_depth'] = read_list(config.calculation_settings.scale_range_modulation_depth, 'float')
         if (len(calculation_settings['scale_range_modulation_depth']) != 0) and (len(calculation_settings['scale_range_modulation_depth']) != 2):
             raise ValueError('Invalid format of scale_range_modulation_depth!')
-            sys.exit(1)            
-    calculation_settings['scale_chi2_by_modulation_depth'] = int(config.calculation_settings.scale_chi2_by_modulation_depth)
+            sys.exit(1)
     simulator = Simulator(calculation_settings)
     if simulator.fit_modulation_depth:
             for experiment in experiments:
@@ -329,7 +350,7 @@ def read_calculation_settings(config, experiments):
     return simulator
 
 
-def read_output_settings(config, mode, filepath_config):
+def read_output_settings(config, filepath_config):
     ''' Read out the output settings '''
     save_data = bool(config.output.save_data)
     save_figures = bool(config.output.save_figures)
@@ -352,16 +373,16 @@ def read_config(filepath):
     with io.open(filepath) as file:
         config = libconf.load(file)
         mode = read_calculation_mode(config)
-        experiments = read_experimental_parameters(config)
+        experiments = read_experimental_parameters(config, mode)
         spins = read_spin_parameters(config)
         if mode['simulation']:
             simulation_parameters = read_simulation_parameters(config)
         elif mode['fitting'] or mode['error_analysis']:
             fitting_parameters = read_fitting_parameters(config)
-            optimizer = read_fitting_settings(config)
+            optimizer = read_fitting_settings(config, experiments)
             error_analysis_parameters = read_error_analysis_parameters(config, fitting_parameters)
             error_analyzer = read_error_analysis_settings(config, mode)
         simulator = read_calculation_settings(config, experiments)
-        data_saver = read_output_settings(config, mode, filepath) 
+        data_saver = read_output_settings(config, filepath) 
         plotter = Plotter(data_saver)
     return mode, experiments, spins, simulation_parameters, fitting_parameters, optimizer, error_analysis_parameters, error_analyzer, simulator, data_saver, plotter

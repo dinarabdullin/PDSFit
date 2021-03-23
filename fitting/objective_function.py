@@ -7,19 +7,30 @@ def merge_fitted_and_fixed_variables(variables_indices, fitted_variables_values,
     all_variables = {}
     for variable_name in variables_indices:
         variable_indices = variables_indices[variable_name]
-        variable_values_list = []
+        list_variable_values = []
         for i in range(len(variable_indices)):
-            variable_values_sublist = []
+            sublist_variable_values = []
             for j in range(len(variable_indices[i])):
                 variable_object = variable_indices[i][j]
                 if variable_object.optimize:
                     variable_value = fitted_variables_values[variable_object.index]
                 else:
                     variable_value = fixed_variables_values[variable_object.index]
-                variable_values_sublist.append(variable_value)
-            variable_values_list.append(variable_values_sublist)
-        all_variables[variable_name] = variable_values_list
+                sublist_variable_values.append(variable_value)
+            list_variable_values.append(sublist_variable_values)
+        all_variables[variable_name] = list_variable_values
     return all_variables
+
+
+def compute_degrees_of_freedom(experiments, variables, fit_modulation_depth):
+    ''' Computes the number of degrees of freedom ''' 
+    N = 0
+    for experiment in experiments:
+        N += experiment.s.size
+    p = len(variables)
+    if fit_modulation_depth:
+        p += len(experiments)
+    return (N-p)
 
 
 def fit_function(variables, simulator, experiments, spins, fitting_parameters):
@@ -31,19 +42,29 @@ def fit_function(variables, simulator, experiments, spins, fitting_parameters):
     return simulated_time_traces, modulation_depth_scale_factors
 
 
-def objective_function(variables, simulator, experiments, spins, fitting_parameters):
+def objective_function(variables, simulator, experiments, spins, fitting_parameters, goodness_of_fit):
     ''' Objective function '''
     # Compute the fit
     simulated_time_traces, modulation_depth_scale_factors = fit_function(variables, simulator, experiments, spins, fitting_parameters)
     # Compute the score
-    if simulator.scale_chi2_by_modulation_depth:
-        sum_modulation_depth_scale_factors = sum(modulation_depth_scale_factors)
-    total_score = 0.0
-    num_experiments = len(experiments)
-    for i in range(len(experiments)):   
-        score = chi2(simulated_time_traces[i]['s'], experiments[i].s, experiments[i].noise_std)
-        if simulator.scale_chi2_by_modulation_depth:
-            score = score * modulation_depth_scale_factors[i] / sum_modulation_depth_scale_factors
-        total_score += score
-    total_score = total_score / float(num_experiments)
-    return total_score
+    if goodness_of_fit == 'chi2':
+        total_score = 0.0
+        for i in range(len(experiments)):   
+            total_score += chi2(simulated_time_traces[i]['s'], experiments[i].s, experiments[i].noise_std)
+        return total_score
+    elif goodness_of_fit == 'reduced_chi2':
+        total_score = 0.0
+        degrees_of_freedom = compute_degrees_of_freedom(experiments, variables, simulator.fit_modulation_depth)
+        for i in range(len(experiments)):   
+            total_score += chi2(simulated_time_traces[i]['s'], experiments[i].s, experiments[i].noise_std)
+        return total_score / float(degrees_of_freedom) 
+    elif goodness_of_fit == 'chi2_noise_std_1':
+        total_score = 0.0
+        for i in range(len(experiments)):   
+            total_score += chi2(simulated_time_traces[i]['s'], experiments[i].s)
+        return total_score
+    elif goodness_of_fit == 'chi2_weighted_by_modulation_depth':
+        total_score = 0.0
+        for i in range(len(experiments)):   
+            total_score += modulation_depth_scale_factors[i] * chi2(simulated_time_traces[i]['s'], experiments[i].s)
+        return total_score 

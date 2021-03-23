@@ -27,7 +27,7 @@ def print_fitting_parameters(parameters_indices, optimized_parameters_values, fi
                     sys.stdout.write('{:<15.4}'.format(variable_value))
                 if parameter_object.optimize:
                     if parameters_errors != []:
-                        if np.isnan(parameters_errors[parameter_object.index]):
+                        if not np.isnan(parameters_errors[parameter_object.index]):
                             variable_error = parameters_errors[parameter_object.index] / const['fitting_parameters_scales'][parameter_name]
                             sys.stdout.write('{:<15.4}'.format(variable_error))
                         else:

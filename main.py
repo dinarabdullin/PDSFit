@@ -41,20 +41,24 @@ if __name__ == '__main__':
         plotter.plot_simulation_output(epr_spectra, bandwidths, simulated_time_traces, experiments)
 
     # Run fitting
-    elif mode['fitting']:
+    if mode['fitting']:
         
-        # Partial functions to calculate the fit and the goodness of fit
-        partial_fit_function = partial(fit_function, simulator=simulator, experiments=experiments, spins=spins, fitting_parameters=fitting_parameters)
-        partial_objective_function = partial(objective_function, simulator=simulator, experiments=experiments, spins=spins, fitting_parameters=fitting_parameters)
-    
+        # Set the fit and objective functions
+        partial_fit_function = partial(fit_function, simulator=simulator, experiments=experiments, spins=spins, 
+                                       fitting_parameters=fitting_parameters)
+        partial_objective_function = partial(objective_function, simulator=simulator, experiments=experiments, spins=spins, 
+                                             fitting_parameters=fitting_parameters, goodness_of_fit=optimizer.goodness_of_fit)
+        optimizer.set_fit_function(partial_fit_function)
+        optimizer.set_objective_function(partial_objective_function)
+        
         # Optimize the fitting parameters
-        optimized_parameters, score = optimizer.optimize(fitting_parameters['ranges'], partial_objective_function)                                                         
+        optimized_parameters, score = optimizer.optimize(fitting_parameters['ranges'])                                                         
         
         # Display the fitted and fixed parameters
         print_fitting_parameters(fitting_parameters['indices'], optimized_parameters, fitting_parameters['values'])
         
         # Compute the fit to the experimental PDS time traces
-        simulated_time_traces, modulation_depth_scale_factors = optimizer.get_fit(partial_fit_function)
+        simulated_time_traces, modulation_depth_scale_factors = optimizer.get_fit()
         
         # Display the scale factors of modulation depths
         if simulator.fit_modulation_depth:
@@ -64,26 +68,29 @@ if __name__ == '__main__':
         data_saver.save_fitting_output(score, optimized_parameters, [], simulated_time_traces, fitting_parameters, experiments)
         
         # Plot the fitting output
-        plotter.plot_fitting_output(score, simulated_time_traces, experiments)
+        plotter.plot_fitting_output(score, optimizer.goodness_of_fit, simulated_time_traces, experiments)       
+    
+    # Run error analysis
+    if mode['error_analysis']:
         
-        # Prior to the error analysis, check that the calculated chi2 is normalized by the variance of noise.
-        # For this, the std of noise must be nonzero for all experiments. 
-        # If the std of noise is equal 0 for some (or all) experiments, compute it using the obtained fits as a noise-free signal.
-        for i in range(len(experiments)):
-            experiments[i].reset_noise_std(simulated_time_traces[i]['s'])
-        
-        # Re-set the partial function to calculate the fit 
-        partial_fit_function = partial(fit_function, simulator=simulator, experiments=experiments, spins=spins, fitting_parameters=fitting_parameters)
+        # Set the objective function: the goodness-of-fit has to be set to 'chi2'
+        partial_objective_function = partial(objective_function, simulator=simulator, experiments=experiments, spins=spins, 
+                                             fitting_parameters=fitting_parameters, goodness_of_fit='chi2')
+        error_analyzer.set_objective_function(partial_objective_function)
         
         # Run the error analysis
-        score_vs_parameter_sets, numerical_error, score_threshold, parameters_errors = error_analyzer.run_error_analysis(error_analysis_parameters, 
-                                                                                       optimized_parameters, fitting_parameters, partial_objective_function)
+        score_vs_parameter_subsets, score_vs_parameters, numerical_error, score_threshold, parameters_errors = \
+        error_analyzer.run_error_analysis(error_analysis_parameters, fitting_parameters, optimized_parameters)
         
+        # Display the fitted and fixed parameters with the corresponding confidence intervals
+        print_fitting_parameters(fitting_parameters['indices'], optimized_parameters, fitting_parameters['values'], parameters_errors)
+        
+        # Save the fitting output
+        data_saver.save_fitting_output(score, optimized_parameters, parameters_errors, simulated_time_traces, fitting_parameters, experiments)
+
         # Plot the error analysis output
-        plotter.plot_error_analysis_output(error_analysis_parameters, score_vs_parameter_sets, optimized_parameters, fitting_parameters, 
-                                           score_threshold, numerical_error)
-        
-    #elif mode['error_analysis']:
+        plotter.plot_error_analysis_output(score_vs_parameter_subsets, score_vs_parameters, error_analysis_parameters, 
+                                           fitting_parameters, optimized_parameters, score_threshold, numerical_error)
     
     print('\nDONE!')
     keep_figures_visible()

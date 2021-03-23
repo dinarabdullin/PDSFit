@@ -31,7 +31,6 @@ class Simulator():
         if self.fit_modulation_depth:
             self.interval_modulation_depth = calculation_settings['interval_modulation_depth']
             self.scale_range_modulation_depth = calculation_settings['scale_range_modulation_depth']
-        self.scale_chi2_by_modulation_depth = calculation_settings['scale_chi2_by_modulation_depth']
         self.frequency_increment_epr_spectrum = 0.001 # in GHz
         self.field_orientations = []
         self.effective_gfactors_spin1 = []
@@ -557,7 +556,15 @@ class Simulator():
         # Compute chi2
         if display_messages:
             chi2_value = chi2(simulated_time_trace['s'], experiment.s, experiment.noise_std)
-            print('Chi2: {0:<15.3}'.format(chi2_value))
+            if self.fit_modulation_depth:
+                degrees_of_freedom = experiment.s.size - len(variables) - 1
+            else:
+                degrees_of_freedom = experiment.s.size - len(variables)
+            reduced_chi2_value = chi2_value / float(degrees_of_freedom)
+            if experiment.noise_std:
+                print('Chi2: {0:<15.3}   Reduced chi2: {1:<15.3}'.format((chi2_value, reduced_chi2_value)))
+            else:
+                print('Chi2 (noise std = 1): {0:<15.3}'.format(chi2_value))
         return simulated_time_trace, modulation_depth_scale_factor
     
     def compute_time_traces(self, experiments, spins, variables, display_messages=True):

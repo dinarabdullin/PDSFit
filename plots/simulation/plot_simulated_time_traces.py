@@ -20,7 +20,7 @@ def plot_simulated_time_trace(fig, simulated_time_trace, experiment):
 
 def plot_simulated_time_traces(simulated_time_traces, experiments):
     ''' Plots simulated PDS time traces '''
-    fig = plt.figure(figsize=[10,8], facecolor='w', edgecolor='w')  
+    fig = plt.figure(figsize=(10,8), facecolor='w', edgecolor='w')  
     figsize = fig.get_size_inches()*fig.dpi
     num_subplots = len(experiments)
     layout = best_layout(figsize[0], figsize[1], num_subplots)

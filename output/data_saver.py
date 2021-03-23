@@ -70,11 +70,11 @@ class DataSaver:
             filepath = self.directory + 'score.dat'
             save_score(score, filepath)
 
-    def save_fitting_parameters(self, parameters_indices, optimized_parameters_values, fixed_parameters_values, parameters_errors):    
+    def save_fitting_parameters(self, parameters_indices, optimized_parameters, fixed_parameters_values, parameters_errors):    
         ''' Saves optimized and fixed fitting parameters ''' 
         if self.save_data:
             filepath = self.directory + 'fitting_parameters.dat'
-            save_fitting_parameters(parameters_indices, optimized_parameters_values, fixed_parameters_values, parameters_errors, filepath)
+            save_fitting_parameters(parameters_indices, optimized_parameters, fixed_parameters_values, parameters_errors, filepath)
 
     def save_fits(self, simulated_time_traces, experiments):
         ''' Saves fits to experimental PDS time traces '''
@@ -83,8 +83,8 @@ class DataSaver:
                 filepath = self.directory + 'fit_' + experiments[i].name + ".dat"
                 save_simulated_time_trace(simulated_time_traces[i], experiments[i].s, filepath)
     
-    def save_fitting_output(self, score, optimized_parameters_values, parameters_errors, simulated_time_traces, fitting_parameters, experiments):
+    def save_fitting_output(self, score, optimized_parameters, parameters_errors, simulated_time_traces, fitting_parameters, experiments):
         ''' Saves the fitting output '''
         self.save_score(score)
-        self.save_fitting_parameters(fitting_parameters['indices'], optimized_parameters_values, fitting_parameters['values'], parameters_errors)
+        self.save_fitting_parameters(fitting_parameters['indices'], optimized_parameters, fitting_parameters['values'], parameters_errors)
         self.save_fits(simulated_time_traces, experiments)

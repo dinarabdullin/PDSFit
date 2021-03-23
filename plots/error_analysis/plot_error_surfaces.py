@@ -11,12 +11,12 @@ if not sys.warnoptions:
 from supplement.definitions import const    
 
 
-def plot_1d(fig, error_analysis_parameters, score_vs_parameter_set, optimized_parameters, fitting_parameters, score_threshold):
+def plot_1d_error_surface(fig, score_vs_parameter_subset, error_analysis_parameters, fitting_parameters, optimized_parameters, score_threshold):
     # Set the fitting parameter
     parameter_id = error_analysis_parameters[0]
     # Set the values of the fitting parameter and the corresponding score values
-    x = score_vs_parameter_set['parameters'][0] / const['fitting_parameters_scales'][parameter_id.name]
-    y = score_vs_parameter_set['score']
+    x = score_vs_parameter_subset['parameters'][0] / const['fitting_parameters_scales'][parameter_id.name]
+    y = score_vs_parameter_subset['score']
     # Set the color code for y
     cmin = np.amin(y) + score_threshold
     cmax = 2 * cmin
@@ -38,14 +38,14 @@ def plot_1d(fig, error_analysis_parameters, score_vs_parameter_set, optimized_pa
     return im
 
 
-def plot_2d(fig, error_analysis_parameters, score_vs_parameter_set, optimized_parameters, fitting_parameters, score_threshold):
+def plot_2d_error_surface(fig, score_vs_parameter_subset, error_analysis_parameters, fitting_parameters, optimized_parameters, score_threshold):
     # Set the fitting parameters
     parameter1_id = error_analysis_parameters[0] 
     parameter2_id = error_analysis_parameters[1]
     # Set the values of the fitting parameters and the corresponding score values
-    x1 = score_vs_parameter_set['parameters'][0] / const['fitting_parameters_scales'][parameter1_id.name]
-    x2 = score_vs_parameter_set['parameters'][1] / const['fitting_parameters_scales'][parameter2_id.name]
-    y = score_vs_parameter_set['score']
+    x1 = score_vs_parameter_subset['parameters'][0] / const['fitting_parameters_scales'][parameter1_id.name]
+    x2 = score_vs_parameter_subset['parameters'][1] / const['fitting_parameters_scales'][parameter2_id.name]
+    y = score_vs_parameter_subset['score']
     # Interpolate the data points (x1, x2, y) on a regular grid (X, Y, Z)
     x1_min = np.min(x1)
     x1_max = np.max(x1)
@@ -80,9 +80,9 @@ def plot_2d(fig, error_analysis_parameters, score_vs_parameter_set, optimized_pa
     return im
 
 
-def plot_score_vs_parameters(error_analysis_parameters, score_vs_parameter_sets, optimized_parameters, fitting_parameters, score_threshold):
-    ''' Plots the score as a function of one or two fitting parameters '''
-    fig = plt.figure(figsize=[10,8], facecolor='w', edgecolor='w')  
+def plot_error_surfaces(score_vs_parameter_subsets, error_analysis_parameters, fitting_parameters, optimized_parameters, score_threshold):
+    ''' Plots the score as a function of one or two fitting parameters '''  
+    fig = plt.figure(figsize=(10,8), facecolor='w', edgecolor='w')
     figsize = fig.get_size_inches()*fig.dpi
     num_subplots = len(error_analysis_parameters)
     layout = best_layout(figsize[0], figsize[1], num_subplots)
@@ -90,9 +90,9 @@ def plot_score_vs_parameters(error_analysis_parameters, score_vs_parameter_sets,
         plt.subplot(layout[1], layout[0], i+1)
         dim = len(error_analysis_parameters[i])
         if (dim == 1):
-            im = plot_1d(fig, error_analysis_parameters[i], score_vs_parameter_sets[i], optimized_parameters, fitting_parameters, score_threshold)
+            im = plot_1d_error_surface(fig, score_vs_parameter_subsets[i], error_analysis_parameters[i], fitting_parameters, optimized_parameters, score_threshold)
         elif (dim == 2):
-            im = plot_2d(fig, error_analysis_parameters[i], score_vs_parameter_sets[i], optimized_parameters, fitting_parameters, score_threshold)
+            im = plot_2d_error_surface(fig, score_vs_parameter_subsets[i], error_analysis_parameters[i], fitting_parameters, optimized_parameters, score_threshold)
         else:
             print('The score cannot be yet plotted as function of three or more parameters!')
     plt.tight_layout()

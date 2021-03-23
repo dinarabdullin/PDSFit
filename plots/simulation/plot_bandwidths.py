@@ -36,7 +36,7 @@ def plot_bandwidths(bandwidths, experiments, spectra=[]):
     Plots the bandwidths of detection and pump pulses for multiple experiments .
     If the EPR spectrum of the spin system is provided, the bandwidths are overlayed with the EPR spectrum. 
     '''  
-    fig = plt.figure(figsize=[10,8], facecolor='w', edgecolor='w')
+    fig = plt.figure(figsize=(10,8), facecolor='w', edgecolor='w')
     figsize = fig.get_size_inches()*fig.dpi
     num_subplots = len(experiments)
     layout = best_layout(figsize[0], figsize[1], num_subplots)

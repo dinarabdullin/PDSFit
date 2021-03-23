@@ -130,3 +130,19 @@ const['fitting_parameters_labels'] = {
     'j_mean'      : [r'$\langle\mathit{J}\rangle$', '(MHz)'],
     'j_width'     : [r'$\mathit{\Delta J}$', '(MHz)']
     }
+    
+# Long names of goodness-of-fit parameters 
+const['goodness_of_fit_names'] = {
+    'chi2':                              'Chi2',
+    'reduced_chi2':                      'Reduced Chi2',
+    'chi2_noise_std_1':                  'Chi2(noise_std=1)',
+    'chi2_weighted_by_modulation_depth': 'Chi2(weighted)'
+    }
+    
+# Axes' labels of goodness-of-fit parameters  
+const['goodness_of_fit_axes_labels'] = {
+    'chi2':                              r'$\mathit{\chi^2}$',
+    'reduced_chi2':                      r'$\mathit{\chi^2_{\nu}}$',
+    'chi2_noise_std_1':                  r'$\mathit{\chi^2}$ ($\mathit{\sigma_{n}}$ = 1)',
+    'chi2_weighted_by_modulation_depth': r'$\mathit{\chi^2\times\lambda}$'
+    } 
