@@ -12,7 +12,7 @@ from input.parameter_object import ParameterObject
 from input.parameter_id import ParameterID
 from experiments.experiment_types import experiment_types
 from spin_physics.spin import Spin
-from simulation.simulator import Simulator
+from simulation.simulator_types import simulator_types
 from fitting.optimization_methods import optimization_methods
 from error_analysis.error_analyzer import ErrorAnalyzer
 from output.data_saver import DataSaver
@@ -305,45 +305,41 @@ def read_error_analysis_settings(config, mode):
 def read_calculation_settings(config, experiments):
     ''' Read out the calculation settings '''
     calculation_settings = {}
-    calculation_settings['integration_method'] = config.calculation_settings.integration_method
-    if calculation_settings['integration_method'] == 'monte_carlo':
-        calculation_settings['mc_sample_size'] = int(config.calculation_settings.mc_sample_size)
-        calculation_settings['grid_size'] = {}
-    elif calculation_settings['integration_method'] == 'grids':
-        calculation_settings['mc_sample_size'] = 0
-        calculation_settings['grid_size'] = {}
-        calculation_settings['grid_size']['powder_averaging'] = int(config.calculation_settings.grid_size.powder_averaging)
-        calculation_settings['grid_size']['distances'] = int(config.calculation_settings.grid_size.distances)
-        calculation_settings['grid_size']['spherical_angles'] = int(config.calculation_settings.grid_size.spherical_angles)
-        calculation_settings['grid_size']['rotations'] = int(config.calculation_settings.grid_size.rotations)    
-    else:
-        raise ValueError('Invalid integration method!')
-        sys.exit(1)   
-    calculation_settings['distributions'] = {}
-    calculation_settings['distributions']['r'] = config.calculation_settings.distributions.r
-    calculation_settings['distributions']['xi'] = config.calculation_settings.distributions.xi
-    calculation_settings['distributions']['phi'] = config.calculation_settings.distributions.phi
-    calculation_settings['distributions']['alpha'] = config.calculation_settings.distributions.alpha
-    calculation_settings['distributions']['beta'] = config.calculation_settings.distributions.beta
-    calculation_settings['distributions']['gamma'] = config.calculation_settings.distributions.gamma
-    calculation_settings['distributions']['j'] = config.calculation_settings.distributions.j
-    for key in calculation_settings['distributions']:
-        if not calculation_settings['distributions'][key] in const['distribution_types']:
-            raise ValueError('Unsupported type of distribution for %s' % (key))
+    integration_method = config.calculation_settings.integration_method
+    if integration_method in simulator_types:
+        if integration_method == 'monte_carlo':
+            calculation_settings['mc_sample_size'] = int(config.calculation_settings.mc_sample_size)
+        elif integration_method == 'grids':
+            calculation_settings['grid_size'] = {}
+            calculation_settings['grid_size']['powder_averaging'] = int(config.calculation_settings.grid_size.powder_averaging)
+            calculation_settings['grid_size']['distances'] = int(config.calculation_settings.grid_size.distances)
+            calculation_settings['grid_size']['spherical_angles'] = int(config.calculation_settings.grid_size.spherical_angles)
+            calculation_settings['grid_size']['rotations'] = int(config.calculation_settings.grid_size.rotations)       
+        calculation_settings['distributions'] = {}
+        calculation_settings['distributions']['r'] = config.calculation_settings.distributions.r
+        calculation_settings['distributions']['xi'] = config.calculation_settings.distributions.xi
+        calculation_settings['distributions']['phi'] = config.calculation_settings.distributions.phi
+        calculation_settings['distributions']['alpha'] = config.calculation_settings.distributions.alpha
+        calculation_settings['distributions']['beta'] = config.calculation_settings.distributions.beta
+        calculation_settings['distributions']['gamma'] = config.calculation_settings.distributions.gamma
+        calculation_settings['distributions']['j'] = config.calculation_settings.distributions.j
+        for key in calculation_settings['distributions']:
+            if not calculation_settings['distributions'][key] in const['distribution_types']:
+                raise ValueError('Unsupported type of distribution for %s' % (key))
+                sys.exit(1)
+        calculation_settings['excitation_treshold'] = float(config.calculation_settings.excitation_treshold)
+        calculation_settings['euler_angles_convention'] = config.calculation_settings.euler_angles_convention
+        if not calculation_settings['euler_angles_convention'] in const['euler_angles_conventions']:
+            raise ValueError('Unsupported Euler angles convention')
             sys.exit(1)
-    calculation_settings['excitation_treshold'] = float(config.calculation_settings.excitation_treshold)
-    calculation_settings['euler_angles_convention'] = config.calculation_settings.euler_angles_convention
-    if not calculation_settings['euler_angles_convention'] in const['euler_angles_conventions']:
-        raise ValueError('Unsupported Euler angles convention')
-        sys.exit(1)
-    calculation_settings['fit_modulation_depth'] = bool(config.calculation_settings.fit_modulation_depth)
-    if calculation_settings['fit_modulation_depth']:
-        calculation_settings['interval_modulation_depth'] = float(config.calculation_settings.interval_modulation_depth)
-        calculation_settings['scale_range_modulation_depth'] = read_list(config.calculation_settings.scale_range_modulation_depth, 'float')
-        if (len(calculation_settings['scale_range_modulation_depth']) != 0) and (len(calculation_settings['scale_range_modulation_depth']) != 2):
-            raise ValueError('Invalid format of scale_range_modulation_depth!')
-            sys.exit(1)
-    simulator = Simulator(calculation_settings)
+        calculation_settings['fit_modulation_depth'] = bool(config.calculation_settings.fit_modulation_depth)
+        if calculation_settings['fit_modulation_depth']:
+            calculation_settings['interval_modulation_depth'] = float(config.calculation_settings.interval_modulation_depth)
+            calculation_settings['scale_range_modulation_depth'] = read_list(config.calculation_settings.scale_range_modulation_depth, 'float')
+            if (len(calculation_settings['scale_range_modulation_depth']) != 0) and (len(calculation_settings['scale_range_modulation_depth']) != 2):
+                raise ValueError('Invalid format of scale_range_modulation_depth!')
+                sys.exit(1)
+        simulator = (simulator_types[integration_method])(calculation_settings)
     if simulator.fit_modulation_depth:
             for experiment in experiments:
                 experiment.compute_modulation_depth(simulator.interval_modulation_depth)
