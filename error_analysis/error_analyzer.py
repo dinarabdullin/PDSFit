@@ -4,6 +4,7 @@ import datetime
 import numpy as np
 import scipy
 from multiprocessing import Pool
+from input.load_optimized_parameters import load_optimized_parameters
 
 
 class ErrorAnalyzer():
@@ -18,9 +19,17 @@ class ErrorAnalyzer():
     def set_objective_function(self, func):
         ''' Set an objective function '''
         self.objective_function = func
+        
+    def load_optimized_parameters(self, parameter_indices):
+        ''' Loads the optimized values of fitting parameters from a file '''
+        if self.filepath_optimized_parameters != '':
+            return load_optimized_parameters(self.filepath_optimized_parameters)
+        else:
+            raise ValueError('No file with the optimized parameters was provided!')
+            sys.exit(1)
     
     def run_error_analysis(self, error_analysis_parameters, fitting_parameters, optimized_parameters):
-        ''' Run error analysis '''
+        ''' Runs error analysis '''
         if optimized_parameters != []:
             print('\nStarting the error analysis...')
             time_start = time.time()

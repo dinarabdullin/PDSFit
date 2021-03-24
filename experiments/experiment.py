@@ -1,5 +1,5 @@
 import numpy as np
-from experiments.load_experimental_signal import load_experimental_signal
+from input.load_experimental_signal import load_experimental_signal
 
 
 class Experiment:

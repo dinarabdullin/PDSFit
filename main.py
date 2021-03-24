@@ -73,20 +73,24 @@ if __name__ == '__main__':
     # Run error analysis
     if mode['error_analysis']:
         
+        if not mode['fitting']:
+            optimized_parameters, parameter_errors = error_analyzer.load_optimized_parameters(fitting_parameters['indices'])
+            print_fitting_parameters(fitting_parameters['indices'], optimized_parameters, fitting_parameters['values'], parameter_errors)
+        
         # Set the objective function: the goodness-of-fit has to be set to 'chi2'
         partial_objective_function = partial(objective_function, simulator=simulator, experiments=experiments, spins=spins, 
                                              fitting_parameters=fitting_parameters, goodness_of_fit='chi2')
         error_analyzer.set_objective_function(partial_objective_function)
         
         # Run the error analysis
-        score_vs_parameter_subsets, score_vs_parameters, numerical_error, score_threshold, parameters_errors = \
+        score_vs_parameter_subsets, score_vs_parameters, numerical_error, score_threshold, parameter_errors = \
         error_analyzer.run_error_analysis(error_analysis_parameters, fitting_parameters, optimized_parameters)
         
         # Display the fitted and fixed parameters with the corresponding confidence intervals
-        print_fitting_parameters(fitting_parameters['indices'], optimized_parameters, fitting_parameters['values'], parameters_errors)
+        print_fitting_parameters(fitting_parameters['indices'], optimized_parameters, fitting_parameters['values'], parameter_errors)
         
-        # Save the fitting output
-        data_saver.save_fitting_output(score, optimized_parameters, parameters_errors, simulated_time_traces, fitting_parameters, experiments)
+        # Save the optimized values of fitting parameters with their error estimates
+        data_saver.save_fitting_parameters(fitting_parameters['indices'], optimized_parameters, fitting_parameters['values'], parameter_errors)
 
         # Plot the error analysis output
         plotter.plot_error_analysis_output(score_vs_parameter_subsets, score_vs_parameters, error_analysis_parameters, 

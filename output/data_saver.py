@@ -18,7 +18,7 @@ class DataSaver:
         self.directory = ''
     
     def create_output_directory(self, parent_directory, filepath_config):
-        ''' Create an output directory ''' 
+        ''' Creates an output directory ''' 
         if self.save_data or self.save_figures:
             config_directory, config_name = os.path.split(os.path.abspath(filepath_config))
             if parent_directory != '':
@@ -70,11 +70,11 @@ class DataSaver:
             filepath = self.directory + 'score.dat'
             save_score(score, filepath)
 
-    def save_fitting_parameters(self, parameters_indices, optimized_parameters, fixed_parameters_values, parameters_errors):    
+    def save_fitting_parameters(self, parameter_indices, optimized_parameters, fixed_parameters, parameters_errors):    
         ''' Saves optimized and fixed fitting parameters ''' 
         if self.save_data:
             filepath = self.directory + 'fitting_parameters.dat'
-            save_fitting_parameters(parameters_indices, optimized_parameters, fixed_parameters_values, parameters_errors, filepath)
+            save_fitting_parameters(parameter_indices, optimized_parameters, fixed_parameters, parameters_errors, filepath)
 
     def save_fits(self, simulated_time_traces, experiments):
         ''' Saves fits to experimental PDS time traces '''
