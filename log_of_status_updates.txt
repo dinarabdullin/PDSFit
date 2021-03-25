@@ -105,6 +105,20 @@
 					- PELDOR experiment
 					- 3 spins: Cu(II) & Cu(II) & Cu(II)
 					- all Cu(II) spins have an almost isotropic g-factor
-					- unimodal distance and angle distributions for each spin pair
-				
-				
+					- unimodal distance and angle distributions for each spin pa
+25.03.2021:	1) The config file was extended by fitting and error analysis parameters.
+			2) A new class called 'DataSaver' was created output.data_saver to save all output data of the program to asciii files (previously, 
+			we had a number of separate methods for this purpose).
+			3) A new class called 'Plotter' was created in plots.plotter to plot all output data of the program (previously, we had a number of
+			separate methods for this purpose).
+			4) The class Simulator in simulation.simulator was separated into a parent class Simulator and two child classes MonteCarloSimulator (done)
+			and GridSimulator (in pregress).
+			5) The fitting of experimental time traces was implemented.
+			For this, a parent class Optimizer and a method 'objective_function' were created in optimization.optimizer. 
+			The child class of Optimizer, called GeneticAlgorithm, is created in optimization.ga.ga. This class implements a genetic algorithm.
+			It uses a couple of supporting classes: Chromosome and Generation.
+			6) The error analysis for the optimized fitting parameters was implemented.
+			For this, a new class ErrorAnalyzer was created in error_analysis.error_analyzer.
+			7) A method 'input.read_config' was updated in accordance to 1)-6).
+			
+ 			

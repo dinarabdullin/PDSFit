@@ -617,4 +617,4 @@ class MonteCarloSimulator(Simulator):
                 if experiment.technique == 'peldor': 
                     self.pump_probabilities_spin1[experiment.name] = experiment.pump_probability(resonance_frequencies_spin1, spins[0].int_res_freq)    
                 elif experiment.technique == 'ridme':
-                    self.pump_probabilities_spin1[experiment.name] = experiment.pump_probability(spins[0].T1, spins[0].g_anisotropy_in_dipolar_coupling, self.effective_gfactors_spin1)
+                    self.pump_probabilities_spin1[experiment.name] = experiment.pump_probability(spins[0].T1, spins[0].g_anisotropy_in_dipolar_coupling, self.effective_gfactors_spin1)  

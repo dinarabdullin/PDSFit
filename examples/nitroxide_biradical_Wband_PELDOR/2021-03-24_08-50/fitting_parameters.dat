@@ -1,0 +1,16 @@
+Parameter           No. spin pair  No. component  Optimized      Value          Precision      
+r mean (nm)         1              1              yes            1.945          0.007037       
+r width (nm)        1              1              yes            0.02712        0.005776       
+xi mean (deg)       1              1              yes            75.59          14.32          
+xi width (deg)      1              1              yes            10.55          10.47          
+phi mean (deg)      1              1              yes            20.33          17.92          
+phi width (deg)     1              1              yes            5.0            10.93          
+alpha mean (deg)    1              1              yes            21.62          12.99          
+alpha width (deg)   1              1              yes            14.08          13.98          
+beta mean (deg)     1              1              yes            85.36          nan            
+beta width (deg)    1              1              yes            25.34          nan            
+gamma mean (deg)    1              1              yes            34.48          14.88          
+gamma width (deg)   1              1              yes            12.02          23.83          
+rel_prob            1              1              no             1.0            nan            
+J mean (MHz)        1              1              no             0.0            nan            
+J width (MHz)       1              1              no             0.0            nan            
