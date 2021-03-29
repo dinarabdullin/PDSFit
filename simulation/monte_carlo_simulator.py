@@ -21,6 +21,7 @@ class MonteCarloSimulator(Simulator):
         self.mc_sample_size = calculation_settings['mc_sample_size']
         self.separate_grids = False
         self.frequency_increment_epr_spectrum = 0.001 # in GHz
+        self.frequency_increment_dipolar_spectrum = 0.01 # in MHz
         self.field_orientations = []
         self.effective_gfactors_spin1 = []
         self.detection_probabilities_spin1 = {}
@@ -91,8 +92,9 @@ class MonteCarloSimulator(Simulator):
         simulated_time_trace['t'] = experiment.t
         num_time_points = experiment.t.size
         simulated_time_trace['s'] = np.ones(num_time_points)
-        for i in range(num_time_points):
-            simulated_time_trace['s'][i] -= np.sum(modulation_depths * (1.0 - np.cos(2*np.pi * modulation_frequencies * experiment.t[i])))
+        if modulation_frequencies.size != 0:
+            for i in range(num_time_points):
+                simulated_time_trace['s'][i] -= np.sum(modulation_depths * (1.0 - np.cos(2*np.pi * modulation_frequencies * experiment.t[i])))
         return simulated_time_trace
     
     def time_trace_from_dipolar_spectrum(self, experiment, modulation_frequencies, modulation_depths):
@@ -104,8 +106,8 @@ class MonteCarloSimulator(Simulator):
         if modulation_frequencies.size != 0:
             modulation_frequency_min = np.amin(modulation_frequencies)
             modulation_frequency_max = np.amax(modulation_frequencies)
-            if modulation_frequency_min != modulation_frequency_max:
-                new_modulation_frequencies = np.arange(np.amin(modulation_frequencies), np.amax(modulation_frequencies), 0.01)
+            if (modulation_frequency_max - modulation_frequency_min > self.frequency_increment_dipolar_spectrum):
+                new_modulation_frequencies = np.arange(np.amin(modulation_frequencies), np.amax(modulation_frequencies), self.frequency_increment_dipolar_spectrum)
                 new_modulation_depths = histogram(modulation_frequencies, bins=new_modulation_frequencies, weights=modulation_depths)
             else:
                 new_modulation_frequencies = np.array([modulation_frequency_min])
@@ -116,16 +118,19 @@ class MonteCarloSimulator(Simulator):
 
     def rescale_modulation_depth(self, time_trace, current_modulation_depth, new_modulation_depth):
         ''' Rescales the modulation depth of a PDS time trace'''
-        scale_factor = new_modulation_depth / current_modulation_depth
-        if self.scale_range_modulation_depth != []:
-            if scale_factor < self.scale_range_modulation_depth[0]:
-                scale_factor = self.scale_range_modulation_depth[0]
-            elif scale_factor > self.scale_range_modulation_depth[1]:
-                scale_factor = self.scale_range_modulation_depth[1]
-        new_time_trace = np.ones(time_trace.shape) - time_trace
-        new_time_trace = scale_factor * new_time_trace
-        new_time_trace = np.ones(time_trace.shape) - new_time_trace
-        return new_time_trace, scale_factor
+        if current_modulation_depth != 0:
+            scale_factor = new_modulation_depth / current_modulation_depth
+            if self.scale_range_modulation_depth != []:
+                if scale_factor < self.scale_range_modulation_depth[0]:
+                    scale_factor = self.scale_range_modulation_depth[0]
+                elif scale_factor > self.scale_range_modulation_depth[1]:
+                    scale_factor = self.scale_range_modulation_depth[1]
+            new_time_trace = np.ones(time_trace.shape) - time_trace
+            new_time_trace = scale_factor * new_time_trace
+            new_time_trace = np.ones(time_trace.shape) - new_time_trace
+            return new_time_trace, scale_factor
+        else:
+            return time_trace, 1.0
     
     def compute_time_trace_via_monte_carlo(self, experiment, spins, variables, display_messages=False):
         ''' Computes a PDS time trace via Monte-Carlo integration '''
@@ -508,8 +513,7 @@ class MonteCarloSimulator(Simulator):
             residual_amplitude = 1.0
             for i in range(num_spins-1):
                 for j in range(i+1, num_spins):
-                    if self.integration_method == 'monte_carlo':
-                        two_spin_time_trace, two_spin_modulation_depth = self.compute_time_trace_via_monte_carlo_multispin(experiment, spins, variables, i, j)  
+                    two_spin_time_trace, two_spin_modulation_depth = self.compute_time_trace_via_monte_carlo_multispin(experiment, spins, variables, i, j)  
                     simulated_time_trace['s'] = simulated_time_trace['s'] * two_spin_time_trace['s']
                     residual_amplitude = residual_amplitude * (1.0 - two_spin_modulation_depth)
             modulation_depth = 1.0 - residual_amplitude
