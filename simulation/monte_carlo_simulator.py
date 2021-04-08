@@ -475,7 +475,7 @@ class MonteCarloSimulator(Simulator):
                 field_orientations_spin1 = field_orientations_spin1[indices_nonzero_probabilities]
                 field_orientations_spin2 = field_orientations_spin2[indices_nonzero_probabilities]
                 spin_frame_rotations_spin1 = spin_frame_rotations_spin1[indices_nonzero_probabilities]
-                spin_frame_rotations_spin1 = spin_frame_rotations_spin2[indices_nonzero_probabilities]
+                spin_frame_rotations_spin2 = spin_frame_rotations_spin2[indices_nonzero_probabilities]
                 r_orientations_spin1 = rotate_coordinate_system(r_orientations, spin_frame_rotations_spin1, self.separate_grids)
                 r_orientations_spin2 = rotate_coordinate_system(r_orientations, spin_frame_rotations_spin2, self.separate_grids)
                 quantization_axes_spin1 = spins[idx_spin1].quantization_axis(field_orientations_spin1, effective_gfactors_spin1)

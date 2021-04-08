@@ -112,7 +112,7 @@
 			3) A new class called 'Plotter' was created in plots.plotter to plot all output data of the program (previously, we had a number of
 			separate methods for this purpose).
 			4) The class Simulator in simulation.simulator was separated into a parent class Simulator and two child classes MonteCarloSimulator (done)
-			and GridSimulator (in pregress).
+			and GridSimulator (in progress).
 			5) The fitting of experimental time traces was implemented.
 			For this, a parent class Optimizer and a method 'objective_function' were created in optimization.optimizer. 
 			The child class of Optimizer, called GeneticAlgorithm, is created in optimization.ga.ga. This class implements a genetic algorithm.
