@@ -13,7 +13,14 @@ from mathematics.chi2 import chi2
 from supplement.definitions import const
 
 
-class GridSimulator():
+# added
+from GridIntegration.Lebedev import LebedevAngularIntegration
+from GridIntegration.Gauss_Legendre import Gauss_Legendre
+from GridIntegration.Mitchell import Mitchell_Integration
+from mathematics.distributions import normal_distribution, uniform_distribution, vonmises_distribution
+
+
+class GridSimulator(Simulator):
     ''' Monte-Carlo Simulation class '''
     
     def __init__(self, calculation_settings):
@@ -24,40 +31,92 @@ class GridSimulator():
         self.field_orientations = []
         self.effective_gfactors_spin1 = []
         self.detection_probabilities_spin1 = {}
-        self.pump_probabilities_spin1 = {}      
-    
-    def set_field_orientations_grid(self):
-        ''' Powder-averging grid via Lebedev angular quadrature '''
-        # in progress
+        self.pump_probabilities_spin1 = {}
 
-    def set_r_values_grid(self, r_mean, r_width, rel_prob):
+        self.grid_sizes = {"L":38, "N":11, "M":230, "K":4608, "O":11}
+        self.lebedev = LebedevAngularIntegration()
+        self.gauss_leg = Gauss_Legendre()
+        self.mitchell = Mitchell_Integration()
+
+        # this should later be pasted into read config
+        self.grid_functions = {'xi_field':lambda xi, phi: np.sin(xi)}
+        for variable in ["r", "xi", "phi", "alpha", "beta", "gamma", "J"]:
+            if calculation_settings['distributions'][variable] == "normal":
+                if variable == "r" or variable == "J":
+                    self.grid_functions[variable] = normal_distribution
+                else:
+                    self.grid_functions[variable] = vonmises_distribution
+            elif calculation_settings['distributions'][variable] == "uniform":
+                self.grid_functions[variable] = uniform_distribution
+
+    
+    def set_field_orientations_grid(self, treshold):
+        ''' Powder-averging grid via Lebedev angular quadrature '''
+        # orientations of the field vector in cartesian coordinates (points on a unit sphere)
+        field_orientations = self.lebedev.get_points(self.grid_sizes["L"])
+        field_weights = self.lebedev.get_weighted_summands((lambda xi, phi: np.sin(xi)), self.grid_sizes["L"])
+        field_orientations = field_orientations[field_weights>treshold] 
+        field_weights = field_weights[field_weights>treshold]
+        return field_orientations
+
+
+    def set_r_values_grid(self, r_mean, r_width, r_max, r_min, treshold):
         ''' r-grid via Gauss-Legendre quadrature '''
-        # in progress
+        r_values = self.gauss_leg.get_points(self.grid_sizes["N"], r_min, r_max)
+        function = lambda r: self.grid_functions['r'](r, r_mean, r_width)
+        r_values_weights = self.gauss_leg.get_weighted_summands(function, self.grid_sizes["N"], r_min, r_max)
+        r_values = r_values[r_values_weights>treshold]
+        r_values_weights = r_values_weights[r_values_weights>treshold]
+        return r_values
         
-    def set_r_orientations_grid(self, xi_mean, xi_width, phi_mean, phi_width, rel_prob):
+    def set_r_orientations_grid(self, xi_mean, xi_width, phi_mean, phi_width, treshold):
         ''' 
-        xi/phi-grid via Lebedev angular quadrature.
+        xi/phi-grid via Lebedev angular quadrature. (M)
         It is  used to compute the orientations of the distance vector in the reference frame
         '''
-        # in progress
+        # unit vector of the r_orientation in cartesian coordinates
+        r_orientations = self.lebedev.get_points(self.grid_sizes['M'])
+        function = lambda xi, phi : (np.sin(xi)*self.grid_functions['xi'](xi, xi_mean, xi_width)*self.grid_functions['phi'](phi, phi_mean, phi_width))
+        r_orientations_weights = self.lebedev.get_weighted_summands(function, self.grid_sizes['M'])
+        r_orientations = r_orientations[r_orientations_weights>treshold]
+        r_orientations_weights = r_orientations_weights[r_orientations_weights>treshold]
+        return r_orientations
         
-    def set_spin_frame_rotations_grid(self, alpha_mean, alpha_width, beta_mean, beta_width, gamma_mean, gamma_width, rel_prob):
+    def set_spin_frame_rotations_grid(self, alpha_mean, alpha_width, beta_mean, beta_width, gamma_mean, gamma_width, treshold):
         '''
         alpha/beta/gamma-grid via Mitchell grid.
         It is used to compute rotation matrices transforming the reference frame into the spin frame
         '''
-        # in progress
+        alpha_beta_gamma = self.mitchell.get_points(self.grid_sizes['K'])
+        function = (lambda alpha, beta, gamma: np.sin(beta)*self.grid_functions['alpha'](alpha, alpha_mean, alpha_width)*
+        self.grid_functions['beta'](beta, beta_mean, beta_width)* self.grid_functions['gamma'](gamma, gamma_mean, gamma_width))
+        alpha_beta_gamma_weights = self.mitchell.get_weighted_summands(function, self.grid_sizes['K'])
+        alpha_beta_gamma = alpha_beta_gamma[alpha_beta_gamma_weights>treshold]
+        alpha_beta_gamma_weights = alpha_beta_gamma_weights[alpha_beta_gamma_weights>treshold]
+        # take convention from calculation settings later
+        spin_frame_rotations = Rotation.from_euler(self.euler_angles_convention, alpha_beta_gamma)
+        return spin_frame_rotations
         
-    def set_j_values_grid(self, j_mean, j_width, rel_prob):
+    def set_j_values_grid(self, j_mean, j_width, j_min, j_max, treshold):
         ''' j-grid via Gauss-Legendre quadrature '''
-        # in progress
+        j_values = self.gauss_leg.get_points(self.grid_sizes["N"], j_min, j_max)
+        function = lambda r: self.grid_functions['r'](r, j_mean, j_width)
+        j_values_weights = self.gauss_leg.get_weighted_summands(function, self.grid_sizes["N"], j_min, j_max)
+        j_values = j_values[j_values_weights>treshold]
+        j_values_weights = j_values_weights[j_values_weights>treshold]
+        return j_values
         
-    def set_coordinates(self, r_mean, r_width, xi_mean, xi_width, phi_mean, phi_width, rel_prob):
+    def set_coordinates(self, r_mean, r_width, r_min, r_max, xi_mean, xi_width, phi_mean, phi_width, treshold):
         ''' 
         The values of r, xi, and phi from corresponding distributions P(r), P(xi), and P(phi)
         are used to compute the coordinates of the distance vector in the reference frame
         '''
-        # in progress
+        # PROBLEM: different dimensions due to different grid sizes..
+        r_values = self.set_r_values_grid(r_mean, r_width, r_max, r_min, treshold)
+        r_orientation_cartesian = self.set_r_orientations_grid(xi_mean, xi_width, phi_mean, phi_width, treshold)
+        ## scale orientation_unit_vector with it's corresponding length 
+        #coordinates = r_orientation_cartesian * r_values.reshape(r_values.size, 1)
+        #return coordinates
 
     def time_trace_from_dipolar_frequencies(self, experiment, modulation_frequencies, modulation_depths):
         ''' Converts dipolar frequencies into a PDS time trace '''
@@ -104,6 +163,19 @@ class GridSimulator():
     def compute_time_trace_via_grids(self, experiment, spins, variables, idx_spin1=0, idx_spin2=1, display_messages=False):
         ''' Computes a PDS time trace via integration grids '''
         # in progress
+        if self.field_orientations == []:
+            self.field_orientations
+        r_values = self.set_r_values_grid(variables['r_mean'][0], variables['r_width'][0], variables['r_min'][0], variables['r_max'][0], treshold=0.001 )
+        r_orientations = self.set_r_orientations_grid(variables['xi_mean'][0], variables['xi_width'][0], 
+                                                 variables['phi_mean'][0], variables['phi_width'][0], 
+                                                 treshold = 0.001)
+        spin_frame_rotations_spin2 = self.set_spin_frame_rotations_grid(variables['alpha_mean'][0], variables['alpha_width'][0], 
+                                                                   variables['beta_mean'][0], variables['beta_width'][0], 
+                                                                   variables['gamma_mean'][0], variables['gamma_width'][0], 
+                                                                   treshold = 1e-6)
+        j_values = self.set_j_values_grid(variables['j_mean'][0], variables['j_width'][0], treshold=0)
+        field_orientations_spin1 = self.field_orientations
+        #field_orientations_spin2 = rotate_coordinate_system(self.field_orientations, spin_frame_rotations_spin2, self.separate_grids)
         
     def compute_time_trace_via_grids_multispin(experiment, spins, variables, idx_spin1=0, idx_spin2=1, display_messages=False):
         ''' Computes a PDS time trace via integration grids (multi-spin version) '''
