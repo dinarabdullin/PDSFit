@@ -165,6 +165,8 @@ class MonteCarloSimulator(Simulator):
         field_orientations_spin2 = rotate_coordinate_system(self.field_orientations, spin_frame_rotations_spin2, self.separate_grids)
         # Resonance frequencies and/or effective g-values of both spins
         if self.effective_gfactors_spin1 == []:
+            #print(field_orientations_spin1)
+            #print(field_orientations_spin1.shape)
             resonance_frequencies_spin1, effective_gfactors_spin1 = spins[0].res_freq(field_orientations_spin1, experiment.magnetic_field)
         else:
             effective_gfactors_spin1 = self.effective_gfactors_spin1

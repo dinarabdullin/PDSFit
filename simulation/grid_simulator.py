@@ -1,3 +1,4 @@
+from GridIntegration.GridIntegration import GridIntegration
 import sys
 import time
 import datetime
@@ -14,6 +15,7 @@ from supplement.definitions import const
 
 
 # added
+
 from GridIntegration.Lebedev import LebedevAngularIntegration
 from GridIntegration.Gauss_Legendre import Gauss_Legendre
 from GridIntegration.Mitchell import Mitchell_Integration
@@ -33,19 +35,18 @@ class GridSimulator(Simulator):
         self.detection_probabilities_spin1 = {}
         self.pump_probabilities_spin1 = {}
 
-        self.grid_sizes = {"L":38, "N":11, "M":230, "K":4608, "O":11}
+        self.grid_sizes = {"L":38, "N":20, "M":230, "K":4608, "O":20}
         self.lebedev = LebedevAngularIntegration()
         self.gauss_leg = Gauss_Legendre()
         self.mitchell = Mitchell_Integration()
 
         # this should later be pasted into read config
         self.grid_functions = {'xi_field':lambda xi, phi: np.sin(xi)}
-        for variable in ["r", "xi", "phi", "alpha", "beta", "gamma", "J"]:
+        for variable in ["r", "xi", "phi", "alpha", "beta", "gamma", "j"]:
             if calculation_settings['distributions'][variable] == "normal":
-                if variable == "r" or variable == "J":
-                    self.grid_functions[variable] = normal_distribution
-                else:
-                    self.grid_functions[variable] = vonmises_distribution
+                self.grid_functions[variable] = normal_distribution
+            elif  calculation_settings['distributions'][variable] == "vonmises":
+                 self.grid_functions[variable] = vonmises_distribution
             elif calculation_settings['distributions'][variable] == "uniform":
                 self.grid_functions[variable] = uniform_distribution
 
@@ -60,10 +61,10 @@ class GridSimulator(Simulator):
         return field_orientations
 
 
-    def set_r_values_grid(self, r_mean, r_width, r_max, r_min, treshold):
+    def set_r_values_grid(self, r_mean, r_width, r_min, r_max, treshold):
         ''' r-grid via Gauss-Legendre quadrature '''
         r_values = self.gauss_leg.get_points(self.grid_sizes["N"], r_min, r_max)
-        function = lambda r: self.grid_functions['r'](r, r_mean, r_width)
+        function = lambda r: self.grid_functions['r'](r, {'mean':r_mean, 'width':r_width})
         r_values_weights = self.gauss_leg.get_weighted_summands(function, self.grid_sizes["N"], r_min, r_max)
         r_values = r_values[r_values_weights>treshold]
         r_values_weights = r_values_weights[r_values_weights>treshold]
@@ -76,7 +77,8 @@ class GridSimulator(Simulator):
         '''
         # unit vector of the r_orientation in cartesian coordinates
         r_orientations = self.lebedev.get_points(self.grid_sizes['M'])
-        function = lambda xi, phi : (np.sin(xi)*self.grid_functions['xi'](xi, xi_mean, xi_width)*self.grid_functions['phi'](phi, phi_mean, phi_width))
+        function = lambda xi, phi : (np.sin(xi)*self.grid_functions['xi'](xi,{'mean':xi_mean, 'width':xi_width})
+                                    *self.grid_functions['phi'](phi, {'mean':phi_mean,'width':phi_width}))
         r_orientations_weights = self.lebedev.get_weighted_summands(function, self.grid_sizes['M'])
         r_orientations = r_orientations[r_orientations_weights>treshold]
         r_orientations_weights = r_orientations_weights[r_orientations_weights>treshold]
@@ -88,8 +90,9 @@ class GridSimulator(Simulator):
         It is used to compute rotation matrices transforming the reference frame into the spin frame
         '''
         alpha_beta_gamma = self.mitchell.get_points(self.grid_sizes['K'])
-        function = (lambda alpha, beta, gamma: np.sin(beta)*self.grid_functions['alpha'](alpha, alpha_mean, alpha_width)*
-        self.grid_functions['beta'](beta, beta_mean, beta_width)* self.grid_functions['gamma'](gamma, gamma_mean, gamma_width))
+        function = (lambda alpha, beta, gamma: np.sin(beta)*self.grid_functions['alpha'](alpha, {'mean':alpha_mean, 'width':alpha_width})*
+                                            self.grid_functions['beta'](beta, {'mean':beta_mean,'width': beta_width})* 
+                                            self.grid_functions['gamma'](gamma, {'mean':gamma_mean, 'width':gamma_width}))
         alpha_beta_gamma_weights = self.mitchell.get_weighted_summands(function, self.grid_sizes['K'])
         alpha_beta_gamma = alpha_beta_gamma[alpha_beta_gamma_weights>treshold]
         alpha_beta_gamma_weights = alpha_beta_gamma_weights[alpha_beta_gamma_weights>treshold]
@@ -100,7 +103,7 @@ class GridSimulator(Simulator):
     def set_j_values_grid(self, j_mean, j_width, j_min, j_max, treshold):
         ''' j-grid via Gauss-Legendre quadrature '''
         j_values = self.gauss_leg.get_points(self.grid_sizes["N"], j_min, j_max)
-        function = lambda r: self.grid_functions['r'](r, j_mean, j_width)
+        function = lambda r: self.grid_functions['r'](r, {'mean':j_mean, 'width':j_width})
         j_values_weights = self.gauss_leg.get_weighted_summands(function, self.grid_sizes["N"], j_min, j_max)
         j_values = j_values[j_values_weights>treshold]
         j_values_weights = j_values_weights[j_values_weights>treshold]
@@ -162,21 +165,33 @@ class GridSimulator(Simulator):
  
     def compute_time_trace_via_grids(self, experiment, spins, variables, idx_spin1=0, idx_spin2=1, display_messages=False):
         ''' Computes a PDS time trace via integration grids '''
+        # this information is not yet in a simulation config file
+        variables['r_min'] = [variables['r_mean'][0][0]-4*variables['r_width'][0][0]]
+        variables['r_max'] = [variables['r_mean'][0][0]+4*variables['r_width'][0][0]]
+        variables['j_min'] = [0]
+        variables['j_max'] = [0]
         # in progress
         if self.field_orientations == []:
-            self.field_orientations
-        r_values = self.set_r_values_grid(variables['r_mean'][0], variables['r_width'][0], variables['r_min'][0], variables['r_max'][0], treshold=0.001 )
+            self.field_orientations = self.set_field_orientations_grid(treshold = 0.1)
+        r_values = self.set_r_values_grid(variables['r_mean'][0], variables['r_width'][0], variables['r_min'][0], variables['r_max'][0], treshold=1e-4 )
         r_orientations = self.set_r_orientations_grid(variables['xi_mean'][0], variables['xi_width'][0], 
                                                  variables['phi_mean'][0], variables['phi_width'][0], 
-                                                 treshold = 0.001)
+                                                 treshold = 1e-7)
         spin_frame_rotations_spin2 = self.set_spin_frame_rotations_grid(variables['alpha_mean'][0], variables['alpha_width'][0], 
                                                                    variables['beta_mean'][0], variables['beta_width'][0], 
                                                                    variables['gamma_mean'][0], variables['gamma_width'][0], 
                                                                    treshold = 1e-6)
-        j_values = self.set_j_values_grid(variables['j_mean'][0], variables['j_width'][0], treshold=0)
+        j_values = self.set_j_values_grid(variables['j_mean'][0], variables['j_width'][0], variables['j_min'][0], variables['j_max'][0], treshold=0)
         field_orientations_spin1 = self.field_orientations
-        #field_orientations_spin2 = rotate_coordinate_system(self.field_orientations, spin_frame_rotations_spin2, self.separate_grids)
-        
+        field_orientations_spin2 = rotate_coordinate_system(self.field_orientations, spin_frame_rotations_spin2, self.separate_grids)
+        if self.effective_gfactors_spin1 == []:
+            resonance_frequencies_spin1, effective_gfactors_spin1 = spins[0].res_freq(field_orientations_spin1, experiment.magnetic_field)
+        else:
+            effective_gfactors_spin1 = self.effective_gfactors_spin1
+        resonance_frequencies_spin2, effective_gfactors_spin2 = spins[1].res_freq(field_orientations_spin2, experiment.magnetic_field)
+        exit()
+
+
     def compute_time_trace_via_grids_multispin(experiment, spins, variables, idx_spin1=0, idx_spin2=1, display_messages=False):
         ''' Computes a PDS time trace via integration grids (multi-spin version) '''
         # in progress

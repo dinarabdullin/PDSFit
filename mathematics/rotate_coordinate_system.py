@@ -6,7 +6,7 @@ def rotate_coordinate_system(vectors, rotation_matrices, separate_dimensions):
     if not separate_dimensions:
         return rotation_matrices.apply(vectors)
     else:
-        N = vectors.size
+        N = vectors.shape[0]
         M = rotation_matrices.__len__()
         # Store rotated vectors in an array with a shape (N*M)x3
         for i in range(N):

@@ -120,5 +120,5 @@
 			6) The error analysis for the optimized fitting parameters was implemented.
 			For this, a new class ErrorAnalyzer was created in error_analysis.error_analyzer.
 			7) A method 'input.read_config' was updated in accordance to 1)-6).
-			
- 			
+
+26.04.2021   The GridIntegration module was added. It is used in simulation/grid_simulator.py
