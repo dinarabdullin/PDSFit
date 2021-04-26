@@ -1,0 +1,7 @@
+*pycache*
+*scratch*
+*Sratch*
+__pycache__/
+__pycache__/*
+*__pycache__/
+
