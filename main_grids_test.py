@@ -28,10 +28,12 @@ if __name__ == '__main__':
         # Simulate the EPR spectrum of the spin system
         #epr_spectra = simulator.epr_spectra(spins, experiments)
         
+        #plotter.plot_epr_spectrum(epr_spectra[0], "")
+
         
         
         # Compute the bandwidths of the detection and pump pulses
-        bandwidths = simulator.bandwidths(experiments)
+        #bandwidths = simulator.bandwidths(experiments)
         
         # Simulate the PDS time traces
         simulated_time_traces, modulation_depth_scale_factors = simulator.compute_time_traces(experiments, spins, simulation_parameters)

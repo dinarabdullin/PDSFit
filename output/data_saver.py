@@ -60,7 +60,7 @@ class DataSaver:
 
     def save_simulation_output(self, epr_spectra, bandwidths, simulated_time_traces, experiments):
         ''' Saves the simulation output '''
-        # self.save_epr_spectrum(epr_spectra[0], experiments[0].name)
+        self.save_epr_spectrum(epr_spectra[0], experiments[0].name)
         self.save_bandwidths(bandwidths, experiments)
         self.save_simulated_time_traces(simulated_time_traces, experiments)
     

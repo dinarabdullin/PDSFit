@@ -15,4 +15,5 @@ def plot_epr_spectrum(spectrum):
     plt.tight_layout()
     plt.draw()
     plt.pause(0.000001) # needed for displaying the plot
+    plt.show()
     return fig

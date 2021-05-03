@@ -35,12 +35,11 @@ class GridSimulator(Simulator):
         self.detection_probabilities_spin1 = {}
         self.pump_probabilities_spin1 = {}
 
-        self.grid_sizes = {"L":38, "N":20, "M":230, "K":4608, "O":20}
         self.lebedev = LebedevAngularIntegration()
         self.gauss_leg = Gauss_Legendre()
         self.mitchell = Mitchell_Integration()
 
-        # this should later be pasted into read config
+        # this should later be copied into read config
         self.grid_functions = {'xi_field':lambda xi, phi: np.sin(xi)}
         for variable in ["r", "xi", "phi", "alpha", "beta", "gamma", "j"]:
             if calculation_settings['distributions'][variable] == "normal":
@@ -51,24 +50,30 @@ class GridSimulator(Simulator):
                 self.grid_functions[variable] = uniform_distribution
 
     
-    def set_field_orientations_grid(self, treshold):
+    def set_field_orientations_grid(self, treshold, for_spectrum = False):
         ''' Powder-averging grid via Lebedev angular quadrature '''
         # orientations of the field vector in cartesian coordinates (points on a unit sphere)
-        field_orientations = self.lebedev.get_points(self.grid_sizes["L"])
-        field_weights = self.lebedev.get_weighted_summands((lambda xi, phi: np.sin(xi)), self.grid_sizes["L"])
+        if for_spectrum:
+            # would have to be edited in read_config
+            #grid_size = self.grid_size["powder_averaging_for_spectrum"]
+            grid_size = 5810
+        else: 
+            grid_size = self.grid_size["powder_averaging"]
+        field_orientations = self.lebedev.get_points(grid_size)
+        field_weights = self.lebedev.get_weighted_summands((lambda xi, phi: np.sin(xi)), grid_size)
         field_orientations = field_orientations[field_weights>treshold] 
         field_weights = field_weights[field_weights>treshold]
-        return field_orientations
+        return field_orientations, field_weights
 
 
     def set_r_values_grid(self, r_mean, r_width, r_min, r_max, treshold):
         ''' r-grid via Gauss-Legendre quadrature '''
-        r_values = self.gauss_leg.get_points(self.grid_sizes["N"], r_min, r_max)
+        r_values = self.gauss_leg.get_points(self.grid_size["distances"], r_min, r_max)
         function = lambda r: self.grid_functions['r'](r, {'mean':r_mean, 'width':r_width})
-        r_values_weights = self.gauss_leg.get_weighted_summands(function, self.grid_sizes["N"], r_min, r_max)
+        r_values_weights = self.gauss_leg.get_weighted_summands(function, self.grid_size["distances"], r_min, r_max)
         r_values = r_values[r_values_weights>treshold]
         r_values_weights = r_values_weights[r_values_weights>treshold]
-        return r_values
+        return r_values, r_values_weights
         
     def set_r_orientations_grid(self, xi_mean, xi_width, phi_mean, phi_width, treshold):
         ''' 
@@ -76,38 +81,40 @@ class GridSimulator(Simulator):
         It is  used to compute the orientations of the distance vector in the reference frame
         '''
         # unit vector of the r_orientation in cartesian coordinates
-        r_orientations = self.lebedev.get_points(self.grid_sizes['M'])
+        r_orientations = self.lebedev.get_points(self.grid_size['spherical_angles'])
         function = lambda xi, phi : (np.sin(xi)*self.grid_functions['xi'](xi,{'mean':xi_mean, 'width':xi_width})
                                     *self.grid_functions['phi'](phi, {'mean':phi_mean,'width':phi_width}))
-        r_orientations_weights = self.lebedev.get_weighted_summands(function, self.grid_sizes['M'])
+        r_orientations_weights = self.lebedev.get_weighted_summands(function, self.grid_size['spherical_angles'])
         r_orientations = r_orientations[r_orientations_weights>treshold]
         r_orientations_weights = r_orientations_weights[r_orientations_weights>treshold]
-        return r_orientations
+        return r_orientations, r_orientations_weights
         
     def set_spin_frame_rotations_grid(self, alpha_mean, alpha_width, beta_mean, beta_width, gamma_mean, gamma_width, treshold):
         '''
         alpha/beta/gamma-grid via Mitchell grid.
         It is used to compute rotation matrices transforming the reference frame into the spin frame
         '''
-        alpha_beta_gamma = self.mitchell.get_points(self.grid_sizes['K'])
+        alpha_beta_gamma = self.mitchell.get_points(self.grid_size['rotations'])
         function = (lambda alpha, beta, gamma: np.sin(beta)*self.grid_functions['alpha'](alpha, {'mean':alpha_mean, 'width':alpha_width})*
                                             self.grid_functions['beta'](beta, {'mean':beta_mean,'width': beta_width})* 
                                             self.grid_functions['gamma'](gamma, {'mean':gamma_mean, 'width':gamma_width}))
-        alpha_beta_gamma_weights = self.mitchell.get_weighted_summands(function, self.grid_sizes['K'])
+        alpha_beta_gamma_weights = self.mitchell.get_weighted_summands(function, self.grid_size['rotations'])
         alpha_beta_gamma = alpha_beta_gamma[alpha_beta_gamma_weights>treshold]
         alpha_beta_gamma_weights = alpha_beta_gamma_weights[alpha_beta_gamma_weights>treshold]
         # take convention from calculation settings later
         spin_frame_rotations = Rotation.from_euler(self.euler_angles_convention, alpha_beta_gamma)
-        return spin_frame_rotations
+        return spin_frame_rotations, alpha_beta_gamma_weights
         
     def set_j_values_grid(self, j_mean, j_width, j_min, j_max, treshold):
         ''' j-grid via Gauss-Legendre quadrature '''
-        j_values = self.gauss_leg.get_points(self.grid_sizes["N"], j_min, j_max)
+        #this needs to be in read config
+        self.grid_size["j"] = 20
+        j_values = self.gauss_leg.get_points(self.grid_size["j"], j_min, j_max)
         function = lambda r: self.grid_functions['r'](r, {'mean':j_mean, 'width':j_width})
-        j_values_weights = self.gauss_leg.get_weighted_summands(function, self.grid_sizes["N"], j_min, j_max)
+        j_values_weights = self.gauss_leg.get_weighted_summands(function, self.grid_size["j"], j_min, j_max)
         j_values = j_values[j_values_weights>treshold]
         j_values_weights = j_values_weights[j_values_weights>treshold]
-        return j_values
+        return j_values, j_values_weights
         
     def set_coordinates(self, r_mean, r_width, r_min, r_max, xi_mean, xi_width, phi_mean, phi_width, treshold):
         ''' 
@@ -165,30 +172,85 @@ class GridSimulator(Simulator):
  
     def compute_time_trace_via_grids(self, experiment, spins, variables, idx_spin1=0, idx_spin2=1, display_messages=False):
         ''' Computes a PDS time trace via integration grids '''
-        # this information is not yet in a simulation config file
+        # this code would fit better into read config
         variables['r_min'] = [variables['r_mean'][0][0]-4*variables['r_width'][0][0]]
         variables['r_max'] = [variables['r_mean'][0][0]+4*variables['r_width'][0][0]]
         variables['j_min'] = [0]
         variables['j_max'] = [0]
         # in progress
         if self.field_orientations == []:
-            self.field_orientations = self.set_field_orientations_grid(treshold = 0.1)
-        r_values = self.set_r_values_grid(variables['r_mean'][0], variables['r_width'][0], variables['r_min'][0], variables['r_max'][0], treshold=1e-4 )
-        r_orientations = self.set_r_orientations_grid(variables['xi_mean'][0], variables['xi_width'][0], 
+            self.field_orientations, self.field_orientations_weights = self.set_field_orientations_grid(treshold = 0.1)
+        L = self.field_orientations.shape[0]
+        r_values, r_values_weights = self.set_r_values_grid(variables['r_mean'][0], variables['r_width'][0], variables['r_min'][0], variables['r_max'][0], treshold=1e-4 )
+        r_orientations, r_orientations_weights = self.set_r_orientations_grid(variables['xi_mean'][0], variables['xi_width'][0], 
                                                  variables['phi_mean'][0], variables['phi_width'][0], 
                                                  treshold = 1e-7)
-        spin_frame_rotations_spin2 = self.set_spin_frame_rotations_grid(variables['alpha_mean'][0], variables['alpha_width'][0], 
+        M = r_orientations.shape[0]
+        # K' rotation matrices                                         
+        spin_frame_rotations_spin2, spin_frame_rotations_spin2_weights  = self.set_spin_frame_rotations_grid(variables['alpha_mean'][0], variables['alpha_width'][0], 
                                                                    variables['beta_mean'][0], variables['beta_width'][0], 
                                                                    variables['gamma_mean'][0], variables['gamma_width'][0], 
                                                                    treshold = 1e-6)
-        j_values = self.set_j_values_grid(variables['j_mean'][0], variables['j_width'][0], variables['j_min'][0], variables['j_max'][0], treshold=0)
+        K = spin_frame_rotations_spin2.__len__()
+        j_values, j_values_weights = self.set_j_values_grid(variables['j_mean'][0], variables['j_width'][0], variables['j_min'][0], variables['j_max'][0], treshold=0)
+        # shape: (L',3)
         field_orientations_spin1 = self.field_orientations
+        # shape : ((L'*K'), 3)
         field_orientations_spin2 = rotate_coordinate_system(self.field_orientations, spin_frame_rotations_spin2, self.separate_grids)
         if self.effective_gfactors_spin1 == []:
             resonance_frequencies_spin1, effective_gfactors_spin1 = spins[0].res_freq(field_orientations_spin1, experiment.magnetic_field)
         else:
             effective_gfactors_spin1 = self.effective_gfactors_spin1
+        # resonance_frequencies_spin2, effective_gfactors_spin2 shapes: (L',3) , (L',3)
         resonance_frequencies_spin2, effective_gfactors_spin2 = spins[1].res_freq(field_orientations_spin2, experiment.magnetic_field)
+        # detection_probabilities_spin1 shape : (L',)
+        if self.detection_probabilities_spin1 == {}:
+            detection_probabilities_spin1 = experiment.detection_probability(resonance_frequencies_spin1, spins[0].int_res_freq)
+        else:
+            detection_probabilities_spin1 = self.detection_probabilities_spin1[experiment.name]
+        detection_probabilities_spin1_LK = np.repeat(detection_probabilities_spin1, K)
+        # detection_probabilities_spin2_LK shape: (L'*K',)
+        detection_probabilities_spin2_LK = experiment.detection_probability(resonance_frequencies_spin2, spins[1].int_res_freq)
+        # everything works up to here, now the difficulties start
+        if experiment.technique == 'peldor': 
+            if self.pump_probabilities_spin1 == {}:
+                pump1_LK = np.repeat(experiment.pump_probability(resonance_frequencies_spin1, spins[0].int_res_freq), K)
+                pump_probabilities_spin1_LK = np.where(detection_probabilities_spin2_LK > self.excitation_threshold, pump1_LK, 0.0)
+                # pump_probabilities_spin1_LK now has shape (L'*K',)
+            else:
+                pump_probabilities_spin1_LK = np.where(detection_probabilities_spin2_LK > self.excitation_threshold,
+                                                    self.pump_probabilities_spin1[experiment.name], 0.0)
+            
+            
+            pump_probabilities_spin2_LK = np.where( detection_probabilities_spin1_LK> self.excitation_threshold,
+                                                experiment.pump_probability(resonance_frequencies_spin2, spins[1].int_res_freq), 0.0) 
+        # TODO: Make ridme config file for grids to see how this needs to be adjusted  
+        #elif experiment.technique == 'ridme':
+        #    if self.pump_probabilities_spin1 == {}:
+        #        pump_probabilities_spin1 = np.where(detection_probabilities_spin2 > self.excitation_threshold,
+        #                                            experiment.pump_probability(spins[0].T1, spins[0].g_anisotropy_in_dipolar_coupling, effective_gfactors_spin1), 0.0)
+        #    else:
+        #        pump_probabilities_spin1 = np.where(detection_probabilities_spin2 > self.excitation_threshold,
+        #                                            self.pump_probabilities_spin1[experiment.name], 0.0)
+        #    pump_probabilities_spin2 = np.where(detection_probabilities_spin1 > self.excitation_threshold,                                    
+        #                                        experiment.pump_probability(spins[1].T1, spins[1].g_anisotropy_in_dipolar_coupling, effective_gfactors_spin2), 0.0)
+
+        indices_nonzero_probabilities_spin1 = np.where(pump_probabilities_spin1_LK > self.excitation_threshold)[0]
+        indices_nonzero_probabilities_spin2 = np.where(pump_probabilities_spin2_LK > self.excitation_threshold)[0]
+        indices_nonzero_probabilities = np.unique(np.concatenate((indices_nonzero_probabilities_spin1, indices_nonzero_probabilities_spin2), axis=None))
+        indices_nonzero_probabilities = np.sort(indices_nonzero_probabilities, axis=None)
+        detection_probabilities_spin1_LK = detection_probabilities_spin1_LK[indices_nonzero_probabilities]
+        detection_probabilities_spin2_LK = detection_probabilities_spin2_LK[indices_nonzero_probabilities]
+        pump_probabilities_spin1_LK = pump_probabilities_spin1_LK[indices_nonzero_probabilities]
+        pump_probabilities_spin2_LK = pump_probabilities_spin2_LK[indices_nonzero_probabilities]
+        
+        amplitudes_LK = detection_probabilities_spin1_LK + detection_probabilities_spin2_LK
+        modulation_amplitudes_LK = detection_probabilities_spin1_LK * pump_probabilities_spin2_LK + \
+                                detection_probabilities_spin2_LK * pump_probabilities_spin1_LK
+        modulation_depths_LK = modulation_amplitudes_LK / np.sum(amplitudes_LK)
+        total_modulation_depth = np.sum(modulation_depths_LK)  #equals 0.23
+        angular_term = 1.0 - 3.0 * np.sum(np.repeat(r_orientations, L, axis = 0) * np.repeat(self.field_orientations, M, axis=0), axis=1)**2
+        
         exit()
 
 
@@ -248,6 +310,34 @@ class GridSimulator(Simulator):
     def epr_spectrum(self, spins, field_value):
         ''' Computes an EPR spectrum of a spin system at a single magnetic field '''
         # in progress
+        ''' Computes an EPR spectrum of a spin system at a single magnetic field '''
+        # Random orientations of the static magnetic field
+        self.field_orientations_spc, self.field_orientations_weights_spc = self.set_field_orientations_grid(0, for_spectrum = True)  
+        # Resonance frequencies and their probabilities
+        all_frequencies = []
+        all_probabilities = []
+        for spin in spins:
+            # Resonance frequencies
+            resonance_frequencies, effective_gvalues = spin.res_freq(self.field_orientations_spc, field_value)
+            num_field_orientations = self.field_orientations_spc.shape[0]
+            #weights = np.tile(spin.int_res_freq, (num_field_orientations,1))
+            weights = spin.int_res_freq * self.field_orientations_weights_spc.reshape(num_field_orientations, 1)
+            # Frequency ranges
+            min_resonance_frequency = np.amin(resonance_frequencies)
+            max_resonance_frequency = np.amax(resonance_frequencies)
+            # Spectrum
+            frequencies = np.arange(min_resonance_frequency, max_resonance_frequency+self.frequency_increment_epr_spectrum, self.frequency_increment_epr_spectrum)
+            probabilities = histogram(resonance_frequencies, bins=frequencies, weights=weights)
+            all_frequencies.extend(frequencies)
+            all_probabilities.extend(probabilities)
+        all_frequencies = np.array(all_frequencies)
+        all_probabilities = np.array(all_probabilities)
+        min_frequency = np.amin(all_frequencies) - 0.100
+        max_frequency = np.amax(all_frequencies) + 0.100
+        spectrum = {}
+        spectrum['f'] = np.arange(min_frequency, max_frequency+self.frequency_increment_epr_spectrum, self.frequency_increment_epr_spectrum)
+        spectrum['p'] = histogram(all_frequencies, bins=spectrum['f'], weights=all_probabilities)       
+        return spectrum
         
     def epr_spectra(self, spins, experiments):
         ''' Computes an EPR spectrum of a spin system at multiple magnetic fields '''

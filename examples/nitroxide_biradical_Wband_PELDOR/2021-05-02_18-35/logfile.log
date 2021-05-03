@@ -1,0 +1,22 @@
+
+Computing the time trace of the experiment 'offset XX'...
+0.28328146981654784
+Scale factor of the modulation depth: 0.997          
+Chi2 (noise std = 1): 0.00958        
+
+Computing the time trace of the experiment 'offset YY'...
+0.22914084092435957
+Scale factor of the modulation depth: 0.935          
+Chi2 (noise std = 1): 0.00414        
+
+Computing the time trace of the experiment 'offset ZZ'...
+0.21194281094461523
+Scale factor of the modulation depth: 0.895          
+Chi2 (noise std = 1): 0.00849        
+
+Computing the time trace of the experiment 'offset YX'...
+0.16228082601573887
+Scale factor of the modulation depth: 1.41           
+Chi2 (noise std = 1): 0.00138        
+
+Computing the time trace of the experiment 'offset YZ'...

@@ -1,0 +1,32 @@
+
+Pre-compute the detection and pump probabilities for spin 1...
+
+Computing the EPR spectrum of the spin system in the frequency domain...
+
+Computing the bandwidths of detection and pump pulses...
+
+Computing the time trace of the experiment 'offset XX'...
+Scale factor of the modulation depth: 0.997          
+Chi2 (noise std = 1): 0.00956        
+
+Computing the time trace of the experiment 'offset YY'...
+Scale factor of the modulation depth: 0.934          
+Chi2 (noise std = 1): 0.00414        
+
+Computing the time trace of the experiment 'offset ZZ'...
+Scale factor of the modulation depth: 0.895          
+Chi2 (noise std = 1): 0.00853        
+
+Computing the time trace of the experiment 'offset YX'...
+Scale factor of the modulation depth: 1.41           
+Chi2 (noise std = 1): 0.00136        
+
+Computing the time trace of the experiment 'offset YZ'...
+Scale factor of the modulation depth: 0.897          
+Chi2 (noise std = 1): 0.00629        
+
+Computing the time trace of the experiment 'offset ZX'...
+Scale factor of the modulation depth: 1.52           
+Chi2 (noise std = 1): 0.00131        
+
+DONE!
