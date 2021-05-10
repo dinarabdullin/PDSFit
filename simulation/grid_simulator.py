@@ -1,3 +1,4 @@
+from numpy.lib.function_base import digitize
 from GridIntegration.GridIntegration import GridIntegration
 import sys
 import time
@@ -182,6 +183,7 @@ class GridSimulator(Simulator):
             self.field_orientations, self.field_orientations_weights = self.set_field_orientations_grid(treshold = 0.1)
         L = self.field_orientations.shape[0]
         r_values, r_values_weights = self.set_r_values_grid(variables['r_mean'][0], variables['r_width'][0], variables['r_min'][0], variables['r_max'][0], treshold=1e-4 )
+        N = r_values.shape[0]
         r_orientations, r_orientations_weights = self.set_r_orientations_grid(variables['xi_mean'][0], variables['xi_width'][0], 
                                                  variables['phi_mean'][0], variables['phi_width'][0], 
                                                  treshold = 1e-7)
@@ -193,15 +195,16 @@ class GridSimulator(Simulator):
                                                                    treshold = 1e-6)
         K = spin_frame_rotations_spin2.__len__()
         j_values, j_values_weights = self.set_j_values_grid(variables['j_mean'][0], variables['j_width'][0], variables['j_min'][0], variables['j_max'][0], treshold=0)
-        # shape: (L',3)
+        O = j_values.shape[0]
+        #  field_orientations_spin1 shape: (L',3)
         field_orientations_spin1 = self.field_orientations
-        # shape : ((L'*K'), 3)
+        # field_orientations_spin2 shape : ((L'*K'), 3)
         field_orientations_spin2 = rotate_coordinate_system(self.field_orientations, spin_frame_rotations_spin2, self.separate_grids)
         if self.effective_gfactors_spin1 == []:
             resonance_frequencies_spin1, effective_gfactors_spin1 = spins[0].res_freq(field_orientations_spin1, experiment.magnetic_field)
         else:
             effective_gfactors_spin1 = self.effective_gfactors_spin1
-        # resonance_frequencies_spin2, effective_gfactors_spin2 shapes: (L',3) , (L',3)
+        # resonance_frequencies_spin2, effective_gfactors_spin2 shapes: (L'*K',3) , (L'*K',)
         resonance_frequencies_spin2, effective_gfactors_spin2 = spins[1].res_freq(field_orientations_spin2, experiment.magnetic_field)
         # detection_probabilities_spin1 shape : (L',)
         if self.detection_probabilities_spin1 == {}:
@@ -211,7 +214,6 @@ class GridSimulator(Simulator):
         detection_probabilities_spin1_LK = np.repeat(detection_probabilities_spin1, K)
         # detection_probabilities_spin2_LK shape: (L'*K',)
         detection_probabilities_spin2_LK = experiment.detection_probability(resonance_frequencies_spin2, spins[1].int_res_freq)
-        # everything works up to here, now the difficulties start
         if experiment.technique == 'peldor': 
             if self.pump_probabilities_spin1 == {}:
                 pump1_LK = np.repeat(experiment.pump_probability(resonance_frequencies_spin1, spins[0].int_res_freq), K)
@@ -224,34 +226,42 @@ class GridSimulator(Simulator):
             
             pump_probabilities_spin2_LK = np.where( detection_probabilities_spin1_LK> self.excitation_threshold,
                                                 experiment.pump_probability(resonance_frequencies_spin2, spins[1].int_res_freq), 0.0) 
-        # TODO: Make ridme config file for grids to see how this needs to be adjusted  
-        #elif experiment.technique == 'ridme':
-        #    if self.pump_probabilities_spin1 == {}:
-        #        pump_probabilities_spin1 = np.where(detection_probabilities_spin2 > self.excitation_threshold,
-        #                                            experiment.pump_probability(spins[0].T1, spins[0].g_anisotropy_in_dipolar_coupling, effective_gfactors_spin1), 0.0)
-        #    else:
-        #        pump_probabilities_spin1 = np.where(detection_probabilities_spin2 > self.excitation_threshold,
-        #                                            self.pump_probabilities_spin1[experiment.name], 0.0)
-        #    pump_probabilities_spin2 = np.where(detection_probabilities_spin1 > self.excitation_threshold,                                    
-        #                                        experiment.pump_probability(spins[1].T1, spins[1].g_anisotropy_in_dipolar_coupling, effective_gfactors_spin2), 0.0)
-
-        indices_nonzero_probabilities_spin1 = np.where(pump_probabilities_spin1_LK > self.excitation_threshold)[0]
+        print(detection_probabilities_spin1_LK.shape)
+        # difficult to implement this. When removing zero probabilities, how can one say which dimension was shrinked and by how much?
+        # but removing this code block makes previous np.where code obsolete..
+        """ indices_nonzero_probabilities_spin1 = np.where(pump_probabilities_spin1_LK > self.excitation_threshold)[0]
         indices_nonzero_probabilities_spin2 = np.where(pump_probabilities_spin2_LK > self.excitation_threshold)[0]
         indices_nonzero_probabilities = np.unique(np.concatenate((indices_nonzero_probabilities_spin1, indices_nonzero_probabilities_spin2), axis=None))
         indices_nonzero_probabilities = np.sort(indices_nonzero_probabilities, axis=None)
         detection_probabilities_spin1_LK = detection_probabilities_spin1_LK[indices_nonzero_probabilities]
         detection_probabilities_spin2_LK = detection_probabilities_spin2_LK[indices_nonzero_probabilities]
         pump_probabilities_spin1_LK = pump_probabilities_spin1_LK[indices_nonzero_probabilities]
-        pump_probabilities_spin2_LK = pump_probabilities_spin2_LK[indices_nonzero_probabilities]
+        pump_probabilities_spin2_LK = pump_probabilities_spin2_LK[indices_nonzero_probabilities] """
         
         amplitudes_LK = detection_probabilities_spin1_LK + detection_probabilities_spin2_LK
         modulation_amplitudes_LK = detection_probabilities_spin1_LK * pump_probabilities_spin2_LK + \
                                 detection_probabilities_spin2_LK * pump_probabilities_spin1_LK
         modulation_depths_LK = modulation_amplitudes_LK / np.sum(amplitudes_LK)
         total_modulation_depth = np.sum(modulation_depths_LK)  #equals 0.23
-        angular_term = 1.0 - 3.0 * np.sum(np.repeat(r_orientations, L, axis = 0) * np.repeat(self.field_orientations, M, axis=0), axis=1)**2
+        angular_term_LM = 1.0 - 3.0 * np.sum(np.repeat(r_orientations, L, axis = 0) * np.repeat(self.field_orientations, M, axis=0), axis=1)**2
+        angular_term_LM = angular_term_LM.reshape(L, M)
+        # angular_term_LM now has shape (L,M)
+        # now calculation of dipolar_freqencies:
+        # first multiply effgspin1 with effgspin2 to create array with shape (L,K)
+        effective_g_product = effective_gfactors_spin1.reshape(L,1)* effective_gfactors_spin2.reshape(L,K)
+        # extend effective_g_product (L,K) and angular_term (L,M) to (L,M,K) arrays to enable their multiplication
+        effective_g_product = effective_g_product.repeat(M, axis=0).reshape(L,M,K)
+        angular_term_tmp = angular_term_LM.repeat(K).reshape(L,M,K)
+        # multiply eff_gp_roduct and angular_term_tmp, extend result (L,M,K) to (L,M,K,N), then divide by r_values (N,)
+        dipolar_frequencies =  const['Fdd']*(angular_term_tmp*effective_g_product).repeat(N).reshape(L,M,K,N) * 1/r_values**3
+        # dipolar_frequencies has shape (L,M,K,N)
+        # neglect j_values for now (mean and width are 0 in the config file anyway)
+        modulation_frequencies = dipolar_frequencies
+        modulation_depths_LMKN = modulation_depths_LK.reshape(L,K).repeat(M, axis=0).repeat(N).reshape(L,M,K,N)
+        simulated_time_trace = self.time_trace_from_dipolar_spectrum(experiment, modulation_frequencies, modulation_depths_LMKN)
         
-        exit()
+        
+        return simulated_time_trace, total_modulation_depth
 
 
     def compute_time_trace_via_grids_multispin(experiment, spins, variables, idx_spin1=0, idx_spin2=1, display_messages=False):

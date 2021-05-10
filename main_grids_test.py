@@ -37,6 +37,6 @@ if __name__ == '__main__':
         
         # Simulate the PDS time traces
         simulated_time_traces, modulation_depth_scale_factors = simulator.compute_time_traces(experiments, spins, simulation_parameters)
-        
+        plotter.plot_simulated_time_traces(simulated_time_traces, experiments)
         
     
