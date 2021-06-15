@@ -3,7 +3,7 @@ from mathematics.chi2 import chi2
 
 
 def merge_fitted_and_fixed_variables(variables_indices, fitted_variables_values, fixed_variables_values):
-    ''' Merge fitted and fixed variables into a single dictionary '''
+    ''' Merges fitted and fixed variables into a single dictionary '''
     all_variables = {}
     for variable_name in variables_indices:
         variable_indices = variables_indices[variable_name]
@@ -34,18 +34,18 @@ def compute_degrees_of_freedom(experiments, variables, fit_modulation_depth):
 
 
 def fit_function(variables, simulator, experiments, spins, fitting_parameters):
-    ''' Compute the fit to the experimental PDS time traces '''
+    ''' Computes the fit to the experimental PDS time traces '''
     # Merge fitted variables and fixed variables into a single dictionary
     all_variables = merge_fitted_and_fixed_variables(fitting_parameters['indices'], variables, fitting_parameters['values'])
     # Simulate PDS time traces
-    simulated_time_traces, modulation_depth_scale_factors = simulator.compute_time_traces(experiments, spins, all_variables, False)
-    return simulated_time_traces, modulation_depth_scale_factors
+    simulated_time_traces, background_parameters = simulator.compute_time_traces(experiments, spins, all_variables, False)
+    return simulated_time_traces, background_parameters
 
 
 def objective_function(variables, simulator, experiments, spins, fitting_parameters, goodness_of_fit):
     ''' Objective function '''
     # Compute the fit
-    simulated_time_traces, modulation_depth_scale_factors = fit_function(variables, simulator, experiments, spins, fitting_parameters)
+    simulated_time_traces, background_parameters = fit_function(variables, simulator, experiments, spins, fitting_parameters)
     # Compute the score
     if goodness_of_fit == 'chi2':
         total_score = 0.0

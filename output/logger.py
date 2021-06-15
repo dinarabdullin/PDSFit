@@ -11,7 +11,7 @@ class Logger(object):
     To run:        
     sys.stdout = Logger()
     '''
-    def __init__(self, filename="logfile.log"):
+    def __init__(self, filename='logfile.log'):
         self.file = open(filename, 'w')
         self.stdout = sys.stdout
 

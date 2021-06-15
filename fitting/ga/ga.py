@@ -14,7 +14,7 @@ class GeneticAlgorithm(Optimizer):
         super().__init__(name, display_graphics, goodness_of_fit)
         
     def set_intrinsic_parameters(self, number_of_generations, generation_size, crossover_probability, mutation_probability, parent_selection):
-        ''' Set intrinsic parameters of Genetic Algorithm '''
+        ''' Sets intrinsic parameters of Genetic Algorithm '''
         self.number_of_generations = number_of_generations
         self.generation_size = generation_size
         self.crossover_probability = crossover_probability
@@ -22,7 +22,7 @@ class GeneticAlgorithm(Optimizer):
         self.parent_selection = parent_selection
     
     def optimize(self, ranges):
-        ''' Perform an optimization '''
+        ''' Performs an optimization '''
         print('\nStarting the optimization via genetic algirithm...')
         time_start = time.time()
         score_vs_generation = []

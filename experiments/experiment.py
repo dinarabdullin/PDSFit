@@ -1,5 +1,8 @@
 import numpy as np
 from input.load_experimental_signal import load_experimental_signal
+from supplement.definitions import const
+from mathematics.set_zero_point import set_zero_point
+from mathematics.set_phase import set_phase
 
 
 class Experiment:
@@ -9,26 +12,26 @@ class Experiment:
         self.name = name
         self.t = []
         self.s = []
-        self.modulation_depth = 0.0
-        self.frequency_increment_bandwidth = 0.001 # in GHz
+        self.phase = 0.0
+        self.zero_point = 0.0
+        self.noise_std = 0.0
         
-    def signal_from_file(self, filepath, signal_column):
-        ''' Load an experimental PDS time trace from a file'''
-        self.t, self.s = load_experimental_signal(filepath, signal_column)
-        if self.t[0] != 0:
-            self.t = self.t - self.t[0]
+    def signal_from_file(self, filepath, column_numbers=[]):
+        ''' Loads an experimental PDS time trace from a file'''
+        t, s_re, s_im = load_experimental_signal(filepath, column_numbers)
+        t = const['ns2us'] * t
+        phase, s_re, s_im = set_phase(s_re, s_im)
+        zero_point, t, s_re, s_im = set_zero_point(t, s_re, s_im)
+        noise_std = np.std(s_im)
+        if noise_std < 1e-10:
+            noise_std = 0
+        self.phase = phase
+        self.zero_point = zero_point
+        self.t = t
+        self.s = s_re
+        self.s_im = s_im
+        self.noise_std = noise_std
     
     def set_noise_std(self, noise_std):
-        ''' Set the standard deviation of noise in the experimental PDS time trace '''
+        ''' Sets the standard deviation of noise in the experimental PDS time trace '''
         self.noise_std = noise_std
-
-    def compute_modulation_depth(self, interval):
-        ''' Computes the modulation depth of a PDS time trace '''
-        length_t_axis = self.t[-1] - self.t[0]
-        if interval > length_t_axis:
-            raise ValueError('Invalid interval for calculation of modulation depth!')
-            sys.exit(1)
-        else:
-            t_start = self.t[-1] - interval
-            index_start = (np.abs(self.t - t_start)).argmin()
-            self.modulation_depth = 1.0 - np.mean(self.s[index_start:-1])

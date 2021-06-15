@@ -5,7 +5,7 @@ from supplement.definitions import const
 def save_fitting_parameters(parameters_indices, optimized_parameters, fixed_parameters, parameters_errors, filepath):    
     ''' Saves optimized and fixed fitting parameters ''' 
     file = open(filepath, 'w')
-    file.write("{:<20}{:<20}{:<20}{:<20}{:<20}{:<20}\n".format('Parameter', 'No. spin pair', 'No. component', 'Optimized', 'Value', 'Precision'))
+    file.write('{:<20}{:<20}{:<20}{:<20}{:<20}{:<20}\n'.format('Parameter', 'No. spin pair', 'No. component', 'Optimized', 'Value', 'Precision'))
     for parameter_name in const['fitting_parameters_names']:
         parameter_indices = parameters_indices[parameter_name]
         for i in range(len(parameter_indices)):

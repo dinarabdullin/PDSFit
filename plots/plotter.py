@@ -17,7 +17,7 @@ class Plotter:
     def plot_epr_spectrum(self, spectrum, experiment_name):
         ''' Plots a simulated EPR spectrum '''
         fig = plot_epr_spectrum(spectrum)
-        if not (self.data_saver is None) and self.data_saver.save_figures:
+        if not (data_saver is None) and self.data_saver.save_figures:
             filepath = self.data_saver.directory + 'epr_spectrum_' + experiment_name + '.' + self.figure_format
             fig.savefig(filepath, format=self.figure_format, dpi=self.dpi)
 
@@ -40,7 +40,7 @@ class Plotter:
 
     def plot_simulation_output(self, epr_spectra, bandwidths, simulated_time_traces, experiments):
         ''' Plots the simulation output '''       
-        self.plot_epr_spectrum(epr_spectra[0], experiments[0].name)
+        # self.plot_epr_spectrum(epr_spectra[0], experiments[0].name)
         self.plot_bandwidths(bandwidths, experiments, epr_spectra)
         self.plot_simulated_time_traces(simulated_time_traces, experiments)
     

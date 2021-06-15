@@ -3,10 +3,9 @@ import libconf
 
 supported_data_types = {'float': float, 'int': int, 'str': str}
 
-
 def read_list(list_object, data_type, scale=1):
     ''' 
-    Read a libconfig list. 
+    Reads a libconfig list. 
     The type of the parameter values, 'data_type', can be float or int.
     Each of the parameter values is scaled by a factor 'scale'.
     '''

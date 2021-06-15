@@ -6,7 +6,7 @@ from supplement.definitions import const
 def print_fitting_parameters(parameters_indices, optimized_parameters_values, fixed_parameters_values, parameters_errors=[]):
     ''' Displays the optimized and fixed fitting parameters into a single dictionary '''
     sys.stdout.write('\nOptimized fitting parameters:\n')
-    sys.stdout.write("{:<20}{:<15}{:<15}{:<15}{:<15}{:<15}\n".format('Parameter', 'No. spin pair', 'No. component', 'Optimized', 'Value', 'Precision'))
+    sys.stdout.write('{:<20}{:<15}{:<15}{:<15}{:<15}{:<15}\n'.format('Parameter', 'No. spin pair', 'No. component', 'Optimized', 'Value', 'Precision'))
     for parameter_name in const['fitting_parameters_names']:
         parameter_indices = parameters_indices[parameter_name]
         for i in range(len(parameter_indices)):

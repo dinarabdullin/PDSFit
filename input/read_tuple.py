@@ -4,10 +4,9 @@ from input.read_list import read_list
 
 supported_data_types = {'float': float, 'int': int, 'str': str}
 
-
 def read_tuple(tuple_object, data_type, scale=1):
     ''' 
-    Read a libconfig tuple.
+    Reads a libconfig tuple.
     The type of the parameter values, 'data_type', can be float or int.
     Each of the parameter values is scaled by a factor 'scale'.
     '''    

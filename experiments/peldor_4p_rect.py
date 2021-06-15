@@ -9,9 +9,10 @@ class Peldor_4p_rect(Experiment):
     def __init__(self, name):
         super().__init__(name)
         self.technique = 'peldor'
+        self.frequency_increment_bandwidth = 0.001 # in GHz
     
     def set_parameters(self, magnetic_field, detection_frequency, detection_pulse_lengths, pump_frequency, pump_pulse_lengths):
-        ''' Set the parameters of the experiment '''
+        ''' Sets the parameters of an experiment '''
         self.magnetic_field = magnetic_field
         self.detection_frequency = detection_frequency
         self.detection_pi_half_pulse_length = detection_pulse_lengths[0]

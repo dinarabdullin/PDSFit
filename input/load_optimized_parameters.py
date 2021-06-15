@@ -3,12 +3,8 @@ import numpy as np
 from supplement.definitions import const
 
 
-def chunk_string(string, length):
-    return (string[0+i:length+i] for i in range(0, len(string), length))
-
-
 def load_optimized_parameters(filepath):
-    ''' Reads out the optimized values of fitting parameters from a file '''
+    ''' Reads out optimized values of fitting parameters from a file '''
     # Read file
     loaded_parameters = [] 
     file = open(filepath, 'r')
@@ -50,3 +46,7 @@ def load_optimized_parameters(filepath):
             optimized_parameters.append(parameter['value'])
             parameter_errors.append(parameter['precision'])
     return np.array(optimized_parameters), np.array(parameter_errors)
+
+
+def chunk_string(string, length):
+    return (string[0+i:length+i] for i in range(0, len(string), length))

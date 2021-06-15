@@ -25,4 +25,14 @@ def best_square_size(x, y, n):
 def best_layout(w, h, n):
     ''' Find the best layout of multiple subplots for a given screen size'''
     a = best_square_size(w, h, n)
-    return [int(w/a), int(h/a)]
+    n_row = int(h/a)
+    n_col = int(w/a)
+    if n_row * n_col > n:
+        if (n_row-1) * n_col >= n:
+            return [n_row-1, n_col]
+        elif n_row * (n_col-1) >= n:
+            return [n_row, n_col-1]
+        else:
+            return [n_row, n_col]
+    else:
+        return [n_row, n_col]

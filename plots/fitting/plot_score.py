@@ -1,11 +1,13 @@
 import numpy as np
 import plots.set_matplotlib
+from plots.set_matplotlib import best_rcparams
 import matplotlib.pyplot as plt
 from supplement.definitions import const
 
 
 def plot_score(score, goodness_of_fit):
     ''' Plots the score as a function of optimization step '''
+    best_rcparams(1)
     num_points = len(score)
     x = np.linspace(1,num_points,num_points)
     y = score
@@ -24,6 +26,7 @@ def plot_score(score, goodness_of_fit):
 
 def update_score_plot(fig, score, goodness_of_fit):
     ''' Re-plots the score as a function of optimization step '''
+    best_rcparams(1)
     num_points = len(score)
     x = np.linspace(1,num_points,num_points)
     y = score

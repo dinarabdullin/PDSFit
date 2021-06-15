@@ -3,13 +3,17 @@ import time
 import datetime
 import numpy as np
 from scipy.spatial.transform import Rotation
+from scipy.optimize import curve_fit
+from functools import partial
 from simulation.simulator import Simulator
+from simulation.background_fit_function import *
 from mathematics.random_points_on_sphere import random_points_on_sphere
 from mathematics.random_points_from_distribution import random_points_from_distribution, random_points_from_sine_weighted_distribution
 from mathematics.coordinate_system_conversions import spherical2cartesian, cartesian2spherical
 from mathematics.rotate_coordinate_system import rotate_coordinate_system
 from mathematics.histogram import histogram
 from mathematics.chi2 import chi2
+from mathematics.exponential_decay import exponential_decay
 from supplement.definitions import const
 
 
@@ -26,7 +30,115 @@ class MonteCarloSimulator(Simulator):
         self.effective_gfactors_spin1 = []
         self.detection_probabilities_spin1 = {}
         self.pump_probabilities_spin1 = {}      
+
+    def precalculations(self, experiments, spins):
+        ''' Pre-computes the detection and pump probabilities for spin 1'''
+        print('\nPre-compute the detection and pump probabilities for spin 1...')
+        if self.field_orientations == []:
+            # Random orientations of the static magnetic field
+            self.field_orientations = self.set_field_orientations()
+        # Orientations of the applied static magnetic field in the frame of spin 1
+        field_orientations_spin1 = self.field_orientations 
+        if self.detection_probabilities_spin1 != {}:
+            for experiment in experiments:
+                # Resonance frequencies and effective g-values of spin 1
+                resonance_frequencies_spin1, self.effective_gfactors_spin1 = spins[0].res_freq(field_orientations_spin1, experiment.magnetic_field)
+                # Detection probabilities
+                self.detection_probabilities_spin1[experiment.name] = experiment.detection_probability(resonance_frequencies_spin1, spins[0].int_res_freq)
+                # Pump probabilities
+                if experiment.technique == 'peldor': 
+                    self.pump_probabilities_spin1[experiment.name] = experiment.pump_probability(resonance_frequencies_spin1, spins[0].int_res_freq)    
+                elif experiment.technique == 'ridme':
+                    self.pump_probabilities_spin1[experiment.name] = experiment.pump_probability(spins[0].T1, spins[0].g_anisotropy_in_dipolar_coupling, self.effective_gfactors_spin1) 
+    
+    def epr_spectra(self, spins, experiments):
+        ''' Computes an EPR spectrum of a spin system at multiple magnetic fields '''
+        print('\nComputing the EPR spectrum of the spin system in the frequency domain...')
+        epr_spectra = []
+        for experiment in experiments:
+            epr_spectrum = self.epr_spectrum(spins, experiment.magnetic_field)
+            epr_spectra.append(epr_spectrum)
+        return epr_spectra
+    
+    def epr_spectrum(self, spins, field_value):
+        ''' Computes an EPR spectrum of a spin system at a single magnetic field '''
+        # Random orientations of the static magnetic field
+        if self.field_orientations == []:
+            self.field_orientations = self.set_field_orientations()  
+        # Resonance frequencies and their probabilities
+        all_frequencies = []
+        all_probabilities = []
+        for spin in spins:
+            # Resonance frequencies
+            resonance_frequencies, effective_gvalues = spin.res_freq(self.field_orientations, field_value)
+            num_field_orientations = self.field_orientations.shape[0]
+            weights = np.tile(spin.int_res_freq, (num_field_orientations,1))
+            # Frequency ranges
+            min_resonance_frequency = np.amin(resonance_frequencies)
+            max_resonance_frequency = np.amax(resonance_frequencies)
+            # Spectrum
+            frequencies = np.arange(min_resonance_frequency, max_resonance_frequency+self.frequency_increment_epr_spectrum, self.frequency_increment_epr_spectrum)
+            probabilities = histogram(resonance_frequencies, bins=frequencies, weights=weights)
+            all_frequencies.extend(frequencies)
+            all_probabilities.extend(probabilities)
+        all_frequencies = np.array(all_frequencies)
+        all_probabilities = np.array(all_probabilities)
+        min_frequency = np.amin(all_frequencies) - 0.100
+        max_frequency = np.amax(all_frequencies) + 0.100
+        spectrum = {}
+        spectrum['f'] = np.arange(min_frequency, max_frequency+self.frequency_increment_epr_spectrum, self.frequency_increment_epr_spectrum)
+        spectrum['p'] = histogram(all_frequencies, bins=spectrum['f'], weights=all_probabilities)       
+        return spectrum
         
+    def bandwidths(self, experiments):
+        ''' Computes the bandwidths of detection and pump pulses '''
+        print('\nComputing the bandwidths of detection and pump pulses...')
+        bandwidths = []
+        for experiment in experiments:
+            if experiment.technique == 'peldor':
+                bandwidths_single_experiment = {}
+                bandwidths_single_experiment['detection_bandwidth'] = experiment.get_detection_bandwidth()
+                bandwidths_single_experiment['pump_bandwidth'] = experiment.get_pump_bandwidth()
+                bandwidths.append(bandwidths_single_experiment)
+            elif experiment.technique == 'ridme':
+                bandwidths_single_experiment = {}
+                bandwidths_single_experiment['detection_bandwidth'] = experiment.get_detection_bandwidth()
+                bandwidths.append(bandwidths_single_experiment)
+        return bandwidths   
+
+    def compute_time_traces(self, experiments, spins, variables, display_messages=True):
+        ''' Computes PDS time traces for a given set of variables '''
+        simulated_time_traces = []
+        background_parameters = []
+        for experiment in experiments:
+            simulated_time_trace, background_parameters_single_time_trace = self.compute_time_trace(experiment, spins, variables, display_messages)
+            simulated_time_traces.append(simulated_time_trace)
+            background_parameters.append(background_parameters_single_time_trace)
+        return simulated_time_traces, background_parameters
+
+    def compute_time_trace(self, experiment, spins, variables, display_messages=True):
+        ''' Computes a PDS time trace for a given set of variables '''
+        if display_messages:
+            print('\nComputing the time trace of the experiment \'{0}\'...'.format(experiment.name))
+        num_spins = len(spins)
+        if num_spins == 2:
+            simulated_time_trace, background_parameters = self.compute_time_trace_two_spin(experiment, spins, variables, display_messages=False)
+        else:
+            simulated_time_trace, background_parameters = self.compute_time_trace_multispin(experiment, spins, variables, display_messages=False)
+        # Compute chi2
+        chi2_value = chi2(simulated_time_trace['s'], experiment.s, experiment.noise_std)
+        # Display statistics
+        if display_messages:
+            print('Background parameters:') 
+            print('Decay constant: ', background_parameters['decay_constant']) 
+            print('Dimension: ', background_parameters['dimension']) 
+            print('Scale factor: ', background_parameters['scale_factor']) 
+            if experiment.noise_std == 1:
+                print('Chi2 (noise std = 1): {0:<15.3}'.format(chi2_value)) 
+            else:   
+                print('Chi2: {0:<15.3}'.format(chi2_value)) 
+        return simulated_time_trace, background_parameters
+ 
     def set_field_orientations(self): 
         ''' Random points on a sphere '''
         return random_points_on_sphere(self.mc_sample_size) 
@@ -85,55 +197,9 @@ class MonteCarloSimulator(Simulator):
         phi_values = random_points_from_distribution(self.distributions['phi'], phi_mean, phi_width, rel_prob, self.mc_sample_size)
         coordinates = spherical2cartesian(r_values, xi_values, phi_values)
         return coordinates
-
-    def time_trace_from_dipolar_frequencies(self, experiment, modulation_frequencies, modulation_depths):
-        ''' Converts dipolar frequencies into a PDS time trace '''
-        simulated_time_trace = {}
-        simulated_time_trace['t'] = experiment.t
-        num_time_points = experiment.t.size
-        simulated_time_trace['s'] = np.ones(num_time_points)
-        if modulation_frequencies.size != 0:
-            for i in range(num_time_points):
-                simulated_time_trace['s'][i] -= np.sum(modulation_depths * (1.0 - np.cos(2*np.pi * modulation_frequencies * experiment.t[i])))
-        return simulated_time_trace
     
-    def time_trace_from_dipolar_spectrum(self, experiment, modulation_frequencies, modulation_depths):
-        ''' Converts a dipolar spectrum into a PDS time trace '''
-        simulated_time_trace = {}
-        simulated_time_trace['t'] = experiment.t
-        num_time_points = experiment.t.size
-        simulated_time_trace['s'] = np.ones(num_time_points)
-        if modulation_frequencies.size != 0:
-            modulation_frequency_min = np.amin(modulation_frequencies)
-            modulation_frequency_max = np.amax(modulation_frequencies)
-            if (modulation_frequency_max - modulation_frequency_min > self.frequency_increment_dipolar_spectrum):
-                new_modulation_frequencies = np.arange(np.amin(modulation_frequencies), np.amax(modulation_frequencies), self.frequency_increment_dipolar_spectrum)
-                new_modulation_depths = histogram(modulation_frequencies, bins=new_modulation_frequencies, weights=modulation_depths)
-            else:
-                new_modulation_frequencies = np.array([modulation_frequency_min])
-                new_modulation_depths = np.array([np.sum(modulation_depths)])
-            for i in range(num_time_points):
-                simulated_time_trace['s'][i] -= np.sum(new_modulation_depths * (1.0 - np.cos(2*np.pi * new_modulation_frequencies * experiment.t[i])))
-        return simulated_time_trace
-
-    def rescale_modulation_depth(self, time_trace, current_modulation_depth, new_modulation_depth):
-        ''' Rescales the modulation depth of a PDS time trace'''
-        if current_modulation_depth != 0:
-            scale_factor = new_modulation_depth / current_modulation_depth
-            if self.scale_range_modulation_depth != []:
-                if scale_factor < self.scale_range_modulation_depth[0]:
-                    scale_factor = self.scale_range_modulation_depth[0]
-                elif scale_factor > self.scale_range_modulation_depth[1]:
-                    scale_factor = self.scale_range_modulation_depth[1]
-            new_time_trace = np.ones(time_trace.shape) - time_trace
-            new_time_trace = scale_factor * new_time_trace
-            new_time_trace = np.ones(time_trace.shape) - new_time_trace
-            return new_time_trace, scale_factor
-        else:
-            return time_trace, 1.0
-    
-    def compute_time_trace_via_monte_carlo(self, experiment, spins, variables, display_messages=False):
-        ''' Computes a PDS time trace via Monte-Carlo integration '''
+    def compute_time_trace_two_spin(self, experiment, spins, variables, display_messages=False):
+        ''' Computes a PDS time trace for a two-spin system '''
         timings = [['Timings:', '']]
         time_start = time.time()
         # Random orientations of the applied static magnetic field in the reference frame
@@ -165,8 +231,6 @@ class MonteCarloSimulator(Simulator):
         field_orientations_spin2 = rotate_coordinate_system(self.field_orientations, spin_frame_rotations_spin2, self.separate_grids)
         # Resonance frequencies and/or effective g-values of both spins
         if self.effective_gfactors_spin1 == []:
-            #print(field_orientations_spin1)
-            #print(field_orientations_spin1.shape)
             resonance_frequencies_spin1, effective_gfactors_spin1 = spins[0].res_freq(field_orientations_spin1, experiment.magnetic_field)
         else:
             effective_gfactors_spin1 = self.effective_gfactors_spin1
@@ -209,11 +273,7 @@ class MonteCarloSimulator(Simulator):
         timings.append(['Detection/pump probabilities', str(datetime.timedelta(seconds = time.time()-time_start))])
         time_start = time.time()
         # Modulation depths
-        amplitudes = detection_probabilities_spin1 + detection_probabilities_spin2
-        modulation_amplitudes = detection_probabilities_spin1 * pump_probabilities_spin2 + \
-                                detection_probabilities_spin2 * pump_probabilities_spin1
-        modulation_depths = modulation_amplitudes / np.sum(amplitudes)
-        total_modulation_depth = np.sum(modulation_depths)
+        modulation_depths = (detection_probabilities_spin1 * pump_probabilities_spin2 +  detection_probabilities_spin2 * pump_probabilities_spin1) / np.sum(detection_probabilities_spin1 + detection_probabilities_spin2)
         timings.append(['Modulation depths', str(datetime.timedelta(seconds = time.time()-time_start))])
         time_start = time.time()
         # Modulation frequencies
@@ -250,377 +310,385 @@ class MonteCarloSimulator(Simulator):
         modulation_frequencies = dipolar_frequencies + j_values
         timings.append(['Dipolar frequencies', str(datetime.timedelta(seconds = time.time()-time_start))])
         time_start = time.time()
-        # Time trace
-        #simulated_time_trace = self.time_trace_from_dipolar_frequencies(experiment, modulation_frequencies, modulation_depths)
-        simulated_time_trace = self.time_trace_from_dipolar_spectrum(experiment, modulation_frequencies, modulation_depths)
+        # PDS time trace
+        intramolecular_time_trace_temp = self.intramolecular_time_trace_from_dipolar_spectrum(experiment.t, modulation_frequencies, modulation_depths)
+        background_parameters = self.optimize_background(experiment.t, experiment.s, intramolecular_time_trace_temp)
+        intramolecular_time_trace = self.rescale_intramolecular_time_trace(intramolecular_time_trace_temp, background_parameters['scale_factor'])
+        intermolecular_time_trace = exponential_decay(experiment.t, 1.0, background_parameters['decay_constant'], background_parameters['dimension']/3.0)
+        simulated_time_trace = {}
+        simulated_time_trace['t'] = experiment.t
+        simulated_time_trace['s'] = intramolecular_time_trace * intermolecular_time_trace
         timings.append(['PDS time trace', str(datetime.timedelta(seconds = time.time()-time_start))])
-        # Messages
+        # Display statistics
         if display_messages:
             print('Number of Monte-Carlo samples with non-zero weights: {0} out of {1}'.format(indices_nonzero_probabilities.size, self.mc_sample_size))
             for instance in timings:
                 print('{:<30} {:<30}'.format(instance[0], instance[1]))
-        return simulated_time_trace, total_modulation_depth
+        return simulated_time_trace, background_parameters
     
-    def compute_time_trace_via_monte_carlo_multispin(self, experiment, spins, variables, idx_spin1=0, idx_spin2=1, display_messages=False):
-        ''' Computes a PDS time trace via Monte-Carlo integration (multi-spin version) '''
-        if idx_spin1 == 0:
-            timings = [['Timings:', '']]
-            time_start = time.time()
-            # Random orientations of the applied static magnetic field in the reference frame
-            if self.field_orientations == []:
-                self.field_orientations = self.set_field_orientations()
-            # Distance values
-            r_values = self.set_r_values(variables['r_mean'][idx_spin2-1], variables['r_width'][idx_spin2-1], variables['rel_prob'][idx_spin2-1])
-            # Orientations of the distance vector in the reference frame
-            r_orientations = self.set_r_orientations(variables['xi_mean'][idx_spin2-1], variables['xi_width'][idx_spin2-1], 
-                                                     variables['phi_mean'][idx_spin2-1], variables['phi_width'][idx_spin2-1], 
-                                                     variables['rel_prob'][idx_spin2-1])
-            # Rotation matrices transforming the reference frame into the spin 2 frame
-            spin_frame_rotations_spin2 = self.set_spin_frame_rotations(variables['alpha_mean'][idx_spin2-1], variables['alpha_width'][idx_spin2-1], 
-                                                                       variables['beta_mean'][idx_spin2-1], variables['beta_width'][idx_spin2-1], 
-                                                                       variables['gamma_mean'][idx_spin2-1], variables['gamma_width'][idx_spin2-1], 
-                                                                       variables['rel_prob'][idx_spin2-1])                                                                                               
-            timings.append(['Monte-Carlo samples', str(datetime.timedelta(seconds = time.time()-time_start))])
-            time_start = time.time()
-            # Orientations of the applied static magnetic field in both spin frames
-            field_orientations_spin1 = self.field_orientations
-            field_orientations_spin2 = rotate_coordinate_system(self.field_orientations, spin_frame_rotations_spin2, self.separate_grids)
-            # Resonance frequencies and/or effective g-values of both spins
-            if self.effective_gfactors_spin1 == []:
-                resonance_frequencies_spin1, effective_gfactors_spin1 = spins[idx_spin1].res_freq(field_orientations_spin1, experiment.magnetic_field)
-            else:
-                effective_gfactors_spin1 = self.effective_gfactors_spin1
-            resonance_frequencies_spin2, effective_gfactors_spin2 = spins[idx_spin2].res_freq(field_orientations_spin2, experiment.magnetic_field)
-            timings.append(['Resonance frequencies', str(datetime.timedelta(seconds = time.time()-time_start))])
-            time_start = time.time()
-            # Detection probabilities
-            if self.detection_probabilities_spin1 == {}:
-                detection_probabilities_spin1 = experiment.detection_probability(resonance_frequencies_spin1, spins[idx_spin1].int_res_freq)
-            else:
-                detection_probabilities_spin1 = self.detection_probabilities_spin1[experiment.name]
-            detection_probabilities_spin2 = experiment.detection_probability(resonance_frequencies_spin2, spins[idx_spin2].int_res_freq)
-            # Pump probabilities
-            if experiment.technique == 'peldor': 
-                if self.pump_probabilities_spin1 == {}:
-                    pump_probabilities_spin1 = np.where(detection_probabilities_spin2 > self.excitation_threshold,
-                                                        experiment.pump_probability(resonance_frequencies_spin1, spins[idx_spin1].int_res_freq), 0.0)
-                else:
-                    pump_probabilities_spin1 = np.where(detection_probabilities_spin2 > self.excitation_threshold,
-                                                        self.pump_probabilities_spin1[experiment.name], 0.0)
-                pump_probabilities_spin2 = np.where(detection_probabilities_spin1 > self.excitation_threshold,
-                                                    experiment.pump_probability(resonance_frequencies_spin2, spins[idx_spin2].int_res_freq), 0.0)   
-            elif experiment.technique == 'ridme':
-                if self.pump_probabilities_spin1 == {}:
-                    pump_probabilities_spin1 = np.where(detection_probabilities_spin2 > self.excitation_threshold,
-                                                        experiment.pump_probability(spins[idx_spin1].T1, spins[idx_spin1].g_anisotropy_in_dipolar_coupling, effective_gfactors_spin1), 0.0)
-                else:
-                    pump_probabilities_spin1 = np.where(detection_probabilities_spin2 > self.excitation_threshold,
-                                                        self.pump_probabilities_spin1[experiment.name], 0.0)
-                pump_probabilities_spin2 = np.where(detection_probabilities_spin1 > self.excitation_threshold,                                    
-                                                    experiment.pump_probability(spins[idx_spin2].T1, spins[idx_spin2].g_anisotropy_in_dipolar_coupling, effective_gfactors_spin2), 0.0)   
-            indices_nonzero_probabilities_spin1 = np.where(pump_probabilities_spin1 > self.excitation_threshold)[0]
-            indices_nonzero_probabilities_spin2 = np.where(pump_probabilities_spin2 > self.excitation_threshold)[0]
-            indices_nonzero_probabilities = np.unique(np.concatenate((indices_nonzero_probabilities_spin1, indices_nonzero_probabilities_spin2), axis=None))
-            indices_nonzero_probabilities = np.sort(indices_nonzero_probabilities, axis=None)
-            detection_probabilities_spin1 = detection_probabilities_spin1[indices_nonzero_probabilities]
-            detection_probabilities_spin2 = detection_probabilities_spin2[indices_nonzero_probabilities]
-            pump_probabilities_spin1 = pump_probabilities_spin1[indices_nonzero_probabilities]
-            pump_probabilities_spin2 = pump_probabilities_spin2[indices_nonzero_probabilities]
-            timings.append(['Detection/pump probabilities', str(datetime.timedelta(seconds = time.time()-time_start))])
-            time_start = time.time()
-            # Modulation depths
-            amplitudes = detection_probabilities_spin1 + detection_probabilities_spin2
-            modulation_amplitudes = detection_probabilities_spin1 * pump_probabilities_spin2 + \
-                                    detection_probabilities_spin2 * pump_probabilities_spin1
-            modulation_depths = modulation_amplitudes / np.sum(amplitudes)
-            total_modulation_depth = np.sum(modulation_depths)
-            timings.append(['Modulation depths', str(datetime.timedelta(seconds = time.time()-time_start))])
-            time_start = time.time()
-            # Modulation frequencies
-            field_orientations = self.field_orientations[indices_nonzero_probabilities]
-            r_values = r_values[indices_nonzero_probabilities]
-            r_orientations = r_orientations[indices_nonzero_probabilities]
-            effective_gfactors_spin1 = effective_gfactors_spin1[indices_nonzero_probabilities]
-            effective_gfactors_spin2 = effective_gfactors_spin2[indices_nonzero_probabilities] 
-            if not spins[idx_spin1].g_anisotropy_in_dipolar_coupling and not spins[idx_spin2].g_anisotropy_in_dipolar_coupling:
-                angular_term = 1.0 - 3.0 * np.sum(r_orientations * field_orientations, axis=1)**2
-            elif spins[idx_spin1].g_anisotropy_in_dipolar_coupling and not spins[idx_spin2].g_anisotropy_in_dipolar_coupling:
-                quantization_axes_spin1 = spins[0].quantization_axis(field_orientations, effective_gfactors_spin1)
-                angular_term = 1.0 - 3.0 * np.sum(r_orientations * quantization_axes_spin1, axis=1) * \
-                                           np.sum(r_orientations * field_orientations, axis=1)
-            elif not spins[idx_spin1].g_anisotropy_in_dipolar_coupling and spins[idx_spin2].g_anisotropy_in_dipolar_coupling:
-                field_orientations_spin2 = field_orientations_spin2[indices_nonzero_probabilities]
-                spin_frame_rotations_spin2 = spin_frame_rotations_spin2[indices_nonzero_probabilities]
-                r_orientations_spin2 = rotate_coordinate_system(r_orientations, spin_frame_rotations_spin2, self.separate_grids)
-                quantization_axes_spin2 = spins[idx_spin2].quantization_axis(field_orientations_spin2, effective_gfactors_spin2)
-                angular_term = 1.0 - 3.0 * np.sum(r_orientations * field_orientations, axis=1) * \
-                                           np.sum(r_orientations_spin2 * quantization_axes_spin2, axis=1) 
-            elif spins[idx_spin1].g_anisotropy_in_dipolar_coupling and spins[idx_spin2].g_anisotropy_in_dipolar_coupling:
-                quantization_axes_spin1 = spins[0].quantization_axis(field_orientations, effective_gfactors_spin1)
-                field_orientations_spin2 = field_orientations_spin2[indices_nonzero_probabilities]
-                spin_frame_rotations_spin2 = spin_frame_rotations_spin2[indices_nonzero_probabilities]
-                r_orientations_spin2 = rotate_coordinate_system(r_orientations, spin_frame_rotations_spin2, self.separate_grids)
-                quantization_axes_spin2 = spins[idx_spin2].quantization_axis(field_orientations_spin2, effective_gfactors_spin2)
-                quantization_axes_spin2_ref = rotate_coordinate_system(quantization_axes_spin2, spin_frame_rotations_spin2.inv(), self.separate_grids)
-                angular_term = np.sum(quantization_axes_spin1 * quantization_axes_spin2_ref, axis=1) - \
-                                      3.0 * np.sum(r_orientations * quantization_axes_spin1, axis=1) * \
-                                            np.sum(r_orientations_spin2 * quantization_axes_spin2, axis=1)
-            dipolar_frequencies = const['Fdd'] * effective_gfactors_spin1 * effective_gfactors_spin2 * angular_term / r_values**3
-            timings.append(['Dipolar frequencies', str(datetime.timedelta(seconds = time.time()-time_start))])
-            time_start = time.time()
-            # Time trace
-            simulated_time_trace = self.time_trace_from_dipolar_spectrum(experiment, dipolar_frequencies, modulation_depths)
-            timings.append(['PDS time trace', str(datetime.timedelta(seconds = time.time()-time_start))])
-            # Messages
-            if display_messages:
-                print('Spins no. {0} and {1}'.format(idx_spin1, idx_spin2))
-                print('Number of Monte-Carlo samples with non-zero weights: {0} out of {1}'.format(indices_nonzero_probabilities.size, self.mc_sample_size))
-                for instance in timings:
-                    print('\t {:<30} {:<30}'.format(instance[0], instance[1]))
-            return simulated_time_trace, total_modulation_depth
-        else:
-            timings = [['Timings:', '']]
-            time_start = time.time()
-            # Random orientations of the applied static magnetic field in the reference frame
-            if self.field_orientations == []:
-                self.field_orientations = self.set_field_orientations()
-            # Coordinates of spin 1 in the reference frame
-            coordinates_spin1 = self.set_coordinates(variables['r_mean'][idx_spin1-1], variables['r_width'][idx_spin1-1], 
-                                                     variables['xi_mean'][idx_spin1-1], variables['xi_width'][idx_spin1-1], 
-                                                     variables['phi_mean'][idx_spin1-1], variables['phi_width'][idx_spin1-1], 
-                                                     variables['rel_prob'][idx_spin1-1])
-                                                     
-            # Coordinates of spin 2 in the reference frame
-            coordinates_spin2 = self.set_coordinates(variables['r_mean'][idx_spin2-1], variables['r_width'][idx_spin2-1], 
-                                                     variables['xi_mean'][idx_spin2-1], variables['xi_width'][idx_spin2-1], 
-                                                     variables['phi_mean'][idx_spin2-1], variables['phi_width'][idx_spin2-1], 
-                                                     variables['rel_prob'][idx_spin2-1])
-            r_vectors = coordinates_spin2 - coordinates_spin1
-            # Distance values
-            r_values = np.sqrt(np.sum(r_vectors**2, axis=1)) 
-            # Orientations of the distance vector in the reference frame
-            r_orientations = r_vectors / r_values.reshape(r_vectors.shape[0],1)
-            # Rotation matrices transforming the reference frame into the spin frames
-            spin_frame_rotations_spin1 = self.set_spin_frame_rotations(variables['alpha_mean'][idx_spin1-1], variables['alpha_width'][idx_spin1-1], 
-                                                                       variables['beta_mean'][idx_spin1-1], variables['beta_width'][idx_spin1-1], 
-                                                                       variables['gamma_mean'][idx_spin1-1], variables['gamma_width'][idx_spin1-1], 
-                                                                       variables['rel_prob'][idx_spin1-1])
-            spin_frame_rotations_spin2 = self.set_spin_frame_rotations(variables['alpha_mean'][idx_spin2-1], variables['alpha_width'][idx_spin2-1], 
-                                                                       variables['beta_mean'][idx_spin2-1], variables['beta_width'][idx_spin2-1], 
-                                                                       variables['gamma_mean'][idx_spin2-1], variables['gamma_width'][idx_spin2-1], 
-                                                                       variables['rel_prob'][idx_spin2-1])                                                                                                 
-            timings.append(['Monte-Carlo samples', str(datetime.timedelta(seconds = time.time()-time_start))])
-            time_start = time.time()
-            # Orientations of the applied static magnetic field in both spin frames
-            field_orientations_spin1 = rotate_coordinate_system(self.field_orientations, spin_frame_rotations_spin1, self.separate_grids)
-            field_orientations_spin2 = rotate_coordinate_system(self.field_orientations, spin_frame_rotations_spin2, self.separate_grids)
-            # Resonance frequencies and/or effective g-values of both spins
-            resonance_frequencies_spin1, effective_gfactors_spin1 = spins[idx_spin1].res_freq(field_orientations_spin1, experiment.magnetic_field)    
-            resonance_frequencies_spin2, effective_gfactors_spin2 = spins[idx_spin2].res_freq(field_orientations_spin2, experiment.magnetic_field)
-            timings.append(['Resonance frequencies', str(datetime.timedelta(seconds = time.time()-time_start))])
-            time_start = time.time()
-            # Detection probabilities
-            detection_probabilities_spin1 = experiment.detection_probability(resonance_frequencies_spin1, spins[idx_spin1].int_res_freq)
-            detection_probabilities_spin2 = experiment.detection_probability(resonance_frequencies_spin2, spins[idx_spin2].int_res_freq)
-            # Pump probabilities
-            if experiment.technique == 'peldor':
-                pump_probabilities_spin1 = np.where(detection_probabilities_spin2 > self.excitation_threshold,
-                                                    experiment.pump_probability(resonance_frequencies_spin1, spins[idx_spin1].int_res_freq), 0.0)
-                pump_probabilities_spin2 = np.where(detection_probabilities_spin1 > self.excitation_threshold,
-                                                    experiment.pump_probability(resonance_frequencies_spin2, spins[idx_spin2].int_res_freq), 0.0)   
-            elif experiment.technique == 'ridme':
-                pump_probabilities_spin1 = np.where(detection_probabilities_spin2 > self.excitation_threshold,
-                                                    experiment.pump_probability(spins[idx_spin1].T1, spins[idx_spin1].g_anisotropy_in_dipolar_coupling, effective_gfactors_spin1), 0.0)
-                pump_probabilities_spin2 = np.where(detection_probabilities_spin1 > self.excitation_threshold,                                    
-                                                    experiment.pump_probability(spins[idx_spin2].T1, spins[idx_spin2].g_anisotropy_in_dipolar_coupling, effective_gfactors_spin2), 0.0) 
-            indices_nonzero_probabilities_spin1 = np.where(pump_probabilities_spin1 > self.excitation_threshold)[0]
-            indices_nonzero_probabilities_spin2 = np.where(pump_probabilities_spin2 > self.excitation_threshold)[0]
-            indices_nonzero_probabilities = np.unique(np.concatenate((indices_nonzero_probabilities_spin1, indices_nonzero_probabilities_spin2), axis=None))
-            indices_nonzero_probabilities = np.sort(indices_nonzero_probabilities, axis=None)
-            detection_probabilities_spin1 = detection_probabilities_spin1[indices_nonzero_probabilities]
-            detection_probabilities_spin2 = detection_probabilities_spin2[indices_nonzero_probabilities]
-            pump_probabilities_spin1 = pump_probabilities_spin1[indices_nonzero_probabilities]
-            pump_probabilities_spin2 = pump_probabilities_spin2[indices_nonzero_probabilities]
-            timings.append(['Detection/pump probabilities', str(datetime.timedelta(seconds = time.time()-time_start))])
-            time_start = time.time() 
-            # Modulation depths
-            amplitudes = detection_probabilities_spin1 + detection_probabilities_spin2
-            modulation_amplitudes = detection_probabilities_spin1 * pump_probabilities_spin2 + \
-                                    detection_probabilities_spin2 * pump_probabilities_spin1
-            modulation_depths = modulation_amplitudes / np.sum(amplitudes)
-            total_modulation_depth = np.sum(modulation_depths)
-            timings.append(['Modulation depths', str(datetime.timedelta(seconds = time.time()-time_start))])
-            time_start = time.time()
-            # Modulation frequencies
-            field_orientations = self.field_orientations[indices_nonzero_probabilities]
-            r_values = r_values[indices_nonzero_probabilities]
-            r_orientations = r_orientations[indices_nonzero_probabilities]
-            effective_gfactors_spin1 = effective_gfactors_spin1[indices_nonzero_probabilities]
-            effective_gfactors_spin2 = effective_gfactors_spin2[indices_nonzero_probabilities]
-            if not spins[idx_spin1].g_anisotropy_in_dipolar_coupling and not spins[idx_spin2].g_anisotropy_in_dipolar_coupling:
-                angular_term = 1.0 - 3.0 * np.sum(r_orientations * field_orientations, axis=1)**2
-            elif spins[idx_spin1].g_anisotropy_in_dipolar_coupling and not spins[idx_spin2].g_anisotropy_in_dipolar_coupling:
-                field_orientations_spin1 = field_orientations_spin1[indices_nonzero_probabilities]
-                spin_frame_rotations_spin1 = spin_frame_rotations_spin1[indices_nonzero_probabilities]
-                r_orientations_spin1 = rotate_coordinate_system(r_orientations, spin_frame_rotations_spin1, self.separate_grids)
-                quantization_axes_spin1 = spins[idx_spin1].quantization_axis(field_orientations_spin1, effective_gfactors_spin1)
-                angular_term = 1.0 - 3.0 * np.sum(r_orientations_spin1 * quantization_axes_spin1, axis=1) * \
-                                           np.sum(r_orientations * field_orientations, axis=1)
-            elif not spins[idx_spin1].g_anisotropy_in_dipolar_coupling and spins[idx_spin2].g_anisotropy_in_dipolar_coupling:
-                field_orientations_spin2 = field_orientations_spin2[indices_nonzero_probabilities]
-                spin_frame_rotations_spin2 = spin_frame_rotations_spin2[indices_nonzero_probabilities]
-                r_orientations_spin2 = rotate_coordinate_system(r_orientations, spin_frame_rotations_spin2, self.separate_grids)
-                quantization_axes_spin2 = spins[idx_spin2].quantization_axis(field_orientations_spin2, effective_gfactors_spin2)
-                angular_term = 1.0 - 3.0 * np.sum(r_orientations * field_orientations, axis=1) * \
-                                           np.sum(r_orientations_spin2 * quantization_axes_spin2, axis=1) 
-            elif spins[idx_spin1].g_anisotropy_in_dipolar_coupling and spins[idx_spin2].g_anisotropy_in_dipolar_coupling:
-                field_orientations_spin1 = field_orientations_spin1[indices_nonzero_probabilities]
-                field_orientations_spin2 = field_orientations_spin2[indices_nonzero_probabilities]
-                spin_frame_rotations_spin1 = spin_frame_rotations_spin1[indices_nonzero_probabilities]
-                spin_frame_rotations_spin2 = spin_frame_rotations_spin2[indices_nonzero_probabilities]
-                r_orientations_spin1 = rotate_coordinate_system(r_orientations, spin_frame_rotations_spin1, self.separate_grids)
-                r_orientations_spin2 = rotate_coordinate_system(r_orientations, spin_frame_rotations_spin2, self.separate_grids)
-                quantization_axes_spin1 = spins[idx_spin1].quantization_axis(field_orientations_spin1, effective_gfactors_spin1)
-                quantization_axes_spin2 = spins[idx_spin2].quantization_axis(field_orientations_spin2, effective_gfactors_spin2)
-                quantization_axes_spin1_ref = rotate_coordinate_system(quantization_axes_spin1, spin_frame_rotations_spin1, self.separate_grids)
-                quantization_axes_spin2_ref = rotate_coordinate_system(quantization_axes_spin2, spin_frame_rotations_spin2, self.separate_grids)
-                angular_term = np.sum(quantization_axes_spin1_ref * quantization_axes_spin2_ref, axis=1) - \
-                                      3.0 * np.sum(r_orientations_spin1 * quantization_axes_spin1, axis=1) * \
-                                            np.sum(r_orientations_spin2 * quantization_axes_spin2, axis=1)
-            dipolar_frequencies = const['Fdd'] * effective_gfactors_spin1 * effective_gfactors_spin2 * angular_term / r_values**3
-            timings.append(['Dipolar frequencies', str(datetime.timedelta(seconds = time.time()-time_start))])
-            time_start = time.time()
-            # Time trace
-            simulated_time_trace = self.time_trace_from_dipolar_spectrum(experiment, dipolar_frequencies, modulation_depths)
-            timings.append(['PDS time trace', str(datetime.timedelta(seconds = time.time()-time_start))])
-            # Messages
-            if display_messages:
-                print('\t Spins no. {0} and {1}'.format(idx_spin1, idx_spin2))
-                print('\t Number of Monte-Carlo samples with non-zero weights: {0} out of {1}'.format(indices_nonzero_probabilities.size, self.mc_sample_size))
-                for instance in timings:
-                    print('\t {:<30} {:<30}'.format(instance[0], instance[1]))
-            return simulated_time_trace, total_modulation_depth
-    
-    def compute_time_trace(self, experiment, spins, variables, display_messages=True):
-        ''' Computes a PDS time trace for a given set of variables '''
-        if display_messages:
-            print('\nComputing the time trace of the experiment \'{0}\'...'.format(experiment.name))
+    def compute_time_trace_multispin(self, experiment, spins, variables, display_messages=False):
+        ''' Computes a PDS time trace for a multiple-spin (n>2) system '''
         num_spins = len(spins)
-        if num_spins == 2:
-            simulated_time_trace, modulation_depth = self.compute_time_trace_via_monte_carlo(experiment, spins, variables)
-        else:
-            simulated_time_trace = {}
-            simulated_time_trace['t'] = experiment.t
-            simulated_time_trace['s'] = np.ones(experiment.t.size)
-            residual_amplitude = 1.0
-            for i in range(num_spins-1):
-                for j in range(i+1, num_spins):
-                    two_spin_time_trace, two_spin_modulation_depth = self.compute_time_trace_via_monte_carlo_multispin(experiment, spins, variables, i, j)  
-                    simulated_time_trace['s'] = simulated_time_trace['s'] * two_spin_time_trace['s']
-                    residual_amplitude = residual_amplitude * (1.0 - two_spin_modulation_depth)
-            modulation_depth = 1.0 - residual_amplitude
-        # Rescale the modulation depth
-        if self.fit_modulation_depth:
-            simulated_time_trace['s'], modulation_depth_scale_factor = self.rescale_modulation_depth(simulated_time_trace['s'], modulation_depth, experiment.modulation_depth)
-            if display_messages:
-                print('Scale factor of the modulation depth: {0:<15.3}'.format(modulation_depth_scale_factor))
-        else:
-            modulation_depth_scale_factor = 1.0
-        # Compute chi2
-        if display_messages:
-            chi2_value = chi2(simulated_time_trace['s'], experiment.s, experiment.noise_std)
-            if self.fit_modulation_depth:
-                degrees_of_freedom = experiment.s.size - len(variables) - 1
+        intramolecular_time_traces_fixed_spin1 = np.ones((num_spins, experiment.t.size))
+        for idx_spin1 in range(num_spins-1):
+            for idx_spin2 in range(idx_spin1+1, num_spins):
+                if idx_spin1 == 0:
+                    timings = [['Timings:', '']]
+                    time_start = time.time()
+                    # Random orientations of the applied static magnetic field in the reference frame
+                    if self.field_orientations == []:
+                        self.field_orientations = self.set_field_orientations()
+                    # Distance values
+                    r_values = self.set_r_values(variables['r_mean'][idx_spin2-1], variables['r_width'][idx_spin2-1], variables['rel_prob'][idx_spin2-1])
+                    # Orientations of the distance vector in the reference frame
+                    r_orientations = self.set_r_orientations(variables['xi_mean'][idx_spin2-1], variables['xi_width'][idx_spin2-1], 
+                                                             variables['phi_mean'][idx_spin2-1], variables['phi_width'][idx_spin2-1], 
+                                                             variables['rel_prob'][idx_spin2-1])
+                    # Rotation matrices transforming the reference frame into the spin 2 frame
+                    spin_frame_rotations_spin2 = self.set_spin_frame_rotations(variables['alpha_mean'][idx_spin2-1], variables['alpha_width'][idx_spin2-1], 
+                                                                               variables['beta_mean'][idx_spin2-1], variables['beta_width'][idx_spin2-1], 
+                                                                               variables['gamma_mean'][idx_spin2-1], variables['gamma_width'][idx_spin2-1], 
+                                                                               variables['rel_prob'][idx_spin2-1])                                                                                               
+                    timings.append(['Monte-Carlo samples', str(datetime.timedelta(seconds = time.time()-time_start))])
+                    time_start = time.time()
+                    # Orientations of the applied static magnetic field in both spin frames
+                    field_orientations_spin1 = self.field_orientations
+                    field_orientations_spin2 = rotate_coordinate_system(self.field_orientations, spin_frame_rotations_spin2, self.separate_grids)
+                    # Resonance frequencies and/or effective g-values of both spins
+                    if self.effective_gfactors_spin1 == []:
+                        resonance_frequencies_spin1, effective_gfactors_spin1 = spins[idx_spin1].res_freq(field_orientations_spin1, experiment.magnetic_field)
+                    else:
+                        effective_gfactors_spin1 = self.effective_gfactors_spin1
+                    resonance_frequencies_spin2, effective_gfactors_spin2 = spins[idx_spin2].res_freq(field_orientations_spin2, experiment.magnetic_field)
+                    timings.append(['Resonance frequencies', str(datetime.timedelta(seconds = time.time()-time_start))])
+                    time_start = time.time()
+                    # Detection probabilities
+                    if self.detection_probabilities_spin1 == {}:
+                        detection_probabilities_spin1 = experiment.detection_probability(resonance_frequencies_spin1, spins[idx_spin1].int_res_freq)
+                    else:
+                        detection_probabilities_spin1 = self.detection_probabilities_spin1[experiment.name]
+                    detection_probabilities_spin2 = experiment.detection_probability(resonance_frequencies_spin2, spins[idx_spin2].int_res_freq)
+                    # Pump probabilities
+                    if experiment.technique == 'peldor': 
+                        if self.pump_probabilities_spin1 == {}:
+                            pump_probabilities_spin1 = np.where(detection_probabilities_spin2 > self.excitation_threshold,
+                                                                experiment.pump_probability(resonance_frequencies_spin1, spins[idx_spin1].int_res_freq), 0.0)
+                        else:
+                            pump_probabilities_spin1 = np.where(detection_probabilities_spin2 > self.excitation_threshold,
+                                                                self.pump_probabilities_spin1[experiment.name], 0.0)
+                        pump_probabilities_spin2 = np.where(detection_probabilities_spin1 > self.excitation_threshold,
+                                                            experiment.pump_probability(resonance_frequencies_spin2, spins[idx_spin2].int_res_freq), 0.0)   
+                    elif experiment.technique == 'ridme':
+                        if self.pump_probabilities_spin1 == {}:
+                            pump_probabilities_spin1 = np.where(detection_probabilities_spin2 > self.excitation_threshold,
+                                                                experiment.pump_probability(spins[idx_spin1].T1, spins[idx_spin1].g_anisotropy_in_dipolar_coupling, effective_gfactors_spin1), 0.0)
+                        else:
+                            pump_probabilities_spin1 = np.where(detection_probabilities_spin2 > self.excitation_threshold,
+                                                                self.pump_probabilities_spin1[experiment.name], 0.0)
+                        pump_probabilities_spin2 = np.where(detection_probabilities_spin1 > self.excitation_threshold,                                    
+                                                            experiment.pump_probability(spins[idx_spin2].T1, spins[idx_spin2].g_anisotropy_in_dipolar_coupling, effective_gfactors_spin2), 0.0)   
+                    indices_nonzero_probabilities_spin1 = np.where(pump_probabilities_spin1 > self.excitation_threshold)[0]
+                    indices_nonzero_probabilities_spin2 = np.where(pump_probabilities_spin2 > self.excitation_threshold)[0]
+                    indices_nonzero_probabilities = np.unique(np.concatenate((indices_nonzero_probabilities_spin1, indices_nonzero_probabilities_spin2), axis=None))
+                    indices_nonzero_probabilities = np.sort(indices_nonzero_probabilities, axis=None)
+                    detection_probabilities_spin1 = detection_probabilities_spin1[indices_nonzero_probabilities]
+                    detection_probabilities_spin2 = detection_probabilities_spin2[indices_nonzero_probabilities]
+                    pump_probabilities_spin1 = pump_probabilities_spin1[indices_nonzero_probabilities]
+                    pump_probabilities_spin2 = pump_probabilities_spin2[indices_nonzero_probabilities]
+                    timings.append(['Detection/pump probabilities', str(datetime.timedelta(seconds = time.time()-time_start))])
+                    time_start = time.time()
+                    # Modulation depths
+                    modulation_depths_spin1 = (detection_probabilities_spin1 * pump_probabilities_spin2) / np.sum(detection_probabilities_spin1)
+                    modulation_depths_spin2 = (detection_probabilities_spin2 * pump_probabilities_spin1) / np.sum(detection_probabilities_spin2)
+                    timings.append(['Modulation depths', str(datetime.timedelta(seconds = time.time()-time_start))])
+                    time_start = time.time()
+                    # Modulation frequencies
+                    field_orientations = self.field_orientations[indices_nonzero_probabilities]
+                    r_values = r_values[indices_nonzero_probabilities]
+                    r_orientations = r_orientations[indices_nonzero_probabilities]
+                    effective_gfactors_spin1 = effective_gfactors_spin1[indices_nonzero_probabilities]
+                    effective_gfactors_spin2 = effective_gfactors_spin2[indices_nonzero_probabilities] 
+                    if not spins[idx_spin1].g_anisotropy_in_dipolar_coupling and not spins[idx_spin2].g_anisotropy_in_dipolar_coupling:
+                        angular_term = 1.0 - 3.0 * np.sum(r_orientations * field_orientations, axis=1)**2
+                    elif spins[idx_spin1].g_anisotropy_in_dipolar_coupling and not spins[idx_spin2].g_anisotropy_in_dipolar_coupling:
+                        quantization_axes_spin1 = spins[0].quantization_axis(field_orientations, effective_gfactors_spin1)
+                        angular_term = 1.0 - 3.0 * np.sum(r_orientations * quantization_axes_spin1, axis=1) * \
+                                                   np.sum(r_orientations * field_orientations, axis=1)
+                    elif not spins[idx_spin1].g_anisotropy_in_dipolar_coupling and spins[idx_spin2].g_anisotropy_in_dipolar_coupling:
+                        field_orientations_spin2 = field_orientations_spin2[indices_nonzero_probabilities]
+                        spin_frame_rotations_spin2 = spin_frame_rotations_spin2[indices_nonzero_probabilities]
+                        r_orientations_spin2 = rotate_coordinate_system(r_orientations, spin_frame_rotations_spin2, self.separate_grids)
+                        quantization_axes_spin2 = spins[idx_spin2].quantization_axis(field_orientations_spin2, effective_gfactors_spin2)
+                        angular_term = 1.0 - 3.0 * np.sum(r_orientations * field_orientations, axis=1) * \
+                                                   np.sum(r_orientations_spin2 * quantization_axes_spin2, axis=1) 
+                    elif spins[idx_spin1].g_anisotropy_in_dipolar_coupling and spins[idx_spin2].g_anisotropy_in_dipolar_coupling:
+                        quantization_axes_spin1 = spins[0].quantization_axis(field_orientations, effective_gfactors_spin1)
+                        field_orientations_spin2 = field_orientations_spin2[indices_nonzero_probabilities]
+                        spin_frame_rotations_spin2 = spin_frame_rotations_spin2[indices_nonzero_probabilities]
+                        r_orientations_spin2 = rotate_coordinate_system(r_orientations, spin_frame_rotations_spin2, self.separate_grids)
+                        quantization_axes_spin2 = spins[idx_spin2].quantization_axis(field_orientations_spin2, effective_gfactors_spin2)
+                        quantization_axes_spin2_ref = rotate_coordinate_system(quantization_axes_spin2, spin_frame_rotations_spin2.inv(), self.separate_grids)
+                        angular_term = np.sum(quantization_axes_spin1 * quantization_axes_spin2_ref, axis=1) - \
+                                              3.0 * np.sum(r_orientations * quantization_axes_spin1, axis=1) * \
+                                                    np.sum(r_orientations_spin2 * quantization_axes_spin2, axis=1)
+                    dipolar_frequencies = const['Fdd'] * effective_gfactors_spin1 * effective_gfactors_spin2 * angular_term / r_values**3
+                    timings.append(['Dipolar frequencies', str(datetime.timedelta(seconds = time.time()-time_start))])
+                    time_start = time.time()
+                    # Intra-molecular components of the time trace
+                    intramolecular_time_trace_spin1 = self.intramolecular_time_trace_from_dipolar_spectrum(experiment.t, dipolar_frequencies, modulation_depths_spin1)
+                    intramolecular_time_traces_fixed_spin1[idx_spin1] = intramolecular_time_traces_fixed_spin1[idx_spin1] * intramolecular_time_trace_spin1
+                    intramolecular_time_trace_spin2 = self.intramolecular_time_trace_from_dipolar_spectrum(experiment.t, dipolar_frequencies, modulation_depths_spin2)
+                    intramolecular_time_traces_fixed_spin1[idx_spin2] = intramolecular_time_traces_fixed_spin1[idx_spin2] * intramolecular_time_trace_spin2
+                    timings.append(['PDS time trace', str(datetime.timedelta(seconds = time.time()-time_start))])
+                    # Display statistics
+                    if display_messages:
+                        print('Spins no. {0} and {1}'.format(idx_spin1, idx_spin2))
+                        print('Number of Monte-Carlo samples with non-zero weights: {0} out of {1}'.format(indices_nonzero_probabilities.size, self.mc_sample_size))
+                        for instance in timings:
+                            print('\t {:<30} {:<30}'.format(instance[0], instance[1]))
+                else:
+                    timings = [['Timings:', '']]
+                    time_start = time.time()
+                    # Random orientations of the applied static magnetic field in the reference frame
+                    if self.field_orientations == []:
+                        self.field_orientations = self.set_field_orientations()
+                    # Coordinates of spin 1 in the reference frame
+                    coordinates_spin1 = self.set_coordinates(variables['r_mean'][idx_spin1-1], variables['r_width'][idx_spin1-1], 
+                                                             variables['xi_mean'][idx_spin1-1], variables['xi_width'][idx_spin1-1], 
+                                                             variables['phi_mean'][idx_spin1-1], variables['phi_width'][idx_spin1-1], 
+                                                             variables['rel_prob'][idx_spin1-1])
+                                                             
+                    # Coordinates of spin 2 in the reference frame
+                    coordinates_spin2 = self.set_coordinates(variables['r_mean'][idx_spin2-1], variables['r_width'][idx_spin2-1], 
+                                                             variables['xi_mean'][idx_spin2-1], variables['xi_width'][idx_spin2-1], 
+                                                             variables['phi_mean'][idx_spin2-1], variables['phi_width'][idx_spin2-1], 
+                                                             variables['rel_prob'][idx_spin2-1])
+                    r_vectors = coordinates_spin2 - coordinates_spin1
+                    # Distance values
+                    r_values = np.sqrt(np.sum(r_vectors**2, axis=1)) 
+                    # Orientations of the distance vector in the reference frame
+                    r_orientations = r_vectors / r_values.reshape(r_vectors.shape[0],1)
+                    # Rotation matrices transforming the reference frame into the spin frames
+                    spin_frame_rotations_spin1 = self.set_spin_frame_rotations(variables['alpha_mean'][idx_spin1-1], variables['alpha_width'][idx_spin1-1], 
+                                                                               variables['beta_mean'][idx_spin1-1], variables['beta_width'][idx_spin1-1], 
+                                                                               variables['gamma_mean'][idx_spin1-1], variables['gamma_width'][idx_spin1-1], 
+                                                                               variables['rel_prob'][idx_spin1-1])
+                    spin_frame_rotations_spin2 = self.set_spin_frame_rotations(variables['alpha_mean'][idx_spin2-1], variables['alpha_width'][idx_spin2-1], 
+                                                                               variables['beta_mean'][idx_spin2-1], variables['beta_width'][idx_spin2-1], 
+                                                                               variables['gamma_mean'][idx_spin2-1], variables['gamma_width'][idx_spin2-1], 
+                                                                               variables['rel_prob'][idx_spin2-1])                                                                                                 
+                    timings.append(['Monte-Carlo samples', str(datetime.timedelta(seconds = time.time()-time_start))])
+                    time_start = time.time()
+                    # Orientations of the applied static magnetic field in both spin frames
+                    field_orientations_spin1 = rotate_coordinate_system(self.field_orientations, spin_frame_rotations_spin1, self.separate_grids)
+                    field_orientations_spin2 = rotate_coordinate_system(self.field_orientations, spin_frame_rotations_spin2, self.separate_grids)
+                    # Resonance frequencies and/or effective g-values of both spins
+                    resonance_frequencies_spin1, effective_gfactors_spin1 = spins[idx_spin1].res_freq(field_orientations_spin1, experiment.magnetic_field)    
+                    resonance_frequencies_spin2, effective_gfactors_spin2 = spins[idx_spin2].res_freq(field_orientations_spin2, experiment.magnetic_field)
+                    timings.append(['Resonance frequencies', str(datetime.timedelta(seconds = time.time()-time_start))])
+                    time_start = time.time()
+                    # Detection probabilities
+                    detection_probabilities_spin1 = experiment.detection_probability(resonance_frequencies_spin1, spins[idx_spin1].int_res_freq)
+                    detection_probabilities_spin2 = experiment.detection_probability(resonance_frequencies_spin2, spins[idx_spin2].int_res_freq)
+                    # Pump probabilities
+                    if experiment.technique == 'peldor':
+                        pump_probabilities_spin1 = np.where(detection_probabilities_spin2 > self.excitation_threshold,
+                                                            experiment.pump_probability(resonance_frequencies_spin1, spins[idx_spin1].int_res_freq), 0.0)
+                        pump_probabilities_spin2 = np.where(detection_probabilities_spin1 > self.excitation_threshold,
+                                                            experiment.pump_probability(resonance_frequencies_spin2, spins[idx_spin2].int_res_freq), 0.0)   
+                    elif experiment.technique == 'ridme':
+                        pump_probabilities_spin1 = np.where(detection_probabilities_spin2 > self.excitation_threshold,
+                                                            experiment.pump_probability(spins[idx_spin1].T1, spins[idx_spin1].g_anisotropy_in_dipolar_coupling, effective_gfactors_spin1), 0.0)
+                        pump_probabilities_spin2 = np.where(detection_probabilities_spin1 > self.excitation_threshold,                                    
+                                                            experiment.pump_probability(spins[idx_spin2].T1, spins[idx_spin2].g_anisotropy_in_dipolar_coupling, effective_gfactors_spin2), 0.0) 
+                    indices_nonzero_probabilities_spin1 = np.where(pump_probabilities_spin1 > self.excitation_threshold)[0]
+                    indices_nonzero_probabilities_spin2 = np.where(pump_probabilities_spin2 > self.excitation_threshold)[0]
+                    indices_nonzero_probabilities = np.unique(np.concatenate((indices_nonzero_probabilities_spin1, indices_nonzero_probabilities_spin2), axis=None))
+                    indices_nonzero_probabilities = np.sort(indices_nonzero_probabilities, axis=None)
+                    detection_probabilities_spin1 = detection_probabilities_spin1[indices_nonzero_probabilities]
+                    detection_probabilities_spin2 = detection_probabilities_spin2[indices_nonzero_probabilities]
+                    pump_probabilities_spin1 = pump_probabilities_spin1[indices_nonzero_probabilities]
+                    pump_probabilities_spin2 = pump_probabilities_spin2[indices_nonzero_probabilities]
+                    timings.append(['Detection/pump probabilities', str(datetime.timedelta(seconds = time.time()-time_start))])
+                    time_start = time.time() 
+                    # Modulation depths
+                    modulation_depths_spin1 = (detection_probabilities_spin1 * pump_probabilities_spin2) / np.sum(detection_probabilities_spin1)
+                    modulation_depths_spin2 = (detection_probabilities_spin2 * pump_probabilities_spin1) / np.sum(detection_probabilities_spin2)
+                    timings.append(['Modulation depths', str(datetime.timedelta(seconds = time.time()-time_start))])
+                    time_start = time.time()
+                    # Modulation frequencies
+                    field_orientations = self.field_orientations[indices_nonzero_probabilities]
+                    r_values = r_values[indices_nonzero_probabilities]
+                    r_orientations = r_orientations[indices_nonzero_probabilities]
+                    effective_gfactors_spin1 = effective_gfactors_spin1[indices_nonzero_probabilities]
+                    effective_gfactors_spin2 = effective_gfactors_spin2[indices_nonzero_probabilities]
+                    if not spins[idx_spin1].g_anisotropy_in_dipolar_coupling and not spins[idx_spin2].g_anisotropy_in_dipolar_coupling:
+                        angular_term = 1.0 - 3.0 * np.sum(r_orientations * field_orientations, axis=1)**2
+                    elif spins[idx_spin1].g_anisotropy_in_dipolar_coupling and not spins[idx_spin2].g_anisotropy_in_dipolar_coupling:
+                        field_orientations_spin1 = field_orientations_spin1[indices_nonzero_probabilities]
+                        spin_frame_rotations_spin1 = spin_frame_rotations_spin1[indices_nonzero_probabilities]
+                        r_orientations_spin1 = rotate_coordinate_system(r_orientations, spin_frame_rotations_spin1, self.separate_grids)
+                        quantization_axes_spin1 = spins[idx_spin1].quantization_axis(field_orientations_spin1, effective_gfactors_spin1)
+                        angular_term = 1.0 - 3.0 * np.sum(r_orientations_spin1 * quantization_axes_spin1, axis=1) * \
+                                                   np.sum(r_orientations * field_orientations, axis=1)
+                    elif not spins[idx_spin1].g_anisotropy_in_dipolar_coupling and spins[idx_spin2].g_anisotropy_in_dipolar_coupling:
+                        field_orientations_spin2 = field_orientations_spin2[indices_nonzero_probabilities]
+                        spin_frame_rotations_spin2 = spin_frame_rotations_spin2[indices_nonzero_probabilities]
+                        r_orientations_spin2 = rotate_coordinate_system(r_orientations, spin_frame_rotations_spin2, self.separate_grids)
+                        quantization_axes_spin2 = spins[idx_spin2].quantization_axis(field_orientations_spin2, effective_gfactors_spin2)
+                        angular_term = 1.0 - 3.0 * np.sum(r_orientations * field_orientations, axis=1) * \
+                                                   np.sum(r_orientations_spin2 * quantization_axes_spin2, axis=1) 
+                    elif spins[idx_spin1].g_anisotropy_in_dipolar_coupling and spins[idx_spin2].g_anisotropy_in_dipolar_coupling:
+                        field_orientations_spin1 = field_orientations_spin1[indices_nonzero_probabilities]
+                        field_orientations_spin2 = field_orientations_spin2[indices_nonzero_probabilities]
+                        spin_frame_rotations_spin1 = spin_frame_rotations_spin1[indices_nonzero_probabilities]
+                        spin_frame_rotations_spin2 = spin_frame_rotations_spin2[indices_nonzero_probabilities]
+                        r_orientations_spin1 = rotate_coordinate_system(r_orientations, spin_frame_rotations_spin1, self.separate_grids)
+                        r_orientations_spin2 = rotate_coordinate_system(r_orientations, spin_frame_rotations_spin2, self.separate_grids)
+                        quantization_axes_spin1 = spins[idx_spin1].quantization_axis(field_orientations_spin1, effective_gfactors_spin1)
+                        quantization_axes_spin2 = spins[idx_spin2].quantization_axis(field_orientations_spin2, effective_gfactors_spin2)
+                        quantization_axes_spin1_ref = rotate_coordinate_system(quantization_axes_spin1, spin_frame_rotations_spin1, self.separate_grids)
+                        quantization_axes_spin2_ref = rotate_coordinate_system(quantization_axes_spin2, spin_frame_rotations_spin2, self.separate_grids)
+                        angular_term = np.sum(quantization_axes_spin1_ref * quantization_axes_spin2_ref, axis=1) - \
+                                              3.0 * np.sum(r_orientations_spin1 * quantization_axes_spin1, axis=1) * \
+                                                    np.sum(r_orientations_spin2 * quantization_axes_spin2, axis=1)
+                    dipolar_frequencies = const['Fdd'] * effective_gfactors_spin1 * effective_gfactors_spin2 * angular_term / r_values**3
+                    timings.append(['Dipolar frequencies', str(datetime.timedelta(seconds = time.time()-time_start))])
+                    time_start = time.time()
+                    # Intra-molecular components of the time trace
+                    intramolecular_time_trace_spin1 = self.intramolecular_time_trace_from_dipolar_spectrum(experiment.t, dipolar_frequencies, modulation_depths_spin1)
+                    intramolecular_time_traces_fixed_spin1[idx_spin1] = intramolecular_time_traces_fixed_spin1[idx_spin1] * intramolecular_time_trace_spin1
+                    intramolecular_time_trace_spin2 = self.intramolecular_time_trace_from_dipolar_spectrum(experiment.t, dipolar_frequencies, modulation_depths_spin2)
+                    intramolecular_time_traces_fixed_spin1[idx_spin2] = intramolecular_time_traces_fixed_spin1[idx_spin2] * intramolecular_time_trace_spin2
+                    timings.append(['PDS time trace', str(datetime.timedelta(seconds = time.time()-time_start))])
+                    # Display statistics
+                    if display_messages:
+                        print('\t Spins no. {0} and {1}'.format(idx_spin1, idx_spin2))
+                        print('\t Number of Monte-Carlo samples with non-zero weights: {0} out of {1}'.format(indices_nonzero_probabilities.size, self.mc_sample_size))
+                        for instance in timings:
+                            print('\t {:<30} {:<30}'.format(instance[0], instance[1]))
+        intramolecular_time_trace_temp = np.sum(intramolecular_time_traces_fixed_spin1, axis=0) / float(num_spins)
+        background_parameters = self.optimize_background(experiment.t, experiment.s, intramolecular_time_trace_temp)
+        intramolecular_time_trace = self.rescale_intramolecular_time_trace(intramolecular_time_trace_temp, background_parameters['scale_factor'])
+        intermolecular_time_trace = exponential_decay(experiment.t, 1.0, background_parameters['decay_constant'], background_parameters['dimension']/3.0)
+        simulated_time_trace = {}
+        simulated_time_trace['t'] = experiment.t
+        simulated_time_trace['s'] = intramolecular_time_trace * intermolecular_time_trace
+        return simulated_time_trace, background_parameters
+
+    def intramolecular_time_trace_from_dipolar_frequencies(self, t, modulation_frequencies, modulation_depths):
+        ''' Converts dipolar frequencies into a PDS time trace '''
+        num_time_points = t.size
+        simulated_time_trace = np.ones(num_time_points)
+        if modulation_frequencies.size != 0:
+            for i in range(num_time_points):
+                simulated_time_trace[i] -= np.sum(modulation_depths * (1.0 - np.cos(2*np.pi * modulation_frequencies * t[i])))
+        return simulated_time_trace
+    
+    def intramolecular_time_trace_from_dipolar_spectrum(self, t, modulation_frequencies, modulation_depths):
+        ''' Converts a dipolar spectrum into a PDS time trace '''
+        num_time_points = t.size
+        simulated_time_trace = np.ones(num_time_points)
+        if modulation_frequencies.size != 0:
+            modulation_frequency_min = np.amin(modulation_frequencies)
+            modulation_frequency_max = np.amax(modulation_frequencies)
+            if (modulation_frequency_max - modulation_frequency_min > self.frequency_increment_dipolar_spectrum):
+                new_modulation_frequencies = np.arange(np.amin(modulation_frequencies), np.amax(modulation_frequencies), self.frequency_increment_dipolar_spectrum)
+                new_modulation_depths = histogram(modulation_frequencies, bins=new_modulation_frequencies, weights=modulation_depths)
             else:
-                degrees_of_freedom = experiment.s.size - len(variables)
-            reduced_chi2_value = chi2_value / float(degrees_of_freedom)
-            if experiment.noise_std:
-                print('Chi2: {0:<15.3}   Reduced chi2: {1:<15.3}'.format((chi2_value, reduced_chi2_value)))
-            else:
-                print('Chi2 (noise std = 1): {0:<15.3}'.format(chi2_value))
-        return simulated_time_trace, modulation_depth_scale_factor
+                new_modulation_frequencies = np.array([modulation_frequency_min])
+                new_modulation_depths = np.array([np.sum(modulation_depths)])
+            for i in range(num_time_points):
+                simulated_time_trace[i] -= np.sum(new_modulation_depths * (1.0 - np.cos(2*np.pi * new_modulation_frequencies * t[i])))
+        return simulated_time_trace
     
-    def compute_time_traces(self, experiments, spins, variables, display_messages=True):
-        ''' Computes PDS time traces for a given set of variables '''
-        simulated_time_traces = []
-        modulation_depth_scale_factors = []
-        for experiment in experiments:
-            simulated_time_trace, modulation_depth_scale_factor = self.compute_time_trace(experiment, spins, variables, display_messages)
-            simulated_time_traces.append(simulated_time_trace)
-            modulation_depth_scale_factors.append(modulation_depth_scale_factor)
-        return simulated_time_traces, modulation_depth_scale_factors
+    def optimize_background(self, t, experimental_time_trace, simulated_intramolecular_time_trace):
+        ''' Optimizes background parameters via Levenberg-Marquardt based non-linear least-squates fitting '''
+        # Set the variable and fixed background parameters
+        k_opt = self.background['decay_constant']['optimize']
+        d_opt = self.background['dimension']['optimize']
+        s_opt = self.background['scale_factor']['optimize']
+        k_val = self.background['decay_constant']['value']
+        d_val = self.background['dimension']['value']
+        s_val = self.background['scale_factor']['value']
+        k_ran = self.background['decay_constant']['ranges']
+        d_ran = self.background['dimension']['ranges']
+        s_ran = self.background['scale_factor']['ranges']
+        p0 = []
+        lower_bounds = []
+        upper_bounds = []
+        if k_opt and not d_opt and not s_opt:
+            partial_background_fit_function = partial(background_fit_function_kds_wrapper, d=d_val, s=s_val, V=simulated_intramolecular_time_trace[1:])
+            p0.append(k_val)    
+            lower_bounds.append(k_ran[0])
+            upper_bounds.append(k_ran[1])            
+        elif not k_opt and d_opt and not s_opt:
+            partial_background_fit_function = partial(background_fit_function_dks_wrapper, k=k_val, s=s_val, V=simulated_intramolecular_time_trace[1:])
+            p0.append(d_val)    
+            lower_bounds.append(d_ran[0])
+            upper_bounds.append(d_ran[1])
+        elif not k_opt and not d_opt and s_opt:
+            partial_background_fit_function = partial(background_fit_function_skd_wrapper, k=k_val, d=d_val, V=simulated_intramolecular_time_trace[1:])
+            p0.append(s_val)    
+            lower_bounds.append(s_ran[0])
+            upper_bounds.append(s_ran[1])
+        elif k_opt and d_opt and not s_opt:
+            partial_background_fit_function = partial(background_fit_function_kds_wrapper, s=s_val, V=simulated_intramolecular_time_trace[1:])
+            p0.append(k_val)    
+            lower_bounds.append(k_ran[0])
+            upper_bounds.append(k_ran[1])
+            p0.append(d_val)    
+            lower_bounds.append(d_ran[0])
+            upper_bounds.append(d_ran[1])
+        elif not k_opt and d_opt and s_opt:
+            partial_background_fit_function = partial(background_fit_function_dsk_wrapper, k=k_val, V=simulated_intramolecular_time_trace[1:])
+            p0.append(d_val)    
+            lower_bounds.append(d_ran[0])
+            upper_bounds.append(d_ran[1])
+            p0.append(s_val)    
+            lower_bounds.append(s_ran[0])
+            upper_bounds.append(s_ran[1])
+        elif k_opt and not d_opt and s_opt:
+            partial_background_fit_function = partial(background_fit_function_ksd_wrapper, d=d_val, V=simulated_intramolecular_time_trace[1:])
+            p0.append(k_val)    
+            lower_bounds.append(k_ran[0])
+            upper_bounds.append(k_ran[1])
+            p0.append(s_val)    
+            lower_bounds.append(s_ran[0])
+            upper_bounds.append(s_ran[1]) 
+        elif k_opt and d_opt and s_opt: 
+            partial_background_fit_function = partial(background_fit_function_kds_wrapper, V=simulated_intramolecular_time_trace[1:])
+            p0.append(k_val)    
+            lower_bounds.append(k_ran[0])
+            upper_bounds.append(k_ran[1])
+            p0.append(d_val)    
+            lower_bounds.append(d_ran[0])
+            upper_bounds.append(d_ran[1])
+            p0.append(s_val)    
+            lower_bounds.append(s_ran[0])
+            upper_bounds.append(s_ran[1])
+        # Optimize the variable background parameters
+        popt, pcov = curve_fit(partial_background_fit_function, t[1:], experimental_time_trace[1:])
+        # Store the optimized and fixed background parameters
+        count = 0
+        background_parameters = {}
+        if self.background['decay_constant']['optimize']:
+            background_parameters['decay_constant'] = popt[count]
+            count += 1
+        else:
+            background_parameters['decay_constant'] = self.background['decay_constant']['value']
+        if self.background['dimension']['optimize']:
+            background_parameters['dimension'] = popt[count]
+            count += 1
+        else:
+            background_parameters['dimension'] = self.background['dimension']['value']    
+        if self.background['scale_factor']['optimize']:
+            background_parameters['scale_factor'] = popt[count]
+            count += 1
+        else:
+            background_parameters['scale_factor'] = self.background['scale_factor']['value']    
+        return background_parameters
     
-    def epr_spectrum(self, spins, field_value):
-        ''' Computes an EPR spectrum of a spin system at a single magnetic field '''
-        # Random orientations of the static magnetic field
-        if self.field_orientations == []:
-            self.field_orientations = self.set_field_orientations()  
-        # Resonance frequencies and their probabilities
-        all_frequencies = []
-        all_probabilities = []
-        for spin in spins:
-            # Resonance frequencies
-            resonance_frequencies, effective_gvalues = spin.res_freq(self.field_orientations, field_value)
-            num_field_orientations = self.field_orientations.shape[0]
-            weights = np.tile(spin.int_res_freq, (num_field_orientations,1))
-            # Frequency ranges
-            min_resonance_frequency = np.amin(resonance_frequencies)
-            max_resonance_frequency = np.amax(resonance_frequencies)
-            # Spectrum
-            frequencies = np.arange(min_resonance_frequency, max_resonance_frequency+self.frequency_increment_epr_spectrum, self.frequency_increment_epr_spectrum)
-            probabilities = histogram(resonance_frequencies, bins=frequencies, weights=weights)
-            all_frequencies.extend(frequencies)
-            all_probabilities.extend(probabilities)
-        all_frequencies = np.array(all_frequencies)
-        all_probabilities = np.array(all_probabilities)
-        min_frequency = np.amin(all_frequencies) - 0.100
-        max_frequency = np.amax(all_frequencies) + 0.100
-        spectrum = {}
-        spectrum['f'] = np.arange(min_frequency, max_frequency+self.frequency_increment_epr_spectrum, self.frequency_increment_epr_spectrum)
-        spectrum['p'] = histogram(all_frequencies, bins=spectrum['f'], weights=all_probabilities)       
-        return spectrum
-    
-    def epr_spectra(self, spins, experiments):
-        ''' Computes an EPR spectrum of a spin system at multiple magnetic fields '''
-        print('\nComputing the EPR spectrum of the spin system in the frequency domain...')
-        epr_spectra = []
-        for experiment in experiments:
-            epr_spectrum = self.epr_spectrum(spins, experiment.magnetic_field)
-            epr_spectra.append(epr_spectrum)
-        return epr_spectra
-    
-    def bandwidths(self, experiments):
-        ''' Computes the bandwidths of detection and pump pulses '''
-        print('\nComputing the bandwidths of detection and pump pulses...')
-        bandwidths = []
-        for experiment in experiments:
-            if experiment.technique == 'peldor':
-                bandwidths_single_experiment = {}
-                bandwidths_single_experiment['detection_bandwidth'] = experiment.get_detection_bandwidth()
-                bandwidths_single_experiment['pump_bandwidth'] = experiment.get_pump_bandwidth()
-                bandwidths.append(bandwidths_single_experiment)
-            elif experiment.technique == 'ridme':
-                bandwidths_single_experiment = {}
-                bandwidths_single_experiment['detection_bandwidth'] = experiment.get_detection_bandwidth()
-                bandwidths.append(bandwidths_single_experiment)
-        return bandwidths
-    
-    def precalculations(self, experiments, spins):
-        ''' Pre-compute the detection and pump probabilities for spin 1'''
-        print('\nPre-compute the detection and pump probabilities for spin 1...')
-        if self.field_orientations == []:
-            # Random orientations of the static magnetic field
-            self.field_orientations = self.set_field_orientations()
-        # Orientations of the applied static magnetic field in the frame of spin 1
-        field_orientations_spin1 = self.field_orientations 
-        if self.detection_probabilities_spin1 != {}:
-            for experiment in experiments:
-                # Resonance frequencies and effective g-values of spin 1
-                resonance_frequencies_spin1, self.effective_gfactors_spin1 = spins[0].res_freq(field_orientations_spin1, experiment.magnetic_field)
-                # Detection probabilities
-                self.detection_probabilities_spin1[experiment.name] = experiment.detection_probability(resonance_frequencies_spin1, spins[0].int_res_freq)
-                # Pump probabilities
-                if experiment.technique == 'peldor': 
-                    self.pump_probabilities_spin1[experiment.name] = experiment.pump_probability(resonance_frequencies_spin1, spins[0].int_res_freq)    
-                elif experiment.technique == 'ridme':
-                    self.pump_probabilities_spin1[experiment.name] = experiment.pump_probability(spins[0].T1, spins[0].g_anisotropy_in_dipolar_coupling, self.effective_gfactors_spin1)  
+    def rescale_intramolecular_time_trace(self, intramolecular_time_trace, scale_factor):
+        ''' Rescales a modulation depth of a PDS time trace'''
+        return np.ones(intramolecular_time_trace.size) - scale_factor * (np.ones(intramolecular_time_trace.size) - intramolecular_time_trace)   

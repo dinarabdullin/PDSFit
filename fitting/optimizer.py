@@ -15,13 +15,13 @@ class Optimizer():
         self.score = []
     
     def set_fit_function(self, func):
-        ''' Set a fit function '''
+        ''' Sets a fit function '''
         self.fit_function = func
     
     def set_objective_function(self, func):
-        ''' Set an objective function '''
+        ''' Sets an objective function '''
         self.objective_function = func
     
     def get_fit(self):
-        ''' Get fits '''
+        ''' Gets fits '''
         return (self.fit_function)(self.optimized_variables)

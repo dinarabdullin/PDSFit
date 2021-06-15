@@ -27,8 +27,8 @@ class DataSaver:
                 output_directory = config_directory
                 
             now = datetime.datetime.now()
-            folder = now.strftime("%Y-%m-%d_%H-%M")
-            output_directory = output_directory + "/" + folder + "/"
+            folder = now.strftime('%Y-%m-%d_%H-%M')
+            output_directory = output_directory + '/' + folder + '/'
             try:
                 os.makedirs(output_directory)
             except OSError as e:
@@ -48,19 +48,19 @@ class DataSaver:
         if self.save_data:
             for i in range(len(experiments)):
                 for key in bandwidths[i]:
-                    filepath = self.directory + key + '_' + experiments[i].name + ".dat"
+                    filepath = self.directory + key + '_' + experiments[i].name + '.dat'
                     save_bandwidth(bandwidths[i][key], filepath)
 
     def save_simulated_time_traces(self, simulated_time_traces, experiments):
         ''' Saves simulated PDS time traces '''
         if self.save_data:
             for i in range(len(experiments)):
-                filepath = self.directory + 'time_trace_' + experiments[i].name + ".dat"
-                save_simulated_time_trace(simulated_time_traces[i], experiments[i].s, filepath)
+                filepath = self.directory + 'time_trace_' + experiments[i].name + '.dat'
+                save_simulated_time_trace(simulated_time_traces[i], experiments[i].s, experiments[i].s_im, filepath)
 
     def save_simulation_output(self, epr_spectra, bandwidths, simulated_time_traces, experiments):
         ''' Saves the simulation output '''
-        self.save_epr_spectrum(epr_spectra[0], experiments[0].name)
+        # self.save_epr_spectrum(epr_spectra[0], experiments[0].name)
         self.save_bandwidths(bandwidths, experiments)
         self.save_simulated_time_traces(simulated_time_traces, experiments)
     
@@ -80,8 +80,8 @@ class DataSaver:
         ''' Saves fits to experimental PDS time traces '''
         if self.save_data:
             for i in range(len(experiments)):
-                filepath = self.directory + 'fit_' + experiments[i].name + ".dat"
-                save_simulated_time_trace(simulated_time_traces[i], experiments[i].s, filepath)
+                filepath = self.directory + 'fit_' + experiments[i].name + '.dat'
+                save_simulated_time_trace(simulated_time_traces[i], experiments[i].s, experiments[i].s_im, filepath)
     
     def save_fitting_output(self, score, optimized_parameters, parameters_errors, simulated_time_traces, fitting_parameters, experiments):
         ''' Saves the fitting output '''

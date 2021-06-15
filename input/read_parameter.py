@@ -4,10 +4,9 @@ import sys
 
 supported_data_types = {'float': float, 'int': int}
 
-
-def read_parameter(parameter_object, data_type, scale=1):
+def read_parameter(parameter_object, parameter_name, data_type, scale=1):
     ''' 
-    Read the parameter values form a libconfig object 'parameter_object'.
+    Reads the parameter values form a libconfig object 'parameter_object'.
     The type of the parameter values, 'data_type', can be float or int.
     Each of the parameter values is scaled by a factor 'scale'.
 
@@ -23,7 +22,7 @@ def read_parameter(parameter_object, data_type, scale=1):
     parameter_object = ([float, float, ...])                                 parameter_list = [[float, float, ...]]
     parameter_object = ([float, float, ...], float, ...)                     parameter_list = [[float, float, ...], [float], ...]
     parameter_object = ([float, float, ...], [float, float, ...], ...)       parameter_list = [[float, float, ...], [float, float, ...], ...]
-    
+
     Round brakets correspond to dimension #1 of the returned list, 
     Square brakets correspond to dimension #2 of the returned list.
     '''
@@ -32,22 +31,26 @@ def read_parameter(parameter_object, data_type, scale=1):
         if isinstance(parameter_object, tuple):
             parameter_list = []
             for component in parameter_object:
-                if isinstance(component, list):
-                    parameter_sublist = []
-                    for subcomponent in component:
-                        if isinstance(subcomponent, float) or isinstance(subcomponent, int):
-                            parameter_value = (supported_data_types[data_type])(subcomponent) * (supported_data_types[data_type])(scale)
-                            parameter_sublist.append(parameter_value)
-                        else:
-                            raise ValueError('Unsupported format!')
-                            sys.exit(1)
-                elif isinstance(component, float) or isinstance(component, int):
-                    parameter_value = (supported_data_types[data_type])(component) * (supported_data_types[data_type])(scale)
-                    parameter_sublist = [parameter_value]
+                if component != () and component != []:
+                    if isinstance(component, list):
+                        parameter_sublist = []
+                        for subcomponent in component:
+                            if isinstance(subcomponent, float) or isinstance(subcomponent, int):
+                                parameter_value = (supported_data_types[data_type])(subcomponent) * (supported_data_types[data_type])(scale)
+                                parameter_sublist.append(parameter_value)
+                            else:
+                                raise ValueError('Unsupported format of \'{0}\'!'.format(parameter_name))
+                                sys.exit(1)
+                    elif isinstance(component, float) or isinstance(component, int):
+                        parameter_value = (supported_data_types[data_type])(component) * (supported_data_types[data_type])(scale)
+                        parameter_sublist = [parameter_value]
+                    else:
+                        raise ValueError('Unsupported format of \'{0}\'!'.format(parameter_name))
+                        sys.exit(1)
+                    parameter_list.append(parameter_sublist)
                 else:
-                    raise ValueError('Unsupported format!')
+                    raise ValueError('Unsupported format of \'{0}\'!'.format(parameter_name))
                     sys.exit(1)
-                parameter_list.append(parameter_sublist)
         elif isinstance(parameter_object, list):  
             parameter_list = []
             parameter_sublist = []
@@ -56,14 +59,14 @@ def read_parameter(parameter_object, data_type, scale=1):
                     parameter_value = (supported_data_types[data_type])(component) * (supported_data_types[data_type])(scale)
                     parameter_sublist.append(parameter_value)
                 else:
-                    raise ValueError('Unsupported format!')
+                    raise ValueError('Unsupported format of \'{0}\'!'.format(parameter_name))
                     sys.exit(1)
             parameter_list.append(parameter_sublist)
         elif isinstance(parameter_object, float) or isinstance(parameter_object, int):
             parameter_value = (supported_data_types[data_type])(parameter_object) * (supported_data_types[data_type])(scale)
             parameter_list = [[parameter_value]]
         else:
-            raise ValueError('Unsupported format!')
+            raise ValueError('Unsupported format of \'{0}\'!'.format(parameter_name))
             sys.exit(1)
     else:
         parameter_list = [[(supported_data_types[data_type])(0)]]

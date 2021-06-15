@@ -12,13 +12,13 @@ class Generation:
         self.chromosomes = []
         
     def first_generation(self, bounds):
-        ''' Create first geneteraion '''
+        ''' Creates first geneteraion '''
         for i in range(self.size):
             chromosome = Chromosome(bounds)
             self.chromosomes.append(chromosome)
 
     def tournament_selection(self):
-        ''' Select parent chromosomes via tournament selection '''
+        ''' Selects parent chromosomes via tournament selection '''
         index_candidate1 = np.random.random_integers(low=0, high=self.size - 1)
         index_candidate2 = np.random.random_integers(low=0, high=self.size - 1)
         if self.chromosomes[index_candidate1].score < self.chromosomes[index_candidate2].score:
@@ -27,7 +27,7 @@ class Generation:
             return index_candidate2
 
     def crossover_chromosomes(self, chromosome1, chromosome2, crossover_probability):
-        ''' Crossover chromosomes '''
+        ''' Crossovers chromosomes '''
         if np.random.rand() <= crossover_probability:
             # Store the genes of chromosome1
             genes = deepcopy(chromosome1.genes)
@@ -39,13 +39,13 @@ class Generation:
                 chromosome2.genes[i] = genes[i]
 
     def mutate_chromosome(self, chromosome, mutation_probability, bounds):
-        ''' Crossover a chromosome '''
+        ''' Mutates a chromosome '''
         for i in range(chromosome.size):
             if (np.random.rand() <= mutation_probability):
                 chromosome.genes[i] = chromosome.random_gene(bounds[i][0], bounds[i][1])
         
     def produce_offspring(self, bounds, parent_selection, crossover_probability, mutation_probability):
-        ''' Produce a new offspring '''
+        ''' Produces a new offspring '''
         # Check if the number of chromosomes is even
         even = True
         num_pairs = 0
@@ -77,6 +77,7 @@ class Generation:
             self.chromosomes = offspring[:-1]
             
     def score_chromosomes(self, objective_function):
+        ''' Scores chromosomes '''
         variables = []
         for i in range(self.size): 
             variables.append(self.chromosomes[i].genes)
@@ -90,4 +91,5 @@ class Generation:
             # self.chromosomes[i].score = objective_function(self.chromosomes[i].genes)
         
     def sort_chromosomes(self):
+        ''' Sorts chromosomes based on their score '''
         self.chromosomes.sort()

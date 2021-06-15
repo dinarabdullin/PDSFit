@@ -22,7 +22,7 @@ class Spin:
         self.count_transitions()
 
     def count_transitions(self):
-        ''' Compute the number of EPR transitions and their relative intensities '''
+        ''' Computes the number of EPR transitions and their relative intensities '''
         self.num_trans = 1
         self.num_res_freq = 1
         self.int_res_freq = np.array([1.0])
