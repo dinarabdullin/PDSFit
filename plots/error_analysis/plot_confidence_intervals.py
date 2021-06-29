@@ -43,7 +43,7 @@ def plot_confidence_interval(axes, parameter_values, score_values, optimized_par
 
 
 def plot_confidence_intervals(score_vs_parameters, error_analysis_parameters, fitting_parameters, optimized_parameters, score_threshold, numerical_error):
-    ''' Plots the confidence intervals of optimized fitting parameters '''
+    ''' Plots chi2 as a function of individual fitting parameters '''
     figsize = [10, 8]
     num_subplots = sum(len(i) for i in error_analysis_parameters)
     best_rcparams(num_subplots)
@@ -64,10 +64,13 @@ def plot_confidence_intervals(score_vs_parameters, error_analysis_parameters, fi
                 axes = fig.add_subplot(layout[0], layout[1], c+1)
             plot_confidence_interval(axes, parameter_values, score_values, optimized_parameter_value, parameter_id, score_threshold, numerical_error)
             c += 1
-    x_limit = float(layout[1])/float(layout[1]+1)
-    fig.tight_layout(rect=[0,0,x_limit,1])
+    left = 0
+    right = float(layout[1])/float(layout[1]+1)
+    bottom = 0.5 * (1-right)
+    top = 1 - bottom
+    fig.tight_layout(rect=[left, bottom, right, top])
     handles, labels = fig.axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc='center left', bbox_to_anchor=(x_limit+0.05, 0.5), frameon=False) 
+    fig.legend(handles, labels, loc='center left', bbox_to_anchor=(right+0.01, 0.5), frameon=False) 
     plt.draw()
     plt.pause(0.000001)
     return fig

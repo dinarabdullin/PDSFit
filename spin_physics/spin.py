@@ -41,36 +41,34 @@ class Spin:
 
     def line_broadening(self, size):
         ''' Simulates homogeneous broadering '''
-        return const['MHz2GHz'] * self.lwpp * np.random.normal(0,1,size)
+        return const['MHz2GHz'] * const['pp2sd'] * self.lwpp * np.random.normal(0,1,size)
 
     def g_effective(self, field_orientations, size):
         ''' Computes effective g-values for given magnetic field orientations'''
+        g_eff = np.sqrt(np.sum(self.g**2 * field_orientations**2, axis=1)) 
         if self.gStrain.size:
             if (self.gStrain[0] != 0) or (self.gStrain[1] != 0) or (self.gStrain[2] != 0):
-                gxx = self.g[0] + const["fwhm2sd"] * self.gStrain[0] * np.random.normal(0,1,size)  
-                gyy = self.g[1] + const["fwhm2sd"] * self.gStrain[1] * np.random.normal(0,1,size)
-                gzz = self.g[2] + const["fwhm2sd"] * self.gStrain[2] * np.random.normal(0,1,size)
-                g = np.transpose(np.vstack((gxx, gyy, gzz)))  #np.columnstack() does the same
-                g_eff = np.sqrt(np.sum(g**2 * field_orientations**2, axis=1))
-            else:
-                g_eff = np.sqrt(np.sum(self.g**2 * field_orientations**2, axis=1))
-        else:
-            g_eff = np.sqrt(np.sum(self.g**2 * field_orientations**2, axis=1))
+                first_derivatives = (self.g * field_orientations**2) / np.tile(g_eff.reshape(size, 1), 3)
+                increments_xx = const["fwhm2sd"] * self.gStrain[0] * np.random.normal(0,1,size)
+                increments_yy = const["fwhm2sd"] * self.gStrain[1] * np.random.normal(0,1,size)
+                increments_zz = const["fwhm2sd"] * self.gStrain[2] * np.random.normal(0,1,size)
+                increments = np.transpose(np.vstack((increments_xx, increments_yy, increments_zz)))
+                dg_eff = np.sum(first_derivatives * increments, axis=1)
+                g_eff = g_eff + dg_eff
         return g_eff.reshape(size, 1)
 
     def A_effective(self, field_orientations, size, no_nucleus):
         ''' Computes effective A-values for given magnetic field orientations'''
+        A_eff = const['MHz2GHz'] * np.sqrt(np.sum(self.A[no_nucleus]**2 * field_orientations**2, axis=1))
         if self.AStrain.size:
             if (self.AStrain[no_nucleus][0] != 0) or (self.AStrain[no_nucleus][1] != 0) or (self.AStrain[no_nucleus][2] != 0):
-                Axx = self.A[no_nucleus][0] + const["fwhm2sd"] * self.A[no_nucleus][0] * np.random.normal(0,1,size)  
-                Ayy = self.A[no_nucleus][1] + const["fwhm2sd"] * self.A[no_nucleus][1] * np.random.normal(0,1,size)
-                Azz = self.A[no_nucleus][2] + const["fwhm2sd"] * self.A[no_nucleus][2] * np.random.normal(0,1,size)
-                A = np.transpose(np.vstack((Axx, Ayy, Azz)))
-                A_eff = const['MHz2GHz']* np.sqrt(np.sum(A**2 * field_orientations**2, axis=1))
-            else:
-                A_eff = const['MHz2GHz']* np.sqrt(np.sum(self.A[no_nucleus]**2 * field_orientations**2, axis=1))
-        else:
-            A_eff = const['MHz2GHz']* np.sqrt(np.sum(self.A[no_nucleus]**2 * field_orientations**2, axis=1))
+                first_derivatives = (const['MHz2GHz'] * self.A[no_nucleus] * field_orientations**2) / np.tile(A_eff.reshape(size, 1), 3)
+                increments_xx = const['MHz2GHz'] * const["fwhm2sd"] * self.AStrain[no_nucleus][0] * np.random.normal(0,1,size)
+                increments_yy = const['MHz2GHz'] * const["fwhm2sd"] * self.AStrain[no_nucleus][1] * np.random.normal(0,1,size)
+                increments_zz = const['MHz2GHz'] * const["fwhm2sd"] * self.AStrain[no_nucleus][2] * np.random.normal(0,1,size)
+                increments = np.transpose(np.vstack((increments_xx, increments_yy, increments_zz)))
+                dA_eff = np.sum(first_derivatives * increments, axis=1)
+                A_eff = A_eff + dA_eff
         return A_eff.reshape(size, 1)
 
     def res_freq(self, field_orientations, field_value):

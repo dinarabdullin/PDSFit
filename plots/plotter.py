@@ -65,7 +65,7 @@ class Plotter:
     
     def plot_error_surfaces(self, score_vs_parameter_subsets, error_analysis_parameters, 
                             fitting_parameters, optimized_parameters, score_threshold):
-        ''' Plots the score vs the subsets of fitting parameters '''
+        ''' Plots chi2 as a function of fitting parameters' subsets '''
         fig = plot_error_surfaces(score_vs_parameter_subsets, error_analysis_parameters, 
                                   fitting_parameters, optimized_parameters, score_threshold)
         if not (self.data_saver is None) and self.data_saver.save_figures:
@@ -74,7 +74,7 @@ class Plotter:
     
     def plot_confidence_intervals(self, score_vs_parameters, error_analysis_parameters, fitting_parameters, 
                                   optimized_parameters, score_threshold, numerical_error):
-        ''' Plots the confidence intervals of individual fitting parameters '''
+        ''' Plots chi2 as a function of individual fitting parameters '''
         fig = plot_confidence_intervals(score_vs_parameters, error_analysis_parameters, fitting_parameters, 
                                        optimized_parameters, score_threshold, numerical_error)
         if not (self.data_saver is None) and self.data_saver.save_figures:

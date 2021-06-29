@@ -8,6 +8,7 @@ try:
 except:
     from distributions import sine_weigthed_uniform_distribution, sine_weighted_multimodal_normal_distribution, sine_weighted_multimodal_vonmises_distribution
 
+
 def random_points_from_uniform_distribution(mean, width, size):   
     if width[0] == 0:
         return np.repeat(mean[0], size)

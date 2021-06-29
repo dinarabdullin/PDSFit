@@ -8,7 +8,10 @@ from scipy.special import i0
 def uniform_distribution(x, args):
     mean = args['mean'][0]
     width = args['width'][0]
-    return np.where((x >= mean-0.5*width) & (x <= mean+0.5*width), 1/width, 0.0)
+    if width == 0:
+        return np.where((x >= mean-0.5*width) & (x <= mean+0.5*width), 1.0, 0.0)
+    else:
+        return np.where((x >= mean-0.5*width) & (x <= mean+0.5*width), 1/width, 0.0)
 
 
 def normal_distribution(x, args):
@@ -96,7 +99,10 @@ def multimodal_vonmises_distribution(x, args):
 def sine_weigthed_uniform_distribution(x, args):
     mean = args['mean'][0]
     width = args['width'][0]
-    return np.where((x >= mean-0.5*width) & (x <= mean+0.5*width), 1/width, 0.0) * np.abs(np.sin(x))
+    if width == 0:
+        return np.where((x >= mean-0.5*width) & (x <= mean+0.5*width), 1.0, 0.0) * np.abs(np.sin(x))
+    else:
+        return np.where((x >= mean-0.5*width) & (x <= mean+0.5*width), 1/width, 0.0) * np.abs(np.sin(x))
 
 
 def sine_weighted_multimodal_normal_distribution(x, args):

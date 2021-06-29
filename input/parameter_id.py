@@ -1,6 +1,3 @@
-from input.parameter_object import ParameterObject
-
-
 class ParameterID:
     ''' ID of a fitting parameter ''' 
 

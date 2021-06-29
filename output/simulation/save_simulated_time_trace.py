@@ -7,8 +7,8 @@ def save_simulated_time_trace(simulated_time_trace, experimental_time_trace, exp
     s_exp_im = experimental_time_trace_im
     if s_exp != []:
         for j in range(t.size):
-            file.write('{0:<15.7f} {1:<15.7f} {2:<15.7f} {3:<15.7f}\n'.format(t[j], s_exp[j], s_sim[j], s_exp_im[j]))
+            file.write('{0:<20.7f} {1:<20.7f} {2:<20.7f} {3:<20.7f}\n'.format(t[j], s_exp[j], s_sim[j], s_exp_im[j]))
     else:
         for j in range(t.size):
-            file.write('{0:<15.7f} {1:<15.7f} \n'.format(t[j], s_sim[j]))
+            file.write('{0:<20.7f} {1:<20.7f} \n'.format(t[j], s_sim[j]))
     file.close()

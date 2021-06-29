@@ -21,6 +21,7 @@ const['vacuum_permeability'] = 1e-7 # T*m/A
 const['Fez'] = 1e-3 * const['Hz2MHz'] * const['bohr_magneton'] / const['plank_constant'] # GHz/T
 const['Fdd'] = const['Hz2MHz'] * const['vacuum_permeability'] * const['bohr_magneton']**2 / (const['plank_constant'] * const['nm2m']**3) # MHz
 const['fwhm2sd'] = 1 / 2.35482 # half width at half maximum -> standard deviation for the Gaussian function
+const['pp2sd'] = 0.5 # peak-to-peak width -> standard deviation for the Gaussian function
 
 
 # The intensities of spectral components for 
@@ -72,6 +73,15 @@ const['fitting_parameters_names'] = [
     'rel_prob',
     'j_mean', 
     'j_width'
+    ]
+    
+# Names of angle parameters
+const['angle_parameters_names'] = [
+    'xi_mean',  
+    'phi_mean', 
+    'alpha_mean', 
+    'beta_mean',
+    'gamma_mean',
     ]
 
 # Scale factors for fitting parameters
@@ -136,7 +146,6 @@ const['goodness_of_fit_names'] = {
     'chi2':                              'Chi2',
     'reduced_chi2':                      'Reduced Chi2',
     'chi2_noise_std_1':                  'Chi2(noise_std=1)',
-    'chi2_weighted_by_modulation_depth': 'Chi2(weighted)'
     }
     
 # Axes' labels of goodness-of-fit parameters  
@@ -144,5 +153,4 @@ const['goodness_of_fit_axes_labels'] = {
     'chi2':                              r'$\mathit{\chi^2}$',
     'reduced_chi2':                      r'$\mathit{\chi^2_{\nu}}$',
     'chi2_noise_std_1':                  r'$\mathit{\chi^2}$ ($\mathit{\sigma_{n}}$ = 1)',
-    'chi2_weighted_by_modulation_depth': r'$\mathit{\chi^2\times\lambda}$'
     } 

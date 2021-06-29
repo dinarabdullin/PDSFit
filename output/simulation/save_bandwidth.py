@@ -4,5 +4,5 @@ def save_bandwidth(bandwidth, filepath):
     f = bandwidth['f']
     p = bandwidth['p']
     for j in range(f.size):
-        file.write('{0:<15.7f} {1:<15.7f} \n'.format(f[j], p[j]))
+        file.write('{0:<20.7f} {1:<20.7f} \n'.format(f[j], p[j]))
     file.close()

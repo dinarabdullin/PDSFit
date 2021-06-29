@@ -1,6 +1,7 @@
 import numpy as np
 import plots.set_matplotlib
 from plots.set_matplotlib import best_rcparams
+import matplotlib
 import matplotlib.pyplot as plt
 from plots.best_layout import best_layout
 
@@ -25,9 +26,10 @@ def plot_bandwidths_single_experiment(axes, bandwidths, experiment, spectrum=[])
     axes.set_xlabel(r'Frequency (GHz)')
     axes.set_ylabel('Intensity (arb. u.)')
     axes.set_xlim(min(f_min), max(f_max))
-    axes.set_ylim(0.0, 1.5)
+    axes.set_ylim(0.0, 1.1)
     textstr = str(experiment.name) + ', ' + str(experiment.magnetic_field) + ' T'
-    axes.legend(title=textstr, loc='upper right')
+    axes.set_title(textstr, fontsize=matplotlib.rcParams['font.size'])
+    # Make axes square
     xl, xh = axes.get_xlim()
     yl, yh = axes.get_ylim()
     axes.set_aspect((xh-xl)/(yh-yl))
@@ -52,7 +54,13 @@ def plot_bandwidths(bandwidths, experiments, spectra=[]):
             plot_bandwidths_single_experiment(axes, bandwidths[i], experiments[i], spectra[i])
         else:
             plot_bandwidths_single_experiment(axes, bandwidths[i], experiments[i])
-    plt.tight_layout()
+    left = 0
+    right = float(layout[1])/float(layout[1]+1)
+    bottom = 0.5 * (1-right)
+    top = 1 - bottom
+    fig.tight_layout(rect=[left, bottom, right, top]) 
+    handles, labels = fig.axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc='center left', bbox_to_anchor=(right+0.01, 0.5), frameon=False)
     plt.draw()
     plt.pause(0.000001)
     return fig

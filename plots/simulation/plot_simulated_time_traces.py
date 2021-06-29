@@ -13,7 +13,7 @@ def plot_simulated_time_trace(axes, simulated_time_trace, experiment):
     axes.legend(title=textstr)
     axes.set_xlabel(r'$\mathit{t}$ ($\mathit{\mu s}$)')
     axes.set_ylabel('Echo intensity (arb.u.)')
-    axes.set_xlim([np.amin(experiment.t), np.amax(experiment.t)])
+    axes.set_xlim([0, np.amax(experiment.t)])
     axes.set_ylim([np.amin([experiment.s, simulated_time_trace['s']])-0.05, 1.05])
     xl, xh = axes.get_xlim()
     yl, yh = axes.get_ylim()

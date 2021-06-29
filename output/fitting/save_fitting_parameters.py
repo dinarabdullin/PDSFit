@@ -2,7 +2,7 @@ import numpy as np
 from supplement.definitions import const
 
 
-def save_fitting_parameters(parameters_indices, optimized_parameters, fixed_parameters, parameters_errors, filepath):    
+def save_fitting_parameters(parameters_indices, optimized_parameters, fixed_parameters, parameter_errors, filepath):    
     ''' Saves optimized and fixed fitting parameters ''' 
     file = open(filepath, 'w')
     file.write('{:<20}{:<20}{:<20}{:<20}{:<20}{:<20}\n'.format('Parameter', 'No. spin pair', 'No. component', 'Optimized', 'Value', 'Precision'))
@@ -20,15 +20,15 @@ def save_fitting_parameters(parameters_indices, optimized_parameters, fixed_para
                     file.write('{:<20}'.format('no'))
                 if parameter_object.optimize:
                     variable_value = optimized_parameters[parameter_object.index] / const['fitting_parameters_scales'][parameter_name]
-                    file.write('{:<20.4}'.format(variable_value))
+                    file.write('{:<20.4f}'.format(variable_value))
                 else:
                     variable_value = fixed_parameters[parameter_object.index]  / const['fitting_parameters_scales'][parameter_name]
-                    file.write('{:<20.4}'.format(variable_value))
+                    file.write('{:<20.4f}'.format(variable_value))
                 if parameter_object.optimize:
-                    if parameters_errors != []:
-                        if not np.isnan(parameters_errors[parameter_object.index]):
-                            variable_error = parameters_errors[parameter_object.index] / const['fitting_parameters_scales'][parameter_name]
-                            file.write('{:<20.4}'.format(variable_error))
+                    if parameter_errors != []:
+                        if not np.isnan(parameter_errors[parameter_object.index]):
+                            variable_error = parameter_errors[parameter_object.index] / const['fitting_parameters_scales'][parameter_name]
+                            file.write('{:<20.4f}'.format(variable_error))
                         else:
                             file.write('{:<20}'.format('nan'))
                     else:

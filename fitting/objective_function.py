@@ -33,19 +33,23 @@ def compute_degrees_of_freedom(experiments, variables, fit_modulation_depth):
     return (N-p)
 
 
-def fit_function(variables, simulator, experiments, spins, fitting_parameters):
+def fit_function(variables, simulator, experiments, spins, fitting_parameters, fixed_variables_included):
     ''' Computes the fit to the experimental PDS time traces '''
     # Merge fitted variables and fixed variables into a single dictionary
-    all_variables = merge_fitted_and_fixed_variables(fitting_parameters['indices'], variables, fitting_parameters['values'])
-    # Simulate PDS time traces
-    simulated_time_traces, background_parameters = simulator.compute_time_traces(experiments, spins, all_variables, False)
+    if not fixed_variables_included:
+        all_variables = merge_fitted_and_fixed_variables(fitting_parameters['indices'], variables, fitting_parameters['values'])
+        # Simulate PDS time traces
+        simulated_time_traces, background_parameters = simulator.compute_time_traces(experiments, spins, all_variables, False)
+    else:
+        # Simulate PDS time traces
+        simulated_time_traces, background_parameters = simulator.compute_time_traces(experiments, spins, variables, False)
     return simulated_time_traces, background_parameters
 
 
-def objective_function(variables, simulator, experiments, spins, fitting_parameters, goodness_of_fit):
+def objective_function(variables, simulator, experiments, spins, fitting_parameters, goodness_of_fit, fixed_variables_included):
     ''' Objective function '''
     # Compute the fit
-    simulated_time_traces, background_parameters = fit_function(variables, simulator, experiments, spins, fitting_parameters)
+    simulated_time_traces, background_parameters = fit_function(variables, simulator, experiments, spins, fitting_parameters, fixed_variables_included)
     # Compute the score
     if goodness_of_fit == 'chi2':
         total_score = 0.0
@@ -63,8 +67,3 @@ def objective_function(variables, simulator, experiments, spins, fitting_paramet
         for i in range(len(experiments)):   
             total_score += chi2(simulated_time_traces[i]['s'], experiments[i].s)
         return total_score
-    elif goodness_of_fit == 'chi2_weighted_by_modulation_depth':
-        total_score = 0.0
-        for i in range(len(experiments)):   
-            total_score += modulation_depth_scale_factors[i] * chi2(simulated_time_traces[i]['s'], experiments[i].s)
-        return total_score 

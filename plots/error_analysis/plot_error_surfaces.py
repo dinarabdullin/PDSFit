@@ -81,7 +81,7 @@ def plot_2d_error_surface(axes, score_vs_parameter_subset, error_analysis_parame
 
 
 def plot_error_surfaces(score_vs_parameter_subsets, error_analysis_parameters, fitting_parameters, optimized_parameters, score_threshold):
-    ''' Plots the score as a function of one or two fitting parameters '''  
+    ''' Plots chi2 as a function of fitting parameters' subsets '''  
     figsize = [10, 8]
     num_subplots = len(error_analysis_parameters)
     best_rcparams(num_subplots)
@@ -103,7 +103,7 @@ def plot_error_surfaces(score_vs_parameter_subsets, error_analysis_parameters, f
     right = float(layout[1])/float(layout[1]+1)
     bottom = 0.5 * (1-right)
     top = 1 - bottom
-    plt.tight_layout(rect=[left, bottom, right, top]) 
+    fig.tight_layout(rect=[left, bottom, right, top]) 
     cax = plt.axes([right+0.05, 0.3, 0.02, 0.4])
     plt.colorbar(im, cax=cax, orientation='vertical')
     plt.text(right+0.1, 1.05, r'$\mathit{\chi^2}$', transform=cax.transAxes)

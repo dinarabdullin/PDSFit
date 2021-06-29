@@ -1,4 +1,5 @@
 import os
+import sys
 import numpy as np
 from supplement.definitions import const
 
@@ -15,13 +16,13 @@ def load_optimized_parameters(filepath):
         name = data[0].strip()
         name_found = False
         print(name, len(name))
-        for key in const['fitting_parameters_names_and_units']:
-            
+        for key in const['fitting_parameters_names_and_units']:    
             if name == const['fitting_parameters_names_and_units'][key]:
                 loaded_parameter['name'] = key
                 name_found = True
         if not name_found:
-            print('Error is found in the file with the optimized fitting parameters!')
+            raise ValueError('Error is found in the file with the optimized fitting parameters!')
+            sys.exit(1)
         loaded_parameter['spin_pair'] = int(data[1])
         loaded_parameter['component'] = int(data[2])
         optimized = data[3].strip()
