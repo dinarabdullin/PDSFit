@@ -103,6 +103,14 @@ class ErrorAnalyzer():
             self.pool.close()
             self.pool.join()
             score_vs_parameter_subset['score'] = np.array(score)
+            
+            # for k in range(self.sample_size):
+                # sys.stdout.write('\n')
+                # for j in range(num_parameters):
+                    # sys.stdout.write('{:10.4f}'.format(score_vs_parameter_subset['parameters'][j][k]*180/np.pi))
+                # sys.stdout.write('{:20.4f}'.format(score_vs_parameter_subset['score'][k]))
+            # sys.stdout.write('\n')
+            
             score_vs_parameter_subsets.append(score_vs_parameter_subset)
         sys.stdout.write('\n')
         return score_vs_parameter_subsets  

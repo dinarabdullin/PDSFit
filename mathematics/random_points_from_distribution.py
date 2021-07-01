@@ -4,91 +4,164 @@ import numpy as np
 from scipy import interpolate
 from scipy.special import i0
 try:
-    from mathematics.distributions import sine_weigthed_uniform_distribution, sine_weighted_multimodal_normal_distribution, sine_weighted_multimodal_vonmises_distribution
+    from mathematics.distributions import sine_weighted_uniform_distribution, sine_weighted_normal_distribution, sine_weighted_vonmises_distribution
+    from mathematics.histogram import histogram
 except:
-    from distributions import sine_weigthed_uniform_distribution, sine_weighted_multimodal_normal_distribution, sine_weighted_multimodal_vonmises_distribution
+    from distributions import sine_weighted_uniform_distribution, sine_weighted_normal_distribution, sine_weighted_vonmises_distribution
+    from histogram import histogram
+    
+
+def random_points_from_distribution(distribution_type, mean, width, rel_prob, size, sine_weighted):
+    if distribution_type == "uniform":
+        return random_points_from_multimodal_uniform_distribution(mean, width, rel_prob, size, sine_weighted)
+    elif distribution_type == "normal":
+        return random_points_from_multimodal_normal_distribution(mean, width, rel_prob, size, sine_weighted)
+    elif distribution_type == "vonmises":
+        return random_points_from_multimodal_vonmises_distribution(mean, width, rel_prob, size, sine_weighted)
 
 
-def random_points_from_uniform_distribution(mean, width, size):   
+def random_points_from_multimodal_uniform_distribution(mean, width, rel_prob, size, sine_weighted):
+    num_components = len(mean)
+    if num_components == 1:
+        if width[0] == 0:
+            points = np.repeat(mean[0], size)
+        else:
+            if not sine_weighted:
+                points = np.random.uniform(mean[0]-0.5*width[0], mean[0]+0.5*width[0], size=size)
+            else:
+                args = {'mean': mean[0], 'width': width[0], 'ranges': np.array([0.0, np.pi]), 'samples': 100000}
+                uniform_samples = np.random.random(size)
+                points = random_points_from_arbitrary_distribution(sine_weighted_uniform_distribution, args)(uniform_samples)
+    else:
+        size_last_component = size
+        for i in range(num_components):
+            if i < num_components - 1:
+                size_one_component = int(size * rel_prob[i])
+                size_last_component = size_last_component - size_one_component
+            elif i == num_components - 1:
+                size_one_component = size_last_component
+            if width[i] == 0:
+                points_one_component = np.repeat(mean[i], size_one_component)
+            else:
+                if not sine_weighted:
+                    points_one_component = np.random.uniform(mean[i]-0.5*width[i], mean[i]+0.5*width[i], size=size_one_component)
+                else:
+                    args = {'mean': mean[i], 'width': width[i], 'ranges': np.array([0.0, np.pi]), 'samples': 100000}
+                    uniform_samples = np.random.random(size_one_component)
+                    points_one_component = random_points_from_arbitrary_distribution(sine_weighted_uniform_distribution, args)(uniform_samples)
+            if i == 0:
+                points = points_one_component
+            else:
+                points = np.concatenate((points, points_one_component), axis=None)
+    return points
+
+
+def random_points_from_multimodal_normal_distribution(mean, width, rel_prob, size, sine_weighted):
+    num_components = len(mean)
+    if num_components == 1:
+        if width[0] == 0:
+            points = np.repeat(mean[0], size)
+        else:
+            if not sine_weighted:
+                points = np.random.normal(mean[0], width[0], size=size)
+            else:
+                args = {'mean': mean[0], 'width': width[0], 'ranges': np.array([0.0, np.pi]), 'samples': 100000}
+                uniform_samples = np.random.random(size)
+                points = random_points_from_arbitrary_distribution(sine_weighted_normal_distribution, args)(uniform_samples)
+    else:
+        size_last_component = size
+        for i in range(num_components):
+            if i < num_components - 1:
+                size_one_component = int(size * rel_prob[i])
+                size_last_component = size_last_component - size_one_component
+            elif i == num_components - 1:
+                size_one_component = size_last_component
+            if width[i] == 0:
+                points_one_component = np.repeat(mean[i], size_one_component)
+            else:
+                if not sine_weighted:
+                    points_one_component = np.random.normal(mean[i], width[i], size=size_one_component)
+                else:
+                    args = {'mean': mean[i], 'width': width[i], 'ranges': np.array([0.0, np.pi]), 'samples': 100000}
+                    uniform_samples = np.random.random(size_one_component)
+                    points_one_component = random_points_from_arbitrary_distribution(sine_weighted_normal_distribution, args)(uniform_samples)
+            if i == 0:
+                points = points_one_component
+            else:
+                points = np.concatenate((points, points_one_component), axis=None)
+    return points
+
+
+def random_points_from_multimodal_vonmises_distribution(mean, width, rel_prob, size, sine_weighted=False):
+    num_components = len(mean)
+    if num_components == 1:
+        if (width[0] == 0) or (np.isfinite(i0(1/width[0]**2))== False):
+            points = np.repeat(mean[0], size)
+        else:
+            if not sine_weighted:
+                points = np.random.vonmises(mean[0], 1/width[0]**2, size=size)
+            else:
+                args = {'mean': mean[0], 'width': width[0], 'ranges': np.array([0.0, np.pi]), 'samples': 100000}
+                uniform_samples = np.random.random(size)
+                points = random_points_from_arbitrary_distribution(sine_weighted_vonmises_distribution, args)(uniform_samples)
+    else:
+        size_last_component = size
+        for i in range(num_components):
+            if i < num_components - 1:
+                size_one_component = int(size * rel_prob[i])
+                size_last_component = size_last_component - size_one_component
+            elif i == num_components - 1:
+                size_one_component = size_last_component
+            if (width[i] == 0) or (np.isfinite(i0(1/width[i]**2))== False):
+                points_one_component = np.repeat(mean[i], size_one_component)
+            else:
+                if not sine_weighted:
+                    points_one_component = np.random.vonmises(mean[i], 1/width[i]**2, size=size_one_component)
+                else:
+                    args = {'mean': mean[i], 'width': width[i], 'ranges': np.array([0.0, np.pi]), 'samples': 100000}
+                    uniform_samples = np.random.random(size_one_component)
+                    points_one_component = random_points_from_arbitrary_distribution(sine_weighted_vonmises_distribution, args)(uniform_samples)
+            if i == 0:
+                points = points_one_component
+            else:
+                points = np.concatenate((points, points_one_component), axis=None)
+    return points
+
+
+def random_points_from_uniform_distribution(mean, width, size, sine_weighted=False):   
     if width[0] == 0:
         return np.repeat(mean[0], size)
     else:
-        return np.random.uniform(mean[0]-0.5*width[0], mean[0]+0.5*width[0], size=size)
+        if not sine_weighted:
+            return np.random.uniform(mean[0]-0.5*width[0], mean[0]+0.5*width[0], size=size)
+        else:
+            args = {'mean': mean[0], 'width': width[0], 'ranges': np.array([0.0, np.pi]), 'samples': 100000}
+            uniform_samples = np.random.random(size)
+            return random_points_from_arbitrary_distribution(sine_weighted_uniform_distribution, args)(uniform_samples)
 
 
-def random_points_from_normal_distribution(mean, width, size):
+def random_points_from_normal_distribution(mean, width, size, sine_weighted=False):
     if width[0] == 0:
         return np.repeat(mean[0])
     else:
-        return np.random.normal(mean[0], width[0], size=size)
+        if not sine_weighted:
+            return np.random.normal(mean[0], width[0], size=size)
+        else:
+            args = {'mean': mean[0], 'width': width[0], 'ranges': np.array([0.0, np.pi]), 'samples': 100000}
+            uniform_samples = np.random.random(size)
+            return random_points_from_arbitrary_distribution(sine_weighted_normal_distribution, args)(uniform_samples)
 
 
-def random_points_from_vonmises_distribution(mean, width, size):
-    if width[0] == 0:
+def random_points_from_vonmises_distribution(mean, width, size, sine_weighted=False):
+    if (width[0] == 0) or (np.isfinite(i0(1/width[0]**2))== False):
         return np.repeat(mean[0], size)
     else:
-        return np.random.vonmises(mean[0], 1/width[0]**2, size=size)
-
-
-def random_points_from_multimodal_normal_distribution(mean, width, rel_prob, size):
-    num_components = len(mean)
-    if num_components == 1:
-        if width[0] == 0:
-            points = np.repeat(mean[0], size)
+        if not sine_weighted:
+            return np.random.vonmises(mean[0], 1/width[0]**2, size=size)
         else:
-            points = np.random.normal(mean[0], width[0], size=size)
-    else:
-        size_last_component = size
-        for i in range(num_components):
-            if i < num_components - 1:
-                size_one_component = int(size * rel_prob[i])
-                size_last_component = size_last_component - size_one_component
-            elif i == num_components - 1:
-                size_one_component = size_last_component
-            if width[i] == 0:
-                points_one_component = np.repeat(mean[i], size_one_component)
-            else:
-                points_one_component = np.random.normal(mean[i], width[i], size=size_one_component)
-            if i == 0:
-                points = points_one_component
-            else:
-                points = np.concatenate((points, points_one_component), axis=None)
-    return points
-    
-
-def random_points_from_multimodal_vonmises_distribution(mean, width, rel_prob, size):
-    num_components = len(mean)
-    if num_components == 1:
-        if width[0] == 0:
-            points = np.repeat(mean[0], size)
-        else:
-            points = np.random.vonmises(mean[0], 1/width[0]**2, size=size)
-    else:
-        size_last_component = size
-        for i in range(num_components):
-            if i < num_components - 1:
-                size_one_component = int(size * rel_prob[i])
-                size_last_component = size_last_component - size_one_component
-            elif i == num_components - 1:
-                size_one_component = size_last_component
-            if width[i] == 0:
-                points_one_component = np.repeat(mean[i], size_one_component)
-            else:
-                points_one_component = np.random.vonmises(mean[i], 1/width[i]**2, size=size_one_component)
-            if i == 0:
-                points = points_one_component
-            else:
-                points = np.concatenate((points, points_one_component), axis=None)
-    return points
-
-
-def random_points_from_distribution(distribution_type, mean, width, rel_prob, size):
-    if distribution_type == "uniform":
-        return random_points_from_uniform_distribution(mean, width, size)
-    elif distribution_type == "normal":
-        return random_points_from_multimodal_normal_distribution(mean, width, rel_prob, size)
-    elif distribution_type == "vonmises":
-        return random_points_from_multimodal_vonmises_distribution(mean, width, rel_prob, size)
+            args = {'mean': mean[0], 'width': width[0], 'ranges': np.array([0.0, np.pi]), 'samples': 100000}
+            uniform_samples = np.random.random(size)
+            return random_points_from_arbitrary_distribution(sine_weighted_vonmises_distribution, args)(uniform_samples)
 
 
 def random_points_from_arbitrary_distribution(f, args):
@@ -105,94 +178,84 @@ def random_points_from_arbitrary_distribution(f, args):
     cdf_y = cdf_y / cdf_y.max()
     # Inverse of the cumulative distribution function
     inverse_cdf = interpolate.interp1d(cdf_y,x)
-    return inverse_cdf    
+    return inverse_cdf 
 
 
-def random_points_from_sine_weighted_distribution(distribution_type, mean, width, rel_prob, size):
-    if all(w == 0 for w in width):
-        return random_points_from_distribution(distribution_type, mean, width, rel_prob, size)
-    elif all(np.isfinite(i0(1/w**2)) == False for w in width):
-        return random_points_from_distribution(distribution_type, mean, width, rel_prob, size)
-    else:
-        args={}
-        args['mean'] = mean
-        args['width'] = width
-        args['rel_prob'] = rel_prob
-        args['ranges'] = np.array([0.0, np.pi])
-        args['samples'] = 100000
-        uniform_samples = np.random.random(size)
-        if distribution_type == "uniform":
-            return random_points_from_arbitrary_distribution(sine_weigthed_uniform_distribution, args)(uniform_samples)
-        elif distribution_type == "normal":
-            return random_points_from_arbitrary_distribution(sine_weighted_multimodal_normal_distribution, args)(uniform_samples)
-        elif distribution_type == "vonmises":
-            return random_points_from_arbitrary_distribution(sine_weighted_multimodal_vonmises_distribution, args)(uniform_samples)
-
-
-def test():
+def test(): 
+    
     # Unimodal distributions
-    mean = [30 * np.pi/180]
+    mean = [20 * np.pi/180]
     width = [90 * np.pi/180]
     rel_prob = []
     size = 1000000
-    x11 = random_points_from_distribution("uniform", mean, width, rel_prob, size)
-    x12 = random_points_from_distribution("normal", mean, width, rel_prob, size)
-    x13 = random_points_from_distribution("vonmises", mean, width, rel_prob, size)
+    x11 = random_points_from_distribution("uniform", mean, width, rel_prob, size, sine_weighted=False)
+    x12 = random_points_from_distribution("normal", mean, width, rel_prob, size, sine_weighted=False)
+    x13 = random_points_from_distribution("vonmises", mean, width, rel_prob, size, sine_weighted=False)
+    h11 = histogram(x11, bins=np.arange(-2*np.pi,2*np.pi,np.pi/180), density=True)
+    h12 = histogram(x12, bins=np.arange(-2*np.pi,2*np.pi,np.pi/180), density=True)
+    h13 = histogram(x13, bins=np.arange(-2*np.pi,2*np.pi,np.pi/180), density=True)
     
     # Bimodal distributions
     mean = [30 * np.pi/180, 90 * np.pi/180] 
     width = [10 * np.pi/180, 20 * np.pi/180]
     rel_prob = [0.5]
     size = 1000000
-    x21 = random_points_from_distribution("normal", mean, width, rel_prob, size)
-    x22 = random_points_from_distribution("vonmises", mean, width, rel_prob, size)
+    x21 = random_points_from_distribution("normal", mean, width, rel_prob, size, sine_weighted=False)
+    x22 = random_points_from_distribution("vonmises", mean, width, rel_prob, size, sine_weighted=False)
+    h21 = histogram(x21, bins=np.arange(-2*np.pi,2*np.pi,np.pi/180), density=True)
+    h22 = histogram(x22, bins=np.arange(-2*np.pi,2*np.pi,np.pi/180), density=True)
     
     # Unimodal sine-weighted distributions
-    mean = [30 * np.pi/180]
+    mean = [90 * np.pi/180]
     width = [90 * np.pi/180]
     rel_prob = []
     size = 1000000
-    x31 = random_points_from_sine_weighted_distribution("uniform", mean, width, rel_prob, size)
-    x32 = random_points_from_sine_weighted_distribution("normal", mean, width, rel_prob, size)
-    x33 = random_points_from_sine_weighted_distribution("vonmises", mean, width, rel_prob, size)
+    x31 = random_points_from_distribution("uniform", mean, width, rel_prob, size, sine_weighted=True)
+    x32 = random_points_from_distribution("normal", mean, width, rel_prob, size, sine_weighted=True)
+    x33 = random_points_from_distribution("vonmises", mean, width, rel_prob, size, sine_weighted=True)
+    h31 = histogram(x31, bins=np.arange(-2*np.pi,2*np.pi,np.pi/180), density=True)
+    h32 = histogram(x32, bins=np.arange(-2*np.pi,2*np.pi,np.pi/180), density=True)
+    h33 = histogram(x33, bins=np.arange(-2*np.pi,2*np.pi,np.pi/180), density=True)
     
     # Bimodal sine-weighted distributions
     mean = [30 * np.pi/180, 90 * np.pi/180] 
     width = [10 * np.pi/180, 20 * np.pi/180]
     rel_prob = [0.5]
     size = 1000000
-    x41 = random_points_from_sine_weighted_distribution("normal", mean, width, rel_prob, size)
-    x42 = random_points_from_sine_weighted_distribution("vonmises", mean, width, rel_prob, size)
+    x41 = random_points_from_distribution("normal", mean, width, rel_prob, size, sine_weighted=True)
+    x42 = random_points_from_distribution("vonmises", mean, width, rel_prob, size, sine_weighted=True)
+    h41 = histogram(x41, bins=np.arange(-2*np.pi,2*np.pi,np.pi/180), density=True)
+    h42 = histogram(x42, bins=np.arange(-2*np.pi,2*np.pi,np.pi/180), density=True)
     
     # Plot
     import matplotlib.pyplot as plt
     fig = plt.figure(facecolor='w', edgecolor='w')
     axes1 = fig.add_subplot(221)
-    axes1.hist(x11,bins='auto',stacked=True,density=True,range=(-2*np.pi,2*np.pi))
-    axes1.hist(x12,bins='auto',stacked=True,density=True,range=(-2*np.pi,2*np.pi))
-    axes1.hist(x13,bins='auto',stacked=True,density=True,range=(-2*np.pi,2*np.pi))
+    axes1.plot(np.arange(-2*np.pi,2*np.pi,np.pi/180),h11)
+    axes1.plot(np.arange(-2*np.pi,2*np.pi,np.pi/180),h12)
+    axes1.plot(np.arange(-2*np.pi,2*np.pi,np.pi/180),h13)
     axes1.set_xlabel('x')
     axes1.set_ylabel('Probability density')
     axes1.legend(('uniform', 'normal', 'vonmises'))
     axes1.title.set_text('Unimodal distributions')
     axes2 = fig.add_subplot(222)
-    axes2.hist(x21,bins='auto',stacked=True,density=True,range=(-2*np.pi,2*np.pi))
-    axes2.hist(x22,bins='auto',stacked=True,density=True,range=(-2*np.pi,2*np.pi))
+    axes2.plot(np.arange(-2*np.pi,2*np.pi,np.pi/180),h21)
+    axes2.plot(np.arange(-2*np.pi,2*np.pi,np.pi/180),h22)
     axes2.set_xlabel('x')
     axes2.set_ylabel('Probability density')
     axes2.legend(('normal', 'vonmises'))
     axes2.title.set_text('Bimodal distributions')
     axes3 = fig.add_subplot(223)
-    axes3.hist(x31,bins='auto',stacked=True,density=True,range=(-2*np.pi,2*np.pi))
-    axes3.hist(x32,bins='auto',stacked=True,density=True,range=(-2*np.pi,2*np.pi))
-    axes3.hist(x33,bins='auto',stacked=True,density=True,range=(-2*np.pi,2*np.pi))
+    axes3.plot(np.arange(-2*np.pi,2*np.pi,np.pi/180),h31)
+    axes3.plot(np.arange(-2*np.pi,2*np.pi,np.pi/180),h32)
+    axes3.plot(np.arange(-2*np.pi,2*np.pi,np.pi/180),h33)
     axes3.set_xlabel('x')
     axes3.set_ylabel('Probability density')
     axes3.legend(('uniform', 'normal', 'vonmises'))
     axes3.title.set_text('Unimodal sine-weighted distributions')
     axes4 = fig.add_subplot(224)
-    axes4.hist(x41,bins='auto',stacked=True,density=True,range=(-2*np.pi,2*np.pi))
-    axes4.hist(x42,bins='auto',stacked=True,density=True,range=(-2*np.pi,2*np.pi))
+    axes4.plot(np.arange(-2*np.pi,2*np.pi,np.pi/180),h41)
+    axes4.plot(np.arange(-2*np.pi,2*np.pi,np.pi/180),h42)
     axes4.set_xlabel('x')
     axes4.set_ylabel('Probability density')
     axes4.legend(('normal', 'vonmises'))
@@ -200,4 +263,4 @@ def test():
     plt.show()
 
 # To test the random number generators, uncommment the next line and run this python script
-# test()
+#test()

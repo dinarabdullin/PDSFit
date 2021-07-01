@@ -312,13 +312,6 @@ def read_calculation_settings(config):
     if integration_method in simulator_types:
         if integration_method == 'monte_carlo':
             calculation_settings['mc_sample_size'] = int(config.calculation_settings.mc_sample_size)
-        elif integration_method == 'grids':
-            grid_size = {}
-            grid_size['powder_averaging'] = int(config.calculation_settings.grid_size.powder_averaging)
-            grid_size['distances'] = int(config.calculation_settings.grid_size.distances)
-            grid_size['spherical_angles'] = int(config.calculation_settings.grid_size.spherical_angles)
-            grid_size['rotations'] = int(config.calculation_settings.grid_size.rotations) 
-            calculation_settings['grid_size'] = grid_size
         distributions = {}
         distributions['r'] = config.calculation_settings.distributions.r
         distributions['xi'] = config.calculation_settings.distributions.xi

@@ -8,7 +8,7 @@ from functools import partial
 from simulation.simulator import Simulator
 from simulation.background_fit_function import *
 from mathematics.random_points_on_sphere import random_points_on_sphere
-from mathematics.random_points_from_distribution import random_points_from_distribution, random_points_from_sine_weighted_distribution
+from mathematics.random_points_from_distribution import random_points_from_distribution
 from mathematics.coordinate_system_conversions import spherical2cartesian, cartesian2spherical
 from mathematics.rotate_coordinate_system import rotate_coordinate_system
 from mathematics.histogram import histogram
@@ -145,7 +145,7 @@ class MonteCarloSimulator(Simulator):
     
     def set_r_values(self, r_mean, r_width, rel_prob):
         ''' Random points of r from distribution P(r) '''
-        r_values = random_points_from_distribution(self.distributions['r'], r_mean, r_width, rel_prob, self.mc_sample_size)
+        r_values = random_points_from_distribution(self.distributions['r'], r_mean, r_width, rel_prob, self.mc_sample_size, False)
         # Check that all r values are positive numbers 
         indices_nonpositive_r_values = np.where(r_values <= 0)[0]
         if indices_nonpositive_r_values.size == 0:
@@ -153,7 +153,7 @@ class MonteCarloSimulator(Simulator):
         else:
             for index in indices_nonpositive_r_values:
                 while True:
-                    r_value = random_points_from_distribution(self.distributions['r'], r_mean, r_width, rel_prob, 1)
+                    r_value = random_points_from_distribution(self.distributions['r'], r_mean, r_width, rel_prob, 1, False)
                     if r_value > 0:
                         r_values[index] = r_value
                         break
@@ -164,8 +164,8 @@ class MonteCarloSimulator(Simulator):
         Random points of xi and phi from corresponding distributions P(xi) and P(phi)
         are used to compute the orientations of the distance vector in the reference frame
         '''
-        xi_values = random_points_from_sine_weighted_distribution(self.distributions['xi'], xi_mean, xi_width, rel_prob, self.mc_sample_size)
-        phi_values = random_points_from_distribution(self.distributions['phi'], phi_mean, phi_width, rel_prob, self.mc_sample_size)
+        xi_values = random_points_from_distribution(self.distributions['xi'], xi_mean, xi_width, rel_prob, self.mc_sample_size, True)
+        phi_values = random_points_from_distribution(self.distributions['phi'], phi_mean, phi_width, rel_prob, self.mc_sample_size, False)
         r_orientations = spherical2cartesian(np.ones(self.mc_sample_size), xi_values, phi_values)
         return r_orientations
    
@@ -174,9 +174,9 @@ class MonteCarloSimulator(Simulator):
         Random points of alpha, beta, and gamma from corresponding distributions P(alpha), P(beta), and P(gamma)
         are used to compute rotation matrices transforming the reference frame into the spin frame
         '''
-        alpha_values = random_points_from_distribution(self.distributions['alpha'], alpha_mean, alpha_width, rel_prob, self.mc_sample_size)
-        beta_values = random_points_from_sine_weighted_distribution(self.distributions['beta'], beta_mean, beta_width, rel_prob, self.mc_sample_size)
-        gamma_values = random_points_from_distribution(self.distributions['gamma'], gamma_mean, gamma_width, rel_prob, self.mc_sample_size)
+        alpha_values = random_points_from_distribution(self.distributions['alpha'], alpha_mean, alpha_width, rel_prob, self.mc_sample_size, False)
+        beta_values = random_points_from_distribution(self.distributions['beta'], beta_mean, beta_width, rel_prob, self.mc_sample_size, True)
+        gamma_values = random_points_from_distribution(self.distributions['gamma'], gamma_mean, gamma_width, rel_prob, self.mc_sample_size, False)
         spin_frame_rotations = Rotation.from_euler(self.euler_angles_convention, np.column_stack((alpha_values, beta_values, gamma_values)))
         # Convert active rotations to passive rotations
         spin_frame_rotations = spin_frame_rotations.inv()
@@ -184,7 +184,7 @@ class MonteCarloSimulator(Simulator):
         
     def set_j_values(self, j_mean, j_width, rel_prob):
         ''' Random points of j from distribution P(j) '''
-        j_values = random_points_from_distribution(self.distributions['j'], j_mean, j_width, rel_prob, self.mc_sample_size)
+        j_values = random_points_from_distribution(self.distributions['j'], j_mean, j_width, rel_prob, self.mc_sample_size, False)
         return j_values
     
     def set_coordinates(self, r_mean, r_width, xi_mean, xi_width, phi_mean, phi_width, rel_prob):
@@ -193,8 +193,8 @@ class MonteCarloSimulator(Simulator):
         are used to compute the coordinates of the distance vector in the reference frame
         '''
         r_values = self.set_r_values(r_mean, r_width, rel_prob)
-        xi_values = random_points_from_sine_weighted_distribution(self.distributions['xi'], xi_mean, xi_width, rel_prob, self.mc_sample_size)
-        phi_values = random_points_from_distribution(self.distributions['phi'], phi_mean, phi_width, rel_prob, self.mc_sample_size)
+        xi_values = random_points_from_distribution(self.distributions['xi'], xi_mean, xi_width, rel_prob, self.mc_sample_size, True)
+        phi_values = random_points_from_distribution(self.distributions['phi'], phi_mean, phi_width, rel_prob, self.mc_sample_size, False)
         coordinates = spherical2cartesian(r_values, xi_values, phi_values)
         return coordinates
     
@@ -220,12 +220,12 @@ class MonteCarloSimulator(Simulator):
         j_values = self.set_j_values(variables['j_mean'][0], variables['j_width'][0], variables['rel_prob'][0])                                                                                               
         timings.append(['Monte-Carlo samples', str(datetime.timedelta(seconds = time.time()-time_start))])
         time_start = time.time()
-        # # Plot Monte-Carlo grids
-        # from plots.plot_grids import plot_grids
+        # # Plot Monte-Carlo points
         # rho_values, xi_values, phi_values = cartesian2spherical(r_orientations)
         # euler_angles = spin_frame_rotations_spin2.inv().as_euler(self.euler_angles_convention, degrees=False)
         # alpha_values, beta_values, gamma_values = euler_angles[:,0], euler_angles[:,1], euler_angles[:,2]
-        # plot_grids(r_values, [], xi_values, [], phi_values, [], alpha_values, [], beta_values, [], gamma_values, [], j_values, [])
+        # from plots.monte_carlo.plot_monte_carlo_points import plot_monte_carlo_points
+        # plot_monte_carlo_points(r_values, [], xi_values, [], phi_values, [], alpha_values, [], beta_values, [], gamma_values, [], j_values, [])
         # Orientations of the applied static magnetic field in both spin frames
         field_orientations_spin1 = self.field_orientations
         field_orientations_spin2 = rotate_coordinate_system(self.field_orientations, spin_frame_rotations_spin2, self.separate_grids)
