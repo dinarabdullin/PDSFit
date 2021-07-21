@@ -9,16 +9,23 @@ class Peldor_4p_rect(Experiment):
     def __init__(self, name):
         super().__init__(name)
         self.technique = 'peldor'
+        self.parameter_names = {
+            'magnetic_field': 'float', 
+            'detection_frequency': 'float', 
+            'detection_pulse_lengths': 'float_array', 
+            'pump_frequency': 'float', 
+            'pump_pulse_lengths': 'float_array'
+            }
         self.frequency_increment_bandwidth = 0.001 # in GHz
     
-    def set_parameters(self, magnetic_field, detection_frequency, detection_pulse_lengths, pump_frequency, pump_pulse_lengths):
+    def set_parameters(self, parameter_values):
         ''' Sets the parameters of an experiment '''
-        self.magnetic_field = magnetic_field
-        self.detection_frequency = detection_frequency
-        self.detection_pi_half_pulse_length = detection_pulse_lengths[0]
-        self.detection_pi_pulse_length = detection_pulse_lengths[1]
-        self.pump_frequency = pump_frequency
-        self.pump_pulse_length = pump_pulse_lengths[0]
+        self.magnetic_field = parameter_values['magnetic_field'] 
+        self.detection_frequency = parameter_values['detection_frequency'] 
+        self.detection_pi_half_pulse_length = parameter_values['detection_pulse_lengths'][0]
+        self.detection_pi_pulse_length = parameter_values['detection_pulse_lengths'][1]
+        self.pump_frequency = parameter_values['pump_frequency'] 
+        self.pump_pulse_length = parameter_values['pump_pulse_lengths'][0]
         self.bandwidth_detection_pi_half_pulse = 1 / (4 * self.detection_pi_half_pulse_length)
         self.bandwidth_detection_pi_pulse = 1 / (2 * self.detection_pi_pulse_length)
         self.bandwidth_pump_pulse = 1 / (2 * self.pump_pulse_length)

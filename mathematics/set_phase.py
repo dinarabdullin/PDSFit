@@ -6,7 +6,7 @@ def set_phase(y_re, y_im):
     ''' Sets the phase of the PDS time trace '''
     # Make a linear sphase grid and compute cosines and sines
     phase_increment = 0.1 
-    phases = np.arange(-180, 180+phase_increment, phase_increment)
+    phases = np.arange(-90, 90+phase_increment, phase_increment)
     cosines = np.cos(phases * const['deg2rad'])
     sines = np.sin(phases * const['deg2rad'])
     # Apply the phase correction to the imaginary part of the PDS time trace

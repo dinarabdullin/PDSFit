@@ -3,26 +3,22 @@ import time
 import datetime
 import numpy as np
 from scipy.spatial.transform import Rotation
-from scipy.optimize import curve_fit
-from functools import partial
 from simulation.simulator import Simulator
-from simulation.background_fit_function import *
 from mathematics.random_points_on_sphere import random_points_on_sphere
 from mathematics.random_points_from_distribution import random_points_from_distribution
 from mathematics.coordinate_system_conversions import spherical2cartesian, cartesian2spherical
 from mathematics.rotate_coordinate_system import rotate_coordinate_system
 from mathematics.histogram import histogram
 from mathematics.chi2 import chi2
-from mathematics.exponential_decay import exponential_decay
 from supplement.definitions import const
 
 
 class MonteCarloSimulator(Simulator):
     ''' Monte-Carlo Simulation class '''
     
-    def __init__(self, calculation_settings):
-        super().__init__(calculation_settings)
-        self.mc_sample_size = calculation_settings['mc_sample_size']
+    def __init__(self):
+        super().__init__()
+        self.parameter_names = {'mc_sample_size': 'int'}
         self.separate_grids = False
         self.frequency_increment_epr_spectrum = 0.001 # in GHz
         self.frequency_increment_dipolar_spectrum = 0.01 # in MHz
@@ -30,7 +26,15 @@ class MonteCarloSimulator(Simulator):
         self.effective_gfactors_spin1 = []
         self.detection_probabilities_spin1 = {}
         self.pump_probabilities_spin1 = {}      
-
+    
+    def set_calculation_settings(self, calculation_settings):
+        ''' Set ccalculation settings '''
+        self.mc_sample_size = calculation_settings['mc_sample_size']
+        self.distributions = calculation_settings['distributions']
+        self.excitation_threshold = calculation_settings['excitation_treshold']
+        self.euler_angles_convention = calculation_settings['euler_angles_convention']
+        self.background = calculation_settings['background']
+    
     def precalculations(self, experiments, spins):
         ''' Pre-computes the detection and pump probabilities for spin 1'''
         print('\nPre-compute the detection and pump probabilities for spin 1...')
@@ -39,17 +43,16 @@ class MonteCarloSimulator(Simulator):
             self.field_orientations = self.set_field_orientations()
         # Orientations of the applied static magnetic field in the frame of spin 1
         field_orientations_spin1 = self.field_orientations 
-        if self.detection_probabilities_spin1 != {}:
-            for experiment in experiments:
-                # Resonance frequencies and effective g-values of spin 1
-                resonance_frequencies_spin1, self.effective_gfactors_spin1 = spins[0].res_freq(field_orientations_spin1, experiment.magnetic_field)
-                # Detection probabilities
-                self.detection_probabilities_spin1[experiment.name] = experiment.detection_probability(resonance_frequencies_spin1, spins[0].int_res_freq)
-                # Pump probabilities
-                if experiment.technique == 'peldor': 
-                    self.pump_probabilities_spin1[experiment.name] = experiment.pump_probability(resonance_frequencies_spin1, spins[0].int_res_freq)    
-                elif experiment.technique == 'ridme':
-                    self.pump_probabilities_spin1[experiment.name] = experiment.pump_probability(spins[0].T1, spins[0].g_anisotropy_in_dipolar_coupling, self.effective_gfactors_spin1) 
+        for experiment in experiments:
+            # Resonance frequencies and effective g-values of spin 1
+            resonance_frequencies_spin1, self.effective_gfactors_spin1 = spins[0].res_freq(field_orientations_spin1, experiment.magnetic_field)
+            # Detection probabilities
+            self.detection_probabilities_spin1[experiment.name] = experiment.detection_probability(resonance_frequencies_spin1, spins[0].int_res_freq)
+            # Pump probabilities
+            if experiment.technique == 'peldor': 
+                self.pump_probabilities_spin1[experiment.name] = experiment.pump_probability(resonance_frequencies_spin1, spins[0].int_res_freq)    
+            elif experiment.technique == 'ridme':
+                self.pump_probabilities_spin1[experiment.name] = experiment.pump_probability(spins[0].T1, spins[0].g_anisotropy_in_dipolar_coupling, self.effective_gfactors_spin1)
     
     def epr_spectra(self, spins, experiments):
         ''' Computes an EPR spectrum of a spin system at multiple magnetic fields '''
@@ -130,9 +133,8 @@ class MonteCarloSimulator(Simulator):
         # Display statistics
         if display_messages:
             print('Background parameters:') 
-            print('Decay constant: ', background_parameters['decay_constant']) 
-            print('Dimension: ', background_parameters['dimension']) 
-            print('Scale factor: ', background_parameters['scale_factor']) 
+            for parameter_name in self.background.parameter_full_names:
+                print(self.background.parameter_full_names[parameter_name] + ': ', background_parameters[parameter_name]) 
             if experiment.noise_std == 1:
                 print('Chi2 (noise std = 1): {0:<15.3}'.format(chi2_value)) 
             else:   
@@ -312,12 +314,11 @@ class MonteCarloSimulator(Simulator):
         time_start = time.time()
         # PDS time trace
         intramolecular_time_trace_temp = self.intramolecular_time_trace_from_dipolar_spectrum(experiment.t, modulation_frequencies, modulation_depths)
-        background_parameters = self.optimize_background(experiment.t, experiment.s, intramolecular_time_trace_temp)
-        intramolecular_time_trace = self.rescale_intramolecular_time_trace(intramolecular_time_trace_temp, background_parameters['scale_factor'])
-        intermolecular_time_trace = exponential_decay(experiment.t, 1.0, background_parameters['decay_constant'], background_parameters['dimension']/3.0)
+        background_parameters = self.background.optimize_parameters(experiment.t, experiment.s, intramolecular_time_trace_temp)
+        fit = self.background.get_fit(experiment.t, background_parameters, intramolecular_time_trace_temp)
         simulated_time_trace = {}
         simulated_time_trace['t'] = experiment.t
-        simulated_time_trace['s'] = intramolecular_time_trace * intermolecular_time_trace
+        simulated_time_trace['s'] = fit
         timings.append(['PDS time trace', str(datetime.timedelta(seconds = time.time()-time_start))])
         # Display statistics
         if display_messages:
@@ -567,13 +568,13 @@ class MonteCarloSimulator(Simulator):
                         print('\t Number of Monte-Carlo samples with non-zero weights: {0} out of {1}'.format(indices_nonzero_probabilities.size, self.mc_sample_size))
                         for instance in timings:
                             print('\t {:<30} {:<30}'.format(instance[0], instance[1]))
+        # PDS time trace
         intramolecular_time_trace_temp = np.sum(intramolecular_time_traces_fixed_spin1, axis=0) / float(num_spins)
-        background_parameters = self.optimize_background(experiment.t, experiment.s, intramolecular_time_trace_temp)
-        intramolecular_time_trace = self.rescale_intramolecular_time_trace(intramolecular_time_trace_temp, background_parameters['scale_factor'])
-        intermolecular_time_trace = exponential_decay(experiment.t, 1.0, background_parameters['decay_constant'], background_parameters['dimension']/3.0)
+        background_parameters = self.background.optimize_parameters(experiment.t, experiment.s, intramolecular_time_trace_temp)
+        fit = self.background.get_fit(experiment.t, background_parameters, intramolecular_time_trace_temp)
         simulated_time_trace = {}
         simulated_time_trace['t'] = experiment.t
-        simulated_time_trace['s'] = intramolecular_time_trace * intermolecular_time_trace
+        simulated_time_trace['s'] = fit
         return simulated_time_trace, background_parameters
 
     def intramolecular_time_trace_from_dipolar_frequencies(self, t, modulation_frequencies, modulation_depths):
@@ -600,95 +601,4 @@ class MonteCarloSimulator(Simulator):
                 new_modulation_depths = np.array([np.sum(modulation_depths)])
             for i in range(num_time_points):
                 simulated_time_trace[i] -= np.sum(new_modulation_depths * (1.0 - np.cos(2*np.pi * new_modulation_frequencies * t[i])))
-        return simulated_time_trace
-    
-    def optimize_background(self, t, experimental_time_trace, simulated_intramolecular_time_trace):
-        ''' Optimizes background parameters via Levenberg-Marquardt based non-linear least-squates fitting '''
-        # Set the variable and fixed background parameters
-        k_opt = self.background['decay_constant']['optimize']
-        d_opt = self.background['dimension']['optimize']
-        s_opt = self.background['scale_factor']['optimize']
-        k_val = self.background['decay_constant']['value']
-        d_val = self.background['dimension']['value']
-        s_val = self.background['scale_factor']['value']
-        k_ran = self.background['decay_constant']['ranges']
-        d_ran = self.background['dimension']['ranges']
-        s_ran = self.background['scale_factor']['ranges']
-        p0 = []
-        lower_bounds = []
-        upper_bounds = []
-        if k_opt and not d_opt and not s_opt:
-            partial_background_fit_function = partial(background_fit_function_kds_wrapper, d=d_val, s=s_val, V=simulated_intramolecular_time_trace[1:])
-            p0.append(k_val)    
-            lower_bounds.append(k_ran[0])
-            upper_bounds.append(k_ran[1])            
-        elif not k_opt and d_opt and not s_opt:
-            partial_background_fit_function = partial(background_fit_function_dks_wrapper, k=k_val, s=s_val, V=simulated_intramolecular_time_trace[1:])
-            p0.append(d_val)    
-            lower_bounds.append(d_ran[0])
-            upper_bounds.append(d_ran[1])
-        elif not k_opt and not d_opt and s_opt:
-            partial_background_fit_function = partial(background_fit_function_skd_wrapper, k=k_val, d=d_val, V=simulated_intramolecular_time_trace[1:])
-            p0.append(s_val)    
-            lower_bounds.append(s_ran[0])
-            upper_bounds.append(s_ran[1])
-        elif k_opt and d_opt and not s_opt:
-            partial_background_fit_function = partial(background_fit_function_kds_wrapper, s=s_val, V=simulated_intramolecular_time_trace[1:])
-            p0.append(k_val)    
-            lower_bounds.append(k_ran[0])
-            upper_bounds.append(k_ran[1])
-            p0.append(d_val)    
-            lower_bounds.append(d_ran[0])
-            upper_bounds.append(d_ran[1])
-        elif not k_opt and d_opt and s_opt:
-            partial_background_fit_function = partial(background_fit_function_dsk_wrapper, k=k_val, V=simulated_intramolecular_time_trace[1:])
-            p0.append(d_val)    
-            lower_bounds.append(d_ran[0])
-            upper_bounds.append(d_ran[1])
-            p0.append(s_val)    
-            lower_bounds.append(s_ran[0])
-            upper_bounds.append(s_ran[1])
-        elif k_opt and not d_opt and s_opt:
-            partial_background_fit_function = partial(background_fit_function_ksd_wrapper, d=d_val, V=simulated_intramolecular_time_trace[1:])
-            p0.append(k_val)    
-            lower_bounds.append(k_ran[0])
-            upper_bounds.append(k_ran[1])
-            p0.append(s_val)    
-            lower_bounds.append(s_ran[0])
-            upper_bounds.append(s_ran[1]) 
-        elif k_opt and d_opt and s_opt: 
-            partial_background_fit_function = partial(background_fit_function_kds_wrapper, V=simulated_intramolecular_time_trace[1:])
-            p0.append(k_val)    
-            lower_bounds.append(k_ran[0])
-            upper_bounds.append(k_ran[1])
-            p0.append(d_val)    
-            lower_bounds.append(d_ran[0])
-            upper_bounds.append(d_ran[1])
-            p0.append(s_val)    
-            lower_bounds.append(s_ran[0])
-            upper_bounds.append(s_ran[1])
-        # Optimize the variable background parameters
-        popt, pcov = curve_fit(partial_background_fit_function, t[1:], experimental_time_trace[1:])
-        # Store the optimized and fixed background parameters
-        count = 0
-        background_parameters = {}
-        if self.background['decay_constant']['optimize']:
-            background_parameters['decay_constant'] = popt[count]
-            count += 1
-        else:
-            background_parameters['decay_constant'] = self.background['decay_constant']['value']
-        if self.background['dimension']['optimize']:
-            background_parameters['dimension'] = popt[count]
-            count += 1
-        else:
-            background_parameters['dimension'] = self.background['dimension']['value']    
-        if self.background['scale_factor']['optimize']:
-            background_parameters['scale_factor'] = popt[count]
-            count += 1
-        else:
-            background_parameters['scale_factor'] = self.background['scale_factor']['value']    
-        return background_parameters
-    
-    def rescale_intramolecular_time_trace(self, intramolecular_time_trace, scale_factor):
-        ''' Rescales a modulation depth of a PDS time trace'''
-        return np.ones(intramolecular_time_trace.size) - scale_factor * (np.ones(intramolecular_time_trace.size) - intramolecular_time_trace)   
+        return simulated_time_trace  

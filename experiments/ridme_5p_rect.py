@@ -10,16 +10,23 @@ class Ridme_5p_rect(Experiment):
     def __init__(self, name):
         super().__init__(name)
         self.technique = 'ridme'
+        self.parameter_names = {
+            'magnetic_field': 'float', 
+            'detection_frequency': 'float', 
+            'detection_pulse_lengths': 'float_array', 
+            'mixing_time': 'float', 
+            'temperature': 'float'
+            }
         self.frequency_increment_bandwidth = 0.001 # in GHz
     
-    def set_parameters(self, magnetic_field, detection_frequency, detection_pulse_lengths, mixing_time, temperature):
+    def set_parameters(self, parameter_values):
         ''' Sets the parameters of an experiment '''
-        self.magnetic_field = magnetic_field
-        self.detection_frequency = detection_frequency
-        self.detection_pi_half_pulse_length = detection_pulse_lengths[0]
-        self.detection_pi_pulse_length = detection_pulse_lengths[1]
-        self.mixing_time = mixing_time
-        self.temperature = temperature
+        self.magnetic_field = parameter_values['magnetic_field']
+        self.detection_frequency = parameter_values['detection_frequency']
+        self.detection_pi_half_pulse_length = parameter_values['detection_pulse_lengths'][0]
+        self.detection_pi_pulse_length = parameter_values['detection_pulse_lengths'][1]
+        self.mixing_time = parameter_values['mixing_time']
+        self.temperature = parameter_values['temperature']
         self.bandwidth_detection_pi_half_pulse = 1 / (4 * self.detection_pi_half_pulse_length)
         self.bandwidth_detection_pi_pulse = 1 / (2 * self.detection_pi_pulse_length)
 
@@ -32,8 +39,10 @@ class Ridme_5p_rect(Experiment):
         detection_probabilities = (self.bandwidth_detection_pi_half_pulse / rabi_frequencies_pi_half_pulse)**3 * np.sin(2*np.pi * rabi_frequencies_pi_half_pulse * self.detection_pi_half_pulse_length)**3 * \
                                   0.25 * (self.bandwidth_detection_pi_pulse / rabi_frequencies_pi_pulse) ** 4 * (1 - np.cos(2*np.pi * rabi_frequencies_pi_pulse * self.detection_pi_pulse_length))**2
         if weights != []:
-            pump_probabilities = pump_probabilities * weights.reshape(weights.size,1)
-            pump_probabilities = pump_probabilities.sum(axis=0)
+            if isinstance(weights, list):
+                weights = np.array(weights).reshape(len(weights),1)
+            detection_probabilities = detection_probabilities * weights
+            detection_probabilities = detection_probabilities.sum(axis=1)
         return detection_probabilities.flatten()
 
     def pump_probability(self, T1, g_anisotropy, g_eff):

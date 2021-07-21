@@ -64,7 +64,7 @@ if __name__ == '__main__':
         print_fitting_parameters(fitting_parameters['indices'], optimized_parameters, fitting_parameters['values'])
         
         # Display the optimized background parameters
-        print_background_parameters(background_parameters, experiments)
+        print_background_parameters(background_parameters, experiments, simulator.background)
         
         # Compute symmetry-related sets of fitting parameters
         score_function = partial(objective_function, simulator=simulator, experiments=experiments, spins=spins, \

@@ -2,12 +2,13 @@ import sys
 import time
 import datetime
 import numpy as np
+from scipy import optimize
 from fitting.optimizer import Optimizer
 from fitting.ga.generation import Generation
 from fitting.ga.plot_score import plot_score, update_score_plot, close_score_plot
     
 
-class GeneticAlgorithm(Optimizer):
+class GeneticAlgorithmWithLocalSolver(Optimizer):
     ''' Genetic Algorithm class '''
     
     def __init__(self, name, display_graphics, goodness_of_fit):
@@ -21,7 +22,12 @@ class GeneticAlgorithm(Optimizer):
             'crossover_probability_increment': 'float', 
             'mutation_probability_increment': 'float', 
             'parent_selection': 'str',
+            'nelder_mead_maxiter': 'int'
             }
+        self.score_local = []
+        self.x_values = []
+        self.y_values = []
+        self.count = 0
         
     def set_intrinsic_parameters(self, parameters):
         ''' Sets intrinsic parameters of Genetic Algorithm '''
@@ -33,6 +39,7 @@ class GeneticAlgorithm(Optimizer):
         self.crossover_probability_increment = parameters['crossover_probability_increment'] 
         self.mutation_probability_increment = parameters['mutation_probability_increment'] 
         self.parent_selection = parameters['parent_selection'] 
+        self.nelder_mead_maxiter = parameters['nelder_mead_maxiter'] 
     
     def optimize(self, ranges):
         ''' Performs an optimization '''
@@ -73,8 +80,43 @@ class GeneticAlgorithm(Optimizer):
             else:
                 if score_vs_generation[-1] < self.score[-1]:
                     self.optimized_variables = generation.chromosomes[0].genes
-                    self.score = np.array(score_vs_generation)
         time_finish = time.time()
         time_elapsed = str(datetime.timedelta(seconds = time_finish - time_start))
         print('\nThe optimization is finished. Total duration: %s' % (time_elapsed))
+        
+        print('\nStarting the optimization via Nelder-Mead algirithm...')
+        time_start = time.time()
+        bounds = [tuple(x) for x in ranges]
+        result = optimize.minimize(self.modified_objective_function, x0=self.optimized_variables, args=(), method='Nelder-Mead', bounds=bounds, callback=self.callback, 
+            options={'maxiter': self.nelder_mead_maxiter, 'maxfev': None, 'initial_simplex': None, 'xatol': 0.0001,'fatol': 0.0001, 'adaptive': True})     
+        self.optimized_variables = np.array(result.x)
+        self.score = np.append(self.score, self.score_local)
+        time_finish = time.time()
+        time_elapsed = str(datetime.timedelta(seconds = time_finish - time_start))
+        print('\nThe optimization is finished. Total duration: %s' % (time_elapsed))
+        
         return self.optimized_variables, self.score
+    
+    def modified_objective_function(self, x, *args):
+        ''' Modified objective function that stores the function value ''' 
+        y = self.objective_function(x, *args)
+        self.x_values.append(x)
+        self.y_values.append(y)
+        return y
+    
+    def callback(self, xk, *_):
+        ''' 
+        Callback function that can be used by optimizers of scipy.optimize.
+        The third argument "*_" makes sure that it still works when the
+        optimizer calls the callback function with more than one argument.
+        '''
+        xk = np.atleast_1d(xk)
+        for i, x in reversed(list(enumerate(self.x_values))):
+            x = np.atleast_1d(x)
+            if np.allclose(x, xk):
+                break           
+        self.score_local.append(self.y_values[i])
+        sys.stdout.write('\r')
+        sys.stdout.write('Optimization step %d / %d: %s = %f' % (self.count+1, self.nelder_mead_maxiter, self.goodness_of_fit_name, self.y_values[i]))
+        sys.stdout.flush()
+        self.count += 1

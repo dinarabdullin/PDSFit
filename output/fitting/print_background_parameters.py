@@ -1,13 +1,17 @@
 import sys
 
 
-def print_background_parameters(background_parameters, experiments):
+def print_background_parameters(background_parameters, experiments, background):
     ''' Displays the background parameters '''
     sys.stdout.write('\nBackground parameters:\n')
-    sys.stdout.write('{:<20}{:<20}{:<20}{:<20}\n'.format('Experiment', 'Decay constant', 'Dimension', 'Scale factor'))
+    
+    sys.stdout.write('{:<20}'.format('Experiment'))
+    for parameter_name in background.parameter_names:
+        sys.stdout.write('{:<20}'.format(background.parameter_full_names[parameter_name]))
+    sys.stdout.write('\n')
+
     for i in range(len(experiments)):
         sys.stdout.write('{:<20}'.format(experiments[i].name))
-        sys.stdout.write('{:<20.6}'.format(background_parameters[i]['decay_constant']))
-        sys.stdout.write('{:<20.2}'.format(background_parameters[i]['dimension']))
-        sys.stdout.write('{:<20.3}'.format(background_parameters[i]['scale_factor']))
+        for parameter_name in background.parameter_names:
+            sys.stdout.write('{:<20.6}'.format(background_parameters[i][parameter_name]))
         sys.stdout.write('\n')
