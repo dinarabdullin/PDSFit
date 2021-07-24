@@ -556,6 +556,12 @@ class MonteCarloSimulator(Simulator):
                     dipolar_frequencies = const['Fdd'] * effective_gfactors_spin1 * effective_gfactors_spin2 * angular_term / r_values**3
                     timings.append(['Dipolar frequencies', str(datetime.timedelta(seconds = time.time()-time_start))])
                     time_start = time.time()
+                    # Check that the distances are above the sensitivity limit
+                    minimal_r_value = 1.0
+                    indices_allowed_distances = np.where(r_values >= minimal_r_value)[0]
+                    dipolar_frequencies = dipolar_frequencies[indices_allowed_distances]
+                    modulation_depths_spin1 = modulation_depths_spin1[indices_allowed_distances]
+                    modulation_depths_spin2 = modulation_depths_spin2[indices_allowed_distances]
                     # Intra-molecular components of the time trace
                     intramolecular_time_trace_spin1 = self.intramolecular_time_trace_from_dipolar_spectrum(experiment.t, dipolar_frequencies, modulation_depths_spin1)
                     intramolecular_time_traces_fixed_spin1[idx_spin1] = intramolecular_time_traces_fixed_spin1[idx_spin1] * intramolecular_time_trace_spin1

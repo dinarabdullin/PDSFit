@@ -6,10 +6,11 @@ from supplement.definitions import const
 class Spin:
     ''' Spin class ''' 
 
-    def __init__(self, g, n, I, A, gStrain, AStrain, lwpp, T1, g_anisotropy_in_dipolar_coupling):
+    def __init__(self, g, n, I, Abund, A, gStrain, AStrain, lwpp, T1, g_anisotropy_in_dipolar_coupling):
         self.g = g
         self.n = n
         self.I = I
+        self.Abund = Abund
         self.A = A
         self.gStrain = gStrain
         self.AStrain = AStrain
@@ -104,6 +105,10 @@ class Spin:
                 num_tile /= num_res_freq_for_single_n
                 m = np.tile(m, num_tile)
                 fh = Aeff * m
+                w = np.where(np.random.rand(num_field_orientations) <= self.Abund[i], 1.0, 0.0)
+                w = w.reshape(num_field_orientations, 1)
+                w = np.tile(w, self.num_res_freq)
+                fh = fh * w
                 f += fh
         return f, g_eff.flatten()
 

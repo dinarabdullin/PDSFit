@@ -6,7 +6,7 @@ def set_zero_point(t, y_re, y_im):
     ''' Sets the zero point of the PDS time trace '''
     # Make a linear time grid with a step of 1 ns and extrapolate the PDS time trace on this grid
     t_step = 0.001
-    t_grid = np.arange(np.amin(t), np.amax(t)+t_step, t_step)
+    t_grid = np.arange(np.amin(t), np.amax(t), t_step)
     y_grid = griddata(t, y_re, t_grid, method='linear')
     # Find the maximum of the PDS time trace
     index_max = np.argmax(y_grid)

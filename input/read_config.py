@@ -128,6 +128,7 @@ def read_spin_parameters(config):
             sys.exit(1)
         n = np.array(read_tuple(instance['n'], ('int',)))
         I = np.array(read_tuple(instance['I'], ('float',)))
+        Abund = np.array(read_tuple(instance['Abund'], ('float',)))
         if I.size != n.size:
             raise ValueError('Number of elements in n\' and I\' must be equal!')
             sys.exit(1)
@@ -148,7 +149,7 @@ def read_spin_parameters(config):
         lwpp = float(instance['lwpp'])  
         T1 = float(instance['T1'])
         g_anisotropy_in_dipolar_coupling = bool(instance['g_anisotropy_in_dipolar_coupling'])
-        spin = Spin(g, n, I, A, gStrain, AStrain, lwpp, T1, g_anisotropy_in_dipolar_coupling)
+        spin = Spin(g, n, I, Abund, A, gStrain, AStrain, lwpp, T1, g_anisotropy_in_dipolar_coupling)
         spins.append(spin)
     if len(spins) < 2:
         raise ValueError('Number of spins has to be larger than 2!')
