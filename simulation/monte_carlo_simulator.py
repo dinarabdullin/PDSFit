@@ -22,7 +22,7 @@ class MonteCarloSimulator(Simulator):
         self.separate_grids = False
         self.frequency_increment_epr_spectrum = 0.001 # in GHz
         self.frequency_increment_dipolar_spectrum = 0.01 # in MHz
-        self.minimal_r_value = 1.0 # in nm
+        self.minimal_r_value = 1.5 # minimal distance in nm
         self.field_orientations = []
         self.effective_gfactors_spin1 = []
         self.detection_probabilities_spin1 = {}
@@ -114,11 +114,13 @@ class MonteCarloSimulator(Simulator):
         ''' Computes PDS time traces for a given set of variables '''
         simulated_time_traces = []
         background_parameters = []
+        background_time_traces = []
         for experiment in experiments:
-            simulated_time_trace, background_parameters_single_time_trace = self.compute_time_trace(experiment, spins, variables, display_messages)
+            simulated_time_trace, background_parameters_single_time_trace, background_time_trace = self.compute_time_trace(experiment, spins, variables, display_messages)
             simulated_time_traces.append(simulated_time_trace)
             background_parameters.append(background_parameters_single_time_trace)
-        return simulated_time_traces, background_parameters
+            background_time_traces.append(background_time_trace)
+        return simulated_time_traces, background_parameters, background_time_traces
 
     def compute_time_trace(self, experiment, spins, variables, display_messages=True):
         ''' Computes a PDS time trace for a given set of variables '''
@@ -126,9 +128,9 @@ class MonteCarloSimulator(Simulator):
             print('\nComputing the time trace of the experiment \'{0}\'...'.format(experiment.name))
         num_spins = len(spins)
         if num_spins == 2:
-            simulated_time_trace, background_parameters = self.compute_time_trace_two_spin(experiment, spins, variables, display_messages=False)
+            simulated_time_trace, background_parameters, background_time_trace = self.compute_time_trace_two_spin(experiment, spins, variables, display_messages=False)
         else:
-            simulated_time_trace, background_parameters = self.compute_time_trace_multispin(experiment, spins, variables, display_messages=False)
+            simulated_time_trace, background_parameters, background_time_trace = self.compute_time_trace_multispin(experiment, spins, variables, display_messages=False)
         # Compute chi2
         chi2_value = chi2(simulated_time_trace['s'], experiment.s, experiment.noise_std)
         # Display statistics
@@ -140,7 +142,7 @@ class MonteCarloSimulator(Simulator):
                 print('Chi2 (noise std = 1): {0:<15.3}'.format(chi2_value)) 
             else:   
                 print('Chi2: {0:<15.3}'.format(chi2_value)) 
-        return simulated_time_trace, background_parameters
+        return simulated_time_trace, background_parameters, background_time_trace
  
     def set_field_orientations(self): 
         ''' Random points on a sphere '''
@@ -313,24 +315,28 @@ class MonteCarloSimulator(Simulator):
         modulation_frequencies = dipolar_frequencies + j_values
         timings.append(['Dipolar frequencies', str(datetime.timedelta(seconds = time.time()-time_start))])
         time_start = time.time()
-        # Check that the distances are above the sensitivity limit
+        # Check that the distances are above the lower limit
         indices_allowed_distances = np.where(r_values >= self.minimal_r_value)[0]
         modulation_frequencies = modulation_frequencies[indices_allowed_distances]
         modulation_depths = modulation_depths[indices_allowed_distances]
         # PDS time trace
-        intramolecular_time_trace_temp = self.intramolecular_time_trace_from_dipolar_spectrum(experiment.t, modulation_frequencies, modulation_depths)
-        background_parameters = self.background.optimize_parameters(experiment.t, experiment.s, intramolecular_time_trace_temp)
-        fit = self.background.get_fit(experiment.t, background_parameters, intramolecular_time_trace_temp)
+        intramolecular_time_trace = self.intramolecular_time_trace_from_dipolar_spectrum(experiment.t, modulation_frequencies, modulation_depths)
+        background_parameters = self.background.optimize_parameters(experiment.t, experiment.s, intramolecular_time_trace)
         simulated_time_trace = {}
         simulated_time_trace['t'] = experiment.t
-        simulated_time_trace['s'] = fit
+        simulated_time_trace_tmp = self.background.get_fit(experiment.t, background_parameters, intramolecular_time_trace)
+        simulated_time_trace_tmp = simulated_time_trace_tmp / np.amax(simulated_time_trace_tmp)
+        simulated_time_trace['s'] = simulated_time_trace_tmp
+        background_time_trace = {}
+        background_time_trace['t'] = experiment.t
+        background_time_trace['s'] = self.background.get_background(experiment.t, background_parameters, np.sum(modulation_depths))
         timings.append(['PDS time trace', str(datetime.timedelta(seconds = time.time()-time_start))])
         # Display statistics
         if display_messages:
             print('Number of Monte-Carlo samples with non-zero weights: {0} out of {1}'.format(indices_nonzero_probabilities.size, self.mc_sample_size))
             for instance in timings:
                 print('{:<30} {:<30}'.format(instance[0], instance[1]))
-        return simulated_time_trace, background_parameters
+        return simulated_time_trace, background_parameters, background_time_trace
     
     def compute_time_trace_multispin(self, experiment, spins, variables, display_messages=False):
         ''' Computes a PDS time trace for a multiple-spin (n>2) system '''
@@ -440,7 +446,7 @@ class MonteCarloSimulator(Simulator):
                     dipolar_frequencies = const['Fdd'] * effective_gfactors_spin1 * effective_gfactors_spin2 * angular_term / r_values**3
                     timings.append(['Dipolar frequencies', str(datetime.timedelta(seconds = time.time()-time_start))])
                     time_start = time.time()
-                    # Check that the distances are above the sensitivity limit
+                    # Check that the distances are above the lower limit
                     indices_allowed_distances = np.where(r_values >= self.minimal_r_value)[0]
                     dipolar_frequencies = dipolar_frequencies[indices_allowed_distances]
                     modulation_depths_spin1 = modulation_depths_spin1[indices_allowed_distances]
@@ -566,7 +572,7 @@ class MonteCarloSimulator(Simulator):
                     dipolar_frequencies = const['Fdd'] * effective_gfactors_spin1 * effective_gfactors_spin2 * angular_term / r_values**3
                     timings.append(['Dipolar frequencies', str(datetime.timedelta(seconds = time.time()-time_start))])
                     time_start = time.time()
-                    # Check that the distances are above the sensitivity limit
+                    # Check that the distances are above the lower limit
                     indices_allowed_distances = np.where(r_values >= self.minimal_r_value)[0]
                     dipolar_frequencies = dipolar_frequencies[indices_allowed_distances]
                     modulation_depths_spin1 = modulation_depths_spin1[indices_allowed_distances]
@@ -584,13 +590,17 @@ class MonteCarloSimulator(Simulator):
                         for instance in timings:
                             print('\t {:<30} {:<30}'.format(instance[0], instance[1]))
         # PDS time trace
-        intramolecular_time_trace_temp = np.sum(intramolecular_time_traces_fixed_spin1, axis=0) / float(num_spins)
-        background_parameters = self.background.optimize_parameters(experiment.t, experiment.s, intramolecular_time_trace_temp)
-        fit = self.background.get_fit(experiment.t, background_parameters, intramolecular_time_trace_temp)
+        intramolecular_time_trace = np.sum(intramolecular_time_traces_fixed_spin1, axis=0) / float(num_spins)
+        background_parameters = self.background.optimize_parameters(experiment.t, experiment.s, intramolecular_time_trace)
         simulated_time_trace = {}
         simulated_time_trace['t'] = experiment.t
-        simulated_time_trace['s'] = fit
-        return simulated_time_trace, background_parameters
+        simulated_time_trace_tmp = self.background.get_fit(experiment.t, background_parameters, intramolecular_time_trace)
+        simulated_time_trace_tmp = simulated_time_trace_tmp / np.amax(simulated_time_trace_tmp)
+        simulated_time_trace['s'] = simulated_time_trace_tmp
+        background_time_trace = {}
+        background_time_trace['t'] = experiment.t
+        background_time_trace['s'] = self.background.get_background(experiment.t, background_parameters, 1-intramolecular_time_trace[-1])
+        return simulated_time_trace, background_parameters, background_time_trace
 
     def intramolecular_time_trace_from_dipolar_frequencies(self, t, modulation_frequencies, modulation_depths):
         ''' Converts dipolar frequencies into a PDS time trace '''

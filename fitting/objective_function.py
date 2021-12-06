@@ -39,17 +39,17 @@ def fit_function(variables, simulator, experiments, spins, fitting_parameters, f
     if not fixed_variables_included:
         all_variables = merge_fitted_and_fixed_variables(fitting_parameters['indices'], variables, fitting_parameters['values'])
         # Simulate PDS time traces
-        simulated_time_traces, background_parameters = simulator.compute_time_traces(experiments, spins, all_variables, False)
+        simulated_time_traces, background_parameters, background_time_traces = simulator.compute_time_traces(experiments, spins, all_variables, False)
     else:
         # Simulate PDS time traces
-        simulated_time_traces, background_parameters = simulator.compute_time_traces(experiments, spins, variables, False)
-    return simulated_time_traces, background_parameters
+        simulated_time_traces, background_parameters, background_time_traces = simulator.compute_time_traces(experiments, spins, variables, False)
+    return simulated_time_traces, background_parameters, background_time_traces
 
 
 def objective_function(variables, simulator, experiments, spins, fitting_parameters, goodness_of_fit, fixed_variables_included):
     ''' Objective function '''
     # Compute the fit
-    simulated_time_traces, background_parameters = fit_function(variables, simulator, experiments, spins, fitting_parameters, fixed_variables_included)
+    simulated_time_traces, background_parameters, background_time_traces = fit_function(variables, simulator, experiments, spins, fitting_parameters, fixed_variables_included)
     # Compute the score
     if goodness_of_fit == 'chi2':
         total_score = 0.0

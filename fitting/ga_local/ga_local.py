@@ -74,16 +74,21 @@ class GeneticAlgorithmWithLocalSolver(Optimizer):
                 sys.stdout.write('\r')
                 sys.stdout.write('Run %d / %d, optimization step %d / %d: %s = %f' % (r+1, self.number_of_runs, i+1, self.number_of_generations, self.goodness_of_fit_name, score_vs_generation[i]))
                 sys.stdout.flush()
+            num_best_solution = 1
             if r == 0:
                 self.optimized_variables = generation.chromosomes[0].genes
                 self.score = np.array(score_vs_generation)
             else:
                 if score_vs_generation[-1] < self.score[-1]:
                     self.optimized_variables = generation.chromosomes[0].genes
+                    num_best_solution = r + 1
+        print('\nThe best solution was found in run no. %d (crossover probability %f, mutation_probability %f)' % 
+            (num_best_solution, 
+             self.crossover_probability + (num_best_solution-1) * self.crossover_probability_increment, 
+             self.mutation_probability + (num_best_solution-1) * self.mutation_probability_increment))
         time_finish = time.time()
         time_elapsed = str(datetime.timedelta(seconds = time_finish - time_start))
-        print('\nThe optimization is finished. Total duration: %s' % (time_elapsed))
-        
+        print('The optimization is finished. Total duration: %s' % (time_elapsed))
         print('\nStarting the optimization via Nelder-Mead algirithm...')
         time_start = time.time()
         bounds = [tuple(x) for x in ranges]
@@ -94,7 +99,6 @@ class GeneticAlgorithmWithLocalSolver(Optimizer):
         time_finish = time.time()
         time_elapsed = str(datetime.timedelta(seconds = time_finish - time_start))
         print('\nThe optimization is finished. Total duration: %s' % (time_elapsed))
-        
         return self.optimized_variables, self.score
     
     def modified_objective_function(self, x, *args):

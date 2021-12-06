@@ -35,13 +35,13 @@ if __name__ == '__main__':
         bandwidths = simulator.bandwidths(experiments)
         
         # Simulate the PDS time traces
-        simulated_time_traces, background_parameters = simulator.compute_time_traces(experiments, spins, simulation_parameters)
+        simulated_time_traces, background_parameters, background_time_traces = simulator.compute_time_traces(experiments, spins, simulation_parameters)
         
         # Save the simulation output
-        data_saver.save_simulation_output(epr_spectra, bandwidths, simulated_time_traces, experiments)
+        data_saver.save_simulation_output(epr_spectra, bandwidths, simulator.background, background_parameters, background_time_traces, simulated_time_traces, experiments)
         
         # Plot the simulation output
-        plotter.plot_simulation_output(epr_spectra, bandwidths, simulated_time_traces, experiments)
+        plotter.plot_simulation_output(epr_spectra, bandwidths, background_time_traces, simulated_time_traces, experiments)
 
     # Run fitting
     if mode['fitting']:
@@ -58,7 +58,7 @@ if __name__ == '__main__':
         optimized_parameters, score = optimizer.optimize(fitting_parameters['ranges'])                                                         
 
         # Compute the fit to the experimental PDS time traces
-        simulated_time_traces, background_parameters = optimizer.get_fit()
+        simulated_time_traces, background_parameters, background_time_traces = optimizer.get_fit()
         
         # Display the fitted and fixed parameters
         print_fitting_parameters(fitting_parameters['indices'], optimized_parameters, fitting_parameters['values'])
@@ -72,10 +72,10 @@ if __name__ == '__main__':
         symmetry_related_solutions = compute_symmetry_related_solutions(fitting_parameters['indices'], optimized_parameters, fitting_parameters['values'], simulator, score_function)
         
         # Save the fitting output
-        data_saver.save_fitting_output(score, optimized_parameters, [], symmetry_related_solutions, simulated_time_traces, fitting_parameters, experiments)
+        data_saver.save_fitting_output(score, optimized_parameters, [], symmetry_related_solutions, simulator.background, background_parameters, background_time_traces, simulated_time_traces, fitting_parameters, experiments)
         
         # Plot the fitting output
-        plotter.plot_fitting_output(score, optimizer.goodness_of_fit, simulated_time_traces, experiments)
+        plotter.plot_fitting_output(score, optimizer.goodness_of_fit, background_time_traces, simulated_time_traces, experiments)
         
     # Run error analysis
     if mode['error_analysis']:

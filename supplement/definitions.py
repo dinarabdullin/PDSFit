@@ -74,7 +74,26 @@ const['fitting_parameters_names'] = [
     'j_mean', 
     'j_width'
     ]
-    
+
+# Names of paired fitting parameters
+const['paired_fitting_parameters'] = {
+    'r_mean'      : 'r_width',
+    'r_width'     : 'r_mean', 
+    'xi_mean'     : 'xi_width',
+    'xi_width'    : 'xi_mean', 
+    'phi_mean'    : 'phi_width', 
+    'phi_width'   : 'phi_mean',
+    'alpha_mean'  : 'alpha_width',
+    'alpha_width' : 'alpha_mean',
+    'beta_mean'   : 'beta_width',
+    'beta_width'  : 'beta_mean',
+    'gamma_mean'  : 'gamma_width',
+    'gamma_width' : 'gamma_mean',
+    'rel_prob'    : 'none',
+    'j_mean'      : 'j_width', 
+    'j_width'     : 'j_mean'
+    }
+ 
 # Names of angle parameters
 const['angle_parameters_names'] = [
     'xi_mean',  

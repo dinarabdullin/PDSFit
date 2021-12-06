@@ -19,6 +19,7 @@ class Experiment:
     def signal_from_file(self, filepath, column_numbers=[]):
         ''' Loads an experimental PDS time trace from a file'''
         t, s_re, s_im = load_experimental_signal(filepath, column_numbers)
+        t = t - np.amin(t)
         t = const['ns2us'] * t
         phase, s_re, s_im = set_phase(s_re, s_im)
         zero_point, t, s_re, s_im = set_zero_point(t, s_re, s_im)

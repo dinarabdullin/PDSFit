@@ -13,14 +13,14 @@ def plot_bandwidths_single_experiment(axes, bandwidths, experiment, spectrum=[])
     '''
     f_min, f_max = [], []
     if spectrum != []:
-        axes.plot(spectrum['f'], spectrum['p']/np.amax(spectrum['p']), 'k-', label='EPR spectrum')
+        axes.plot(spectrum['f'], spectrum['p']/np.amax(spectrum['p']), 'k-', label='spc')
         f_min.append(np.amin(spectrum['f']))
         f_max.append(np.amax(spectrum['f']))
     for key in bandwidths:
         if key == 'detection_bandwidth':
-            axes.plot(bandwidths[key]['f'], bandwidths[key]['p']/np.amax(bandwidths[key]['p']), 'r-', label='detection bandwidth')
+            axes.plot(bandwidths[key]['f'], bandwidths[key]['p']/np.amax(bandwidths[key]['p']), 'r-', label='det')
         elif key == 'pump_bandwidth':
-            axes.plot(bandwidths[key]['f'], bandwidths[key]['p']/np.amax(bandwidths[key]['p']), 'b-', label='pump bandwidth')
+            axes.plot(bandwidths[key]['f'], bandwidths[key]['p']/np.amax(bandwidths[key]['p']), 'b-', label='pump')
         f_min.append(np.amin(bandwidths[key]['f']))
         f_max.append(np.amax(bandwidths[key]['f']))  
     axes.set_xlabel(r'Frequency (GHz)')
@@ -29,10 +29,7 @@ def plot_bandwidths_single_experiment(axes, bandwidths, experiment, spectrum=[])
     axes.set_ylim(0.0, 1.1)
     textstr = str(experiment.name) + ', ' + str(experiment.magnetic_field) + ' T'
     axes.set_title(textstr, fontsize=matplotlib.rcParams['font.size'])
-    # Make axes square
-    xl, xh = axes.get_xlim()
-    yl, yh = axes.get_ylim()
-    axes.set_aspect((xh-xl)/(yh-yl))
+    axes.legend()
 
 
 def plot_bandwidths(bandwidths, experiments, spectra=[]):
@@ -54,13 +51,7 @@ def plot_bandwidths(bandwidths, experiments, spectra=[]):
             plot_bandwidths_single_experiment(axes, bandwidths[i], experiments[i], spectra[i])
         else:
             plot_bandwidths_single_experiment(axes, bandwidths[i], experiments[i])
-    left = 0
-    right = float(layout[1])/float(layout[1]+1)
-    bottom = 0.5 * (1-right)
-    top = 1 - bottom
-    fig.tight_layout(rect=[left, bottom, right, top]) 
-    handles, labels = fig.axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc='center left', bbox_to_anchor=(right+0.01, 0.5), frameon=False)
+    fig.tight_layout()
     plt.draw()
     plt.pause(0.000001)
     return fig

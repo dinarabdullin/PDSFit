@@ -13,7 +13,7 @@ class Background:
         self.upper_bounds = []
     
     def set_parameters(self, parameters):
-        ''' Set background parameters '''
+        ''' Set the parameters '''
         self.parameters = parameters
         self.p0 = []
         self.lower_bounds = []
@@ -26,11 +26,11 @@ class Background:
                 self.upper_bounds.append(self.parameters[parameter_name]['range'][1])
     
     def set_fit_function(self, s_intra): 
-        ''' Set the function for optimization of background parameters '''
+        ''' Set the fit function '''
     
     def optimize_parameters(self, t, s_exp, s_intra):
         ''' 
-        Optimize the background parameters to yeild the best fit to:
+        Optimize the parameters to yeild the best fit to:
         s_exp(t) = s_inter(t, parameters) * (1 - scale_factor * s_intra(t)),
         where
         s_exp(t) - experimental time trace
@@ -50,7 +50,10 @@ class Background:
                 count += 1
             else:
                 background_parameters[parameter_name] = self.parameters[parameter_name]['value']
-        return background_parameters        
-    
+        return background_parameters
+        
     def get_fit(self, t, background_parameters, s_intra):
-        ''' Compute the fit to the background and entire time trace '''
+        ''' Compute the fit to the PDS time trace '''
+    
+    def get_background(self, t, background_parameters, modulation_depth):
+        ''' Compute the background fit '''

@@ -103,14 +103,12 @@ class ErrorAnalyzer():
             self.pool.close()
             self.pool.join()
             score_vs_parameter_subset['score'] = np.array(score)
-            
             # for k in range(self.sample_size):
                 # sys.stdout.write('\n')
                 # for j in range(num_parameters):
                     # sys.stdout.write('{:10.4f}'.format(score_vs_parameter_subset['parameters'][j][k]*180/np.pi))
                 # sys.stdout.write('{:20.4f}'.format(score_vs_parameter_subset['score'][k]))
             # sys.stdout.write('\n')
-            
             score_vs_parameter_subsets.append(score_vs_parameter_subset)
         sys.stdout.write('\n')
         return score_vs_parameter_subsets  
@@ -142,35 +140,37 @@ class ErrorAnalyzer():
                 score_vs_parameter['parameter'] = parameter_grid
                 score_vs_parameter['score'] = minimized_score_values
                 score_vs_parameters.append(score_vs_parameter)
-        return score_vs_parameters
-                
+        return score_vs_parameters  
 
     def compute_parameters_errors(self, error_analysis_parameters, score_vs_parameter_subsets, score_threshold, fitting_parameters, optimized_parameters):
         ''' Computes the uncernainty intervals of the optimized fitting parameters '''
         print('Computing the uncernainty intervals of the optimized fitting parameters...')
-        parameter_errors = np.empty(optimized_parameters.size)
+        parameter_errors = np.empty((optimized_parameters.size, 2,))
         parameter_errors[:] = np.nan
         for i in range(len(error_analysis_parameters)):
-            for j in range(len(error_analysis_parameters[i])):
+            num_parameters = len(error_analysis_parameters[i])
+            for j in range(num_parameters):
                 parameter_id = error_analysis_parameters[i][j]
                 parameter_index = parameter_id.get_index(fitting_parameters['indices'])
                 optimized_parameter_value = optimized_parameters[parameter_index]
                 parameter_values = score_vs_parameter_subsets[i]['parameters'][j]
                 score_values = score_vs_parameter_subsets[i]['score']
-                parameter_error = self.compute_parameter_error(parameter_values, optimized_parameter_value, score_values, score_threshold)
-                if np.isnan(parameter_errors[parameter_index]):
-                    parameter_errors[parameter_index] = parameter_error
+                parameter_error = self.compute_parameter_error(parameter_values, optimized_parameter_value, score_values, score_threshold, num_parameters)
+                if np.isnan(parameter_errors[parameter_index][0]) and np.isnan(parameter_errors[parameter_index][1]):
+                    parameter_errors[parameter_index][0] = parameter_error[0]
+                    parameter_errors[parameter_index][1] = parameter_error[1]
                 else:
-                    if parameter_error > parameter_errors[parameter_index]:
-                        parameter_errors[parameter_index] = parameter_error
+                    if parameter_error[0] < parameter_errors[parameter_index][0]:
+                        parameter_errors[parameter_index][0] = parameter_error[0]
+                    if parameter_error[1] > parameter_errors[parameter_index][1]:
+                        parameter_errors[parameter_index][1] = parameter_error[1]
         return parameter_errors
     
-    def compute_parameter_error(self, parameter_values, optimized_parameter_value, score_values, score_threshold):
+    def compute_parameter_error(self, parameter_values, optimized_parameter_value, score_values, score_threshold, num_parameters):
         ''' Computes the uncernainty interval of an optimized fitting parameter '''
         # Determine the minimal and maximal values of the parameter
         parameter_min = np.amin(parameter_values)
         parameter_max = np.amax(parameter_values)
-        parameter_half_range = 0.5 * (parameter_max - parameter_min)
         # Determine the minimal score value
         minimal_score = np.amin(score_values)
         # Determine the parameter values which lie under the score threshold 
@@ -179,12 +179,15 @@ class ErrorAnalyzer():
         # Determine the uncertainty ranges of the parameter
         uncertainty_interval_lower_bound = np.amin(selected_parameter_values)
         uncertainty_interval_upper_bound = np.amax(selected_parameter_values)
-        parameter_error_low_end = np.abs(optimized_parameter_value - uncertainty_interval_lower_bound)
-        parameter_error_high_end = np.abs(optimized_parameter_value - uncertainty_interval_upper_bound)
-        parameter_error = np.nan
-        if (parameter_error_low_end < parameter_half_range) and (parameter_error_high_end < parameter_half_range):
-            if (parameter_error_low_end > parameter_error_high_end):
-                parameter_error = parameter_error_low_end
-            else:
-                parameter_error = parameter_error_high_end    
-        return parameter_error   
+        delta = (parameter_max-parameter_min) / (float(parameter_values.size))**(1/float(num_parameters))
+        if (uncertainty_interval_lower_bound <= parameter_min + 2*delta) and (uncertainty_interval_upper_bound >= parameter_max - 2*delta):
+            minus_error = np.nan
+            plus_error = np.nan
+        else:
+            minus_error = uncertainty_interval_lower_bound - optimized_parameter_value
+            plus_error = uncertainty_interval_upper_bound - optimized_parameter_value
+            if minus_error > 0:        
+                minus_error = 0
+            if plus_error < 0:
+                plus_error = 0
+        return np.array([minus_error, plus_error])  

@@ -5,20 +5,20 @@ import matplotlib.pyplot as plt
 from plots.best_layout import best_layout
 
 
-def plot_simulated_time_trace(axes, simulated_time_trace, experiment):
-    ''' Plots a simulated PDS time trace '''
+def plot_background(axes, background_time_trace, experiment):
+    ''' Plots a simulated PDS time trace and its background fit '''
     axes.plot(experiment.t, experiment.s, 'k-', label="exp")
-    axes.plot(simulated_time_trace['t'], simulated_time_trace['s'], 'r-', label="sim")	
+    axes.plot(background_time_trace['t'], background_time_trace['s'], 'r-', label="bckg")	
     textstr = str(experiment.name)
     axes.legend(title=textstr)
     axes.set_xlabel(r'$\mathit{t}$ ($\mathit{\mu s}$)')
     axes.set_ylabel('Echo intensity (arb.u.)')
     axes.set_xlim([0, np.amax(experiment.t)])
-    axes.set_ylim([np.amin([experiment.s, simulated_time_trace['s']])-0.05, 1.05])
+    axes.set_ylim([np.amin([experiment.s, background_time_trace['s']])-0.05, 1.05])
 
 
-def plot_simulated_time_traces(simulated_time_traces, experiments):
-    ''' Plots simulated PDS time traces '''
+def plot_backgrounds(background_time_traces, experiments):
+    ''' Plots PDS time traces and their background fits'''
     figsize = [10, 8]
     num_subplots = len(experiments)
     best_rcparams(num_subplots)
@@ -29,7 +29,7 @@ def plot_simulated_time_traces(simulated_time_traces, experiments):
             axes = fig.gca()
         else:
             axes = fig.add_subplot(layout[0], layout[1], i+1)
-        plot_simulated_time_trace(axes, simulated_time_traces[i], experiments[i])
+        plot_background(axes, background_time_traces[i], experiments[i])
     plt.tight_layout() 
     plt.draw()
     plt.pause(0.000001)
