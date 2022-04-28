@@ -32,7 +32,7 @@ class MonteCarloSimulator(Simulator):
         ''' Set ccalculation settings '''
         self.mc_sample_size = calculation_settings['mc_sample_size']
         self.distributions = calculation_settings['distributions']
-        self.excitation_threshold = calculation_settings['excitation_treshold']
+        self.excitation_threshold = calculation_settings['excitation_threshold']
         self.euler_angles_convention = calculation_settings['euler_angles_convention']
         self.background = calculation_settings['background']
     

@@ -339,7 +339,7 @@ def read_calculation_settings(config):
                 raise ValueError('Unsupported type of distribution for %s!' % (key))
                 sys.exit(1)
         calculation_settings['distributions'] = distributions                
-        calculation_settings['excitation_treshold'] = float(config['calculation_settings']['excitation_treshold'])
+        calculation_settings['excitation_threshold'] = float(config['calculation_settings']['excitation_threshold'])
         calculation_settings['euler_angles_convention'] = config['calculation_settings']['euler_angles_convention']
         if not calculation_settings['euler_angles_convention'] in const['euler_angles_conventions']:
             raise ValueError('Unsupported Euler angles convention!')
