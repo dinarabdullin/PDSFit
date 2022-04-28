@@ -155,7 +155,7 @@ const['fitting_parameters_labels'] = {
     'beta_width'  : [r'$\mathit{\Delta\beta}$', '$^\circ$'], 
     'gamma_mean'  : [r'$\langle\mathit{\gamma}\rangle$', '$^\circ$'],
     'gamma_width' : [r'$\mathit{\Delta\gamma}$', '$^\circ$'],
-    'rel_prob'    : [r'Relative weight'],
+    'rel_prob'    : [r'$\mathit{w}$', ''],
     'j_mean'      : [r'$\langle\mathit{J}\rangle$', '(MHz)'],
     'j_width'     : [r'$\mathit{\Delta J}$', '(MHz)']
     }

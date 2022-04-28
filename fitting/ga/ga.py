@@ -38,6 +38,7 @@ class GeneticAlgorithm(Optimizer):
         ''' Performs an optimization '''
         print('\nStarting the optimization via genetic algirithm...')
         time_start = time.time()
+        num_best_solution = 1
         for r in range(self.number_of_runs):
             score_vs_generation = []
             for i in range(self.number_of_generations):     
@@ -67,7 +68,6 @@ class GeneticAlgorithm(Optimizer):
                 sys.stdout.write('\r')
                 sys.stdout.write('Run %d / %d, optimization step %d / %d: %s = %f' % (r+1, self.number_of_runs, i+1, self.number_of_generations, self.goodness_of_fit_name, score_vs_generation[i]))
                 sys.stdout.flush()
-            num_best_solution = 1
             if r == 0:
                 self.optimized_variables = generation.chromosomes[0].genes
                 self.score = np.array(score_vs_generation)

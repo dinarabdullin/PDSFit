@@ -45,6 +45,7 @@ class GeneticAlgorithmWithLocalSolver(Optimizer):
         ''' Performs an optimization '''
         print('\nStarting the optimization via genetic algirithm...')
         time_start = time.time()
+        num_best_solution = 1
         for r in range(self.number_of_runs):
             score_vs_generation = []
             for i in range(self.number_of_generations):     
@@ -74,13 +75,13 @@ class GeneticAlgorithmWithLocalSolver(Optimizer):
                 sys.stdout.write('\r')
                 sys.stdout.write('Run %d / %d, optimization step %d / %d: %s = %f' % (r+1, self.number_of_runs, i+1, self.number_of_generations, self.goodness_of_fit_name, score_vs_generation[i]))
                 sys.stdout.flush()
-            num_best_solution = 1
             if r == 0:
                 self.optimized_variables = generation.chromosomes[0].genes
                 self.score = np.array(score_vs_generation)
             else:
                 if score_vs_generation[-1] < self.score[-1]:
                     self.optimized_variables = generation.chromosomes[0].genes
+                    self.score = np.array(score_vs_generation)
                     num_best_solution = r + 1
         print('\nThe best solution was found in run no. %d (crossover probability %f, mutation_probability %f)' % 
             (num_best_solution, 
@@ -89,16 +90,29 @@ class GeneticAlgorithmWithLocalSolver(Optimizer):
         time_finish = time.time()
         time_elapsed = str(datetime.timedelta(seconds = time_finish - time_start))
         print('The optimization is finished. Total duration: %s' % (time_elapsed))
-        print('\nStarting the optimization via Nelder-Mead algirithm...')
         time_start = time.time()
+        print('\nStarting the optimization via Nelder-Mead algirithm...')
         bounds = [tuple(x) for x in ranges]
-        result = optimize.minimize(self.modified_objective_function, x0=self.optimized_variables, args=(), method='Nelder-Mead', bounds=bounds, callback=self.callback, 
-            options={'maxiter': self.nelder_mead_maxiter, 'maxfev': None, 'initial_simplex': None, 'xatol': 0.0001,'fatol': 0.0001, 'adaptive': True})     
-        self.optimized_variables = np.array(result.x)
-        self.score = np.append(self.score, self.score_local)
+        result = optimize.minimize(self.modified_objective_function, 
+                                   x0=self.optimized_variables,
+                                   method='Nelder-Mead', 
+                                   bounds=bounds, 
+                                   callback=self.callback, 
+                                   options={'maxiter': self.nelder_mead_maxiter, 'adaptive': True})
+        # result = optimize.minimize(self.modified_objective_function, 
+                                   # x0=self.optimized_variables, 
+                                   # method='L-BFGS-B', 
+                                   # bounds=bounds, 
+                                   # callback=self.callback, 
+                                   # options={'maxiter': self.nelder_mead_maxiter})
         time_finish = time.time()
         time_elapsed = str(datetime.timedelta(seconds = time_finish - time_start))
-        print('\nThe optimization is finished. Total duration: %s' % (time_elapsed))
+        if self.solution_is_within_bounds(result.x, ranges):
+            self.optimized_variables = np.array(result.x)
+            self.score = np.append(self.score, self.score_local)
+            print('\nThe optimization is finished. Total duration: %s' % (time_elapsed))
+        else:
+            print('\nThe Nelder-Mead algorithm did not converge. Total duration: %s' % (time_elapsed))
         return self.optimized_variables, self.score
     
     def modified_objective_function(self, x, *args):
@@ -117,10 +131,19 @@ class GeneticAlgorithmWithLocalSolver(Optimizer):
         xk = np.atleast_1d(xk)
         for i, x in reversed(list(enumerate(self.x_values))):
             x = np.atleast_1d(x)
-            if np.allclose(x, xk):
+            if np.allclose(x, xk, rtol=0, atol=1e-8):
                 break           
         self.score_local.append(self.y_values[i])
         sys.stdout.write('\r')
         sys.stdout.write('Optimization step %d / %d: %s = %f' % (self.count+1, self.nelder_mead_maxiter, self.goodness_of_fit_name, self.y_values[i]))
         sys.stdout.flush()
         self.count += 1
+        
+    def solution_is_within_bounds(self, solution, bounds):
+        ''' Check that the solution of the Nelder-Mead algorithm is within the specified bounds'''
+        status = True
+        for i in range(len(solution)):
+            if (solution[i] >= bounds[i][0]) and (solution[i] <= bounds[i][1]):
+                status = False
+                break
+        return status

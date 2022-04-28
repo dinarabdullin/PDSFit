@@ -131,13 +131,13 @@ class MonteCarloSimulator(Simulator):
             simulated_time_trace, background_parameters, background_time_trace = self.compute_time_trace_two_spin(experiment, spins, variables, display_messages=False)
         else:
             simulated_time_trace, background_parameters, background_time_trace = self.compute_time_trace_multispin(experiment, spins, variables, display_messages=False)
-        # Compute chi2
-        chi2_value = chi2(simulated_time_trace['s'], experiment.s, experiment.noise_std)
         # Display statistics
         if display_messages:
             print('Background parameters:') 
             for parameter_name in self.background.parameter_full_names:
                 print(self.background.parameter_full_names[parameter_name] + ': ', background_parameters[parameter_name]) 
+            # Compute chi2
+            chi2_value = chi2(simulated_time_trace['s'], experiment.s, experiment.noise_std)
             if experiment.noise_std == 1:
                 print('Chi2 (noise std = 1): {0:<15.3}'.format(chi2_value)) 
             else:   
@@ -171,6 +171,7 @@ class MonteCarloSimulator(Simulator):
         '''
         xi_values = random_points_from_distribution(self.distributions['xi'], xi_mean, xi_width, rel_prob, self.mc_sample_size, True)
         phi_values = random_points_from_distribution(self.distributions['phi'], phi_mean, phi_width, rel_prob, self.mc_sample_size, False)
+        #print([xi_values.size, phi_values.size])
         r_orientations = spherical2cartesian(np.ones(self.mc_sample_size), xi_values, phi_values)
         return r_orientations
    
@@ -210,6 +211,12 @@ class MonteCarloSimulator(Simulator):
         # Random orientations of the applied static magnetic field in the reference frame
         if self.field_orientations == []:
             self.field_orientations = self.set_field_orientations()
+        # Check that the sum of all 'rel_prob' does not exceed 1
+        # If the sum of all 'rel_prob' exceeds 1, all components of 'rel_prob' are normalized by a contant that makes the sum of all 'rel_prob' equal 1.
+        sum_rel_probs = sum(variables['rel_prob'][0])
+        if variables['rel_prob'][0] != [] and sum_rel_probs > 1:
+            rel_probs = [v / sum_rel_probs for v in variables['rel_prob'][0]]
+            variables['rel_prob'][0] = rel_probs
         # Distance values
         r_values = self.set_r_values(variables['r_mean'][0], variables['r_width'][0], variables['rel_prob'][0])
         # Orientations of the distance vector in the reference frame
@@ -225,13 +232,13 @@ class MonteCarloSimulator(Simulator):
         j_values = self.set_j_values(variables['j_mean'][0], variables['j_width'][0], variables['rel_prob'][0])                                                                                               
         timings.append(['Monte-Carlo samples', str(datetime.timedelta(seconds = time.time()-time_start))])
         time_start = time.time()
-        # # Plot Monte-Carlo points
-        # rho_values, xi_values, phi_values = cartesian2spherical(r_orientations)
-        # euler_angles = spin_frame_rotations_spin2.inv().as_euler(self.euler_angles_convention, degrees=False)
-        # alpha_values, beta_values, gamma_values = euler_angles[:,0], euler_angles[:,1], euler_angles[:,2]
-        # from plots.monte_carlo.plot_monte_carlo_points import plot_monte_carlo_points
-        # plot_monte_carlo_points(r_values, [], xi_values, [], phi_values, [], alpha_values, [], beta_values, [], gamma_values, [], j_values, [])
-        # Orientations of the applied static magnetic field in both spin frames
+        ## Plot Monte-Carlo points
+        #rho_values, xi_values, phi_values = cartesian2spherical(r_orientations)
+        #euler_angles = spin_frame_rotations_spin2.inv().as_euler(self.euler_angles_convention, degrees=False)
+        #alpha_values, beta_values, gamma_values = euler_angles[:,0], euler_angles[:,1], euler_angles[:,2]
+        #from plots.monte_carlo.plot_monte_carlo_points import plot_monte_carlo_points
+        #plot_monte_carlo_points(r_values, [], xi_values, [], phi_values, [], alpha_values, [], beta_values, [], gamma_values, [], j_values, [])
+        #Orientations of the applied static magnetic field in both spin frames
         field_orientations_spin1 = self.field_orientations
         field_orientations_spin2 = rotate_coordinate_system(self.field_orientations, spin_frame_rotations_spin2, self.separate_grids)
         # Resonance frequencies and/or effective g-values of both spins
@@ -350,6 +357,12 @@ class MonteCarloSimulator(Simulator):
                     # Random orientations of the applied static magnetic field in the reference frame
                     if self.field_orientations == []:
                         self.field_orientations = self.set_field_orientations()
+                    # Check that the sum of all 'rel_prob' does not exceed 1
+                    # If the sum of all 'rel_prob' exceeds 1, all components of 'rel_prob' are normalized by a contant that makes the sum of all 'rel_prob' equal 1.
+                    sum_rel_probs = sum(variables['rel_prob'][idx_spin2-1])
+                    if variables['rel_prob'][idx_spin2-1] != [] and sum_rel_probs > 1:
+                        rel_probs = [v / sum_rel_probs for v in variables['rel_prob'][idx_spin2-1]]
+                        variables['rel_prob'][idx_spin2-1] = rel_probs
                     # Distance values
                     r_values = self.set_r_values(variables['r_mean'][idx_spin2-1], variables['r_width'][idx_spin2-1], variables['rel_prob'][idx_spin2-1])
                     # Orientations of the distance vector in the reference frame
@@ -469,6 +482,16 @@ class MonteCarloSimulator(Simulator):
                     # Random orientations of the applied static magnetic field in the reference frame
                     if self.field_orientations == []:
                         self.field_orientations = self.set_field_orientations()
+                    # Check that the sum of all 'rel_prob' does not exceed 1
+                    # If the sum of all 'rel_prob' exceeds 1, all components of 'rel_prob' are normalized by a contant that makes the sum of all 'rel_prob' equal 1.
+                    sum_rel_probs = sum(variables['rel_prob'][idx_spin1-1])
+                    if variables['rel_prob'][idx_spin1-1] != [] and sum_rel_probs > 1:
+                        rel_probs = [v / sum_rel_probs for v in variables['rel_prob'][idx_spin1-1]]
+                        variables['rel_prob'][idx_spin1-1] = rel_probs
+                    sum_rel_probs = sum(variables['rel_prob'][idx_spin2-1])
+                    if variables['rel_prob'][idx_spin2-1] != [] and sum_rel_probs > 1:
+                        rel_probs = [v / sum_rel_probs for v in variables['rel_prob'][idx_spin2-1]]
+                        variables['rel_prob'][idx_spin2-1] = rel_probs   
                     # Coordinates of spin 1 in the reference frame
                     coordinates_spin1 = self.set_coordinates(variables['r_mean'][idx_spin1-1], variables['r_width'][idx_spin1-1], 
                                                              variables['xi_mean'][idx_spin1-1], variables['xi_width'][idx_spin1-1], 

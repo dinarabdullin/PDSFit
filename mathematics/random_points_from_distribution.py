@@ -33,26 +33,29 @@ def random_points_from_multimodal_uniform_distribution(mean, width, rel_prob, si
                 uniform_samples = np.random.random(size)
                 points = random_points_from_arbitrary_distribution(sine_weighted_uniform_distribution, args)(uniform_samples)
     else:
-        size_last_component = size
+        size_components = []
+        for i in range(num_components-1):
+            size_component = int(size * rel_prob[i])
+            size_components.append(size_component)
+        size_component = size - sum(size_components)
+        size_components.append(size_component)
+        first_component = True
         for i in range(num_components):
-            if i < num_components - 1:
-                size_one_component = int(size * rel_prob[i])
-                size_last_component = size_last_component - size_one_component
-            elif i == num_components - 1:
-                size_one_component = size_last_component
-            if width[i] == 0:
-                points_one_component = np.repeat(mean[i], size_one_component)
-            else:
-                if not sine_weighted:
-                    points_one_component = np.random.uniform(mean[i]-0.5*width[i], mean[i]+0.5*width[i], size=size_one_component)
+            if size_components[i] > 0:
+                if width[i] == 0:
+                    points_one_component = np.repeat(mean[i], size_components[i])
                 else:
-                    args = {'mean': mean[i], 'width': width[i], 'ranges': np.array([0.0, np.pi]), 'samples': 100000}
-                    uniform_samples = np.random.random(size_one_component)
-                    points_one_component = random_points_from_arbitrary_distribution(sine_weighted_uniform_distribution, args)(uniform_samples)
-            if i == 0:
-                points = points_one_component
-            else:
-                points = np.concatenate((points, points_one_component), axis=None)
+                    if not sine_weighted:
+                        points_one_component = np.random.uniform(mean[i]-0.5*width[i], mean[i]+0.5*width[i], size_components[i])
+                    else:
+                        args = {'mean': mean[i], 'width': width[i], 'ranges': np.array([0.0, np.pi]), 'samples': 100000}
+                        uniform_samples = np.random.random(size_components[i])
+                        points_one_component = random_points_from_arbitrary_distribution(sine_weighted_uniform_distribution, args)(uniform_samples)    
+                if first_component:
+                    points = points_one_component
+                    first_component = False
+                else:
+                    points = np.concatenate((points, points_one_component), axis=None)
     return points
 
 
@@ -69,26 +72,29 @@ def random_points_from_multimodal_normal_distribution(mean, width, rel_prob, siz
                 uniform_samples = np.random.random(size)
                 points = random_points_from_arbitrary_distribution(sine_weighted_normal_distribution, args)(uniform_samples)
     else:
-        size_last_component = size
+        size_components = []
+        for i in range(num_components-1):
+            size_component = int(size * rel_prob[i])
+            size_components.append(size_component)
+        size_component = size - sum(size_components)
+        size_components.append(size_component)
+        first_component = True
         for i in range(num_components):
-            if i < num_components - 1:
-                size_one_component = int(size * rel_prob[i])
-                size_last_component = size_last_component - size_one_component
-            elif i == num_components - 1:
-                size_one_component = size_last_component
-            if width[i] == 0:
-                points_one_component = np.repeat(mean[i], size_one_component)
-            else:
-                if not sine_weighted:
-                    points_one_component = np.random.normal(mean[i], width[i], size=size_one_component)
+            if size_components[i] > 0:
+                if width[i] == 0:
+                    points_one_component = np.repeat(mean[i], size_components[i])
                 else:
-                    args = {'mean': mean[i], 'width': width[i], 'ranges': np.array([0.0, np.pi]), 'samples': 100000}
-                    uniform_samples = np.random.random(size_one_component)
-                    points_one_component = random_points_from_arbitrary_distribution(sine_weighted_normal_distribution, args)(uniform_samples)
-            if i == 0:
-                points = points_one_component
-            else:
-                points = np.concatenate((points, points_one_component), axis=None)
+                    if not sine_weighted:
+                        points_one_component = np.random.normal(mean[i], width[i], size_components[i])
+                    else:
+                        args = {'mean': mean[i], 'width': width[i], 'ranges': np.array([0.0, np.pi]), 'samples': 100000}
+                        uniform_samples = np.random.random(size_components[i])
+                        points_one_component = random_points_from_arbitrary_distribution(sine_weighted_normal_distribution, args)(uniform_samples)    
+                if first_component:
+                    points = points_one_component
+                    first_component = False
+                else:
+                    points = np.concatenate((points, points_one_component), axis=None)
     return points
 
 
@@ -105,26 +111,29 @@ def random_points_from_multimodal_vonmises_distribution(mean, width, rel_prob, s
                 uniform_samples = np.random.random(size)
                 points = random_points_from_arbitrary_distribution(sine_weighted_vonmises_distribution, args)(uniform_samples)
     else:
-        size_last_component = size
+        size_components = []
+        for i in range(num_components-1):
+            size_component = int(size * rel_prob[i])
+            size_components.append(size_component)
+        size_component = size - sum(size_components)
+        size_components.append(size_component)
+        first_component = True
         for i in range(num_components):
-            if i < num_components - 1:
-                size_one_component = int(size * rel_prob[i])
-                size_last_component = size_last_component - size_one_component
-            elif i == num_components - 1:
-                size_one_component = size_last_component
-            if (width[i] == 0) or (np.isfinite(i0(1/width[i]**2))== False):
-                points_one_component = np.repeat(mean[i], size_one_component)
-            else:
-                if not sine_weighted:
-                    points_one_component = np.random.vonmises(mean[i], 1/width[i]**2, size=size_one_component)
+            if size_components[i] > 0:
+                if (width[i] == 0) or (np.isfinite(i0(1/width[i]**2))== False):
+                    points_one_component = np.repeat(mean[i], size_components[i])
                 else:
-                    args = {'mean': mean[i], 'width': width[i], 'ranges': np.array([0.0, np.pi]), 'samples': 100000}
-                    uniform_samples = np.random.random(size_one_component)
-                    points_one_component = random_points_from_arbitrary_distribution(sine_weighted_vonmises_distribution, args)(uniform_samples)
-            if i == 0:
-                points = points_one_component
-            else:
-                points = np.concatenate((points, points_one_component), axis=None)
+                    if not sine_weighted:
+                        points_one_component = np.random.vonmises(mean[i], 1/width[i]**2, size_components[i])
+                    else:
+                        args = {'mean': mean[i], 'width': width[i], 'ranges': np.array([0.0, np.pi]), 'samples': 100000}
+                        uniform_samples = np.random.random(size_components[i])
+                        points_one_component = random_points_from_arbitrary_distribution(sine_weighted_vonmises_distribution, args)(uniform_samples)    
+                if first_component:
+                    points = points_one_component
+                    first_component = False
+                else:
+                    points = np.concatenate((points, points_one_component), axis=None)
     return points
 
 

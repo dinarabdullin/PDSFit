@@ -28,13 +28,13 @@ def save_fitting_parameters(parameters_indices, optimized_parameters, fixed_para
                     # if parameter_errors != []:
                         # if not np.isnan(parameter_errors[parameter_object.index][0]) and not np.isnan(parameter_errors[parameter_object.index][1]):
                             # variable_error = parameter_errors[parameter_object.index] / const['fitting_parameters_scales'][parameter_name]
-                            # file.write('{:<15.4}{:<15.4}'.format(variable_error[0], variable_error[1]))
+                            # file.write('{:<20.4}{:<20.4}'.format(variable_error[0], variable_error[1]))
                         # else:
-                            # file.write('{:<15}{:<15}'.format('nan', 'nan'))
+                            # file.write('{:<20}{:<20}'.format('nan', 'nan'))
                     # else:
-                        # file.write('{:<15}{:<15}'.format('nan', 'nan'))
+                        # file.write('{:<20}{:<20}'.format('nan', 'nan'))
                 # else:
-                    # file.write('{:<15}{:<15}'.format('nan', 'nan'))
+                    # file.write('{:<20}{:<20}'.format('nan', 'nan'))
                 if parameter_object.optimize:
                     if parameter_errors != []:
                         if not np.isnan(parameter_errors[parameter_object.index][0]) and not np.isnan(parameter_errors[parameter_object.index][1]):
@@ -44,18 +44,18 @@ def save_fitting_parameters(parameters_indices, optimized_parameters, fixed_para
                                 paired_parameter_object = parameters_indices[paired_parameter_name][i][j]
                                 if paired_parameter_object.optimize:
                                     if np.isnan(parameter_errors[paired_parameter_object.index][0]) or np.isnan(parameter_errors[paired_parameter_object.index][1]):
-                                        file.write('{:<15}{:<15}'.format('nan', 'nan'))
+                                        file.write('{:<20}{:<20}'.format('nan', 'nan'))
                                     else:
-                                        file.write('{:<15.4}{:<15.4}'.format(variable_error[0], variable_error[1]))
+                                        file.write('{:<20.4}{:<20.4}'.format(variable_error[0], variable_error[1]))
                                 else:
-                                    file.write('{:<15.4}{:<15.4}'.format(variable_error[0], variable_error[1]))
+                                    file.write('{:<20.4}{:<20.4}'.format(variable_error[0], variable_error[1]))
                             else:
-                                file.write('{:<15.4}{:<15.4}'.format(variable_error[0], variable_error[1]))
+                                file.write('{:<20.4}{:<20.4}'.format(variable_error[0], variable_error[1]))
                         else:
-                            file.write('{:<15}{:<15}'.format('nan', 'nan'))
+                            file.write('{:<20}{:<20}'.format('nan', 'nan'))
                     else:
-                        file.write('{:<15}{:<15}'.format('nan', 'nan'))
+                        file.write('{:<20}{:<20}'.format('nan', 'nan'))
                 else:
-                    file.write('{:<15}{:<15}'.format('nan', 'nan'))   
+                    file.write('{:<20}{:<20}'.format('nan', 'nan'))   
                 file.write('\n') 
     file.close()

@@ -20,7 +20,7 @@ class ErrorAnalyzer():
         ''' Set an objective function '''
         self.objective_function = func
         
-    def load_optimized_parameters(self, parameter_indices):
+    def load_optimized_parameters(self):
         ''' Loads the optimized values of fitting parameters from a file '''
         if self.filepath_optimized_parameters != '':
             return load_optimized_parameters(self.filepath_optimized_parameters)

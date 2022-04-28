@@ -15,7 +15,6 @@ def load_optimized_parameters(filepath):
         loaded_parameter = {}
         name = data[0].strip()
         name_found = False
-        print(name, len(name))
         for key in const['fitting_parameters_names_and_units']:    
             if name == const['fitting_parameters_names_and_units'][key]:
                 loaded_parameter['name'] = key
