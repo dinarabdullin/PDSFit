@@ -23,7 +23,9 @@ class Experiment:
         t = const['ns2us'] * t
         phase, s_re, s_im = set_phase(s_re, s_im)
         zero_point, t, s_re, s_im = set_zero_point(t, s_re, s_im)
-        noise_std = np.std(s_im)
+        size_s_im = len(s_im)
+        size_noise_std = int(2/3 * float(size_s_im))
+        noise_std = np.std(s_im[-size_noise_std:])
         if noise_std < 1e-10:
             noise_std = 0
         self.phase = phase

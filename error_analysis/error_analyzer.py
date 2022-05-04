@@ -5,6 +5,7 @@ import numpy as np
 import scipy
 from multiprocessing import Pool
 from input.load_optimized_parameters import load_optimized_parameters
+from fitting.check_relative_weights import check_relative_weights
 
 
 class ErrorAnalyzer():
@@ -82,8 +83,6 @@ class ErrorAnalyzer():
             sys.stdout.write('\r')
             sys.stdout.write('Parameter set {0} / {1}'.format(i+1, num_parameter_sets))
             sys.stdout.flush()
-            score_vs_parameter_subset = {}  
-            score_vs_parameter_subset['parameters'] = []
             # Make multiple copies of the optimized fitting parameters
             variables = np.tile(optimized_parameters, (self.sample_size, 1))
             # Vary the values of error analysis parameters
@@ -96,19 +95,22 @@ class ErrorAnalyzer():
                 parameter_upper_bound = parameter_range[1]
                 parameter_values = parameter_lower_bound + (parameter_upper_bound - parameter_lower_bound) * np.random.rand(self.sample_size)
                 variables[:,parameter_index] = parameter_values.reshape((1, self.sample_size))
-                score_vs_parameter_subset['parameters'].append(parameter_values)
+            # Check/correct the relative weights
+            for k in range(self.sample_size):
+                variables[k,:] = check_relative_weights(fitting_parameters['indices'], variables[k,:], fitting_parameters['values'])
             # Compute the score    
             self.pool = Pool()
             score = self.pool.map(self.objective_function, variables)
             self.pool.close()
             self.pool.join()
+            # Store the simulated data
+            score_vs_parameter_subset = {}  
+            score_vs_parameter_subset['parameters'] = []
+            for j in range(num_parameters):
+                parameter_id = error_analysis_parameters[i][j]
+                parameter_index = parameter_id.get_index(fitting_parameters['indices'])
+                score_vs_parameter_subset['parameters'].append(variables[:,parameter_index])
             score_vs_parameter_subset['score'] = np.array(score)
-            # for k in range(self.sample_size):
-                # sys.stdout.write('\n')
-                # for j in range(num_parameters):
-                    # sys.stdout.write('{:10.4f}'.format(score_vs_parameter_subset['parameters'][j][k]*180/np.pi))
-                # sys.stdout.write('{:20.4f}'.format(score_vs_parameter_subset['score'][k]))
-            # sys.stdout.write('\n')
             score_vs_parameter_subsets.append(score_vs_parameter_subset)
         sys.stdout.write('\n')
         return score_vs_parameter_subsets  

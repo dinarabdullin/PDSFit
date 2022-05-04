@@ -1,9 +1,13 @@
 import sys
 from mathematics.chi2 import chi2
+from fitting.check_relative_weights import check_relative_weights
 
 
 def merge_fitted_and_fixed_variables(variables_indices, fitted_variables_values, fixed_variables_values):
     ''' Merges fitted and fixed variables into a single dictionary '''
+    # Check/correct the relative weights
+    new_fitted_variables_values = check_relative_weights(variables_indices, fitted_variables_values, fixed_variables_values)
+    # Merge variables
     all_variables = {}
     for variable_name in variables_indices:
         variable_indices = variables_indices[variable_name]
@@ -13,7 +17,7 @@ def merge_fitted_and_fixed_variables(variables_indices, fitted_variables_values,
             for j in range(len(variable_indices[i])):
                 variable_object = variable_indices[i][j]
                 if variable_object.optimize:
-                    variable_value = fitted_variables_values[variable_object.index]
+                    variable_value = new_fitted_variables_values[variable_object.index]
                 else:
                     variable_value = fixed_variables_values[variable_object.index]
                 sublist_variable_values.append(variable_value)
@@ -36,7 +40,7 @@ def compute_degrees_of_freedom(experiments, variables, fit_modulation_depth):
 def fit_function(variables, simulator, experiments, spins, fitting_parameters, fixed_variables_included):
     ''' Computes the fit to the experimental PDS time traces '''
     # Merge fitted variables and fixed variables into a single dictionary
-    if not fixed_variables_included:
+    if fixed_variables_included:
         all_variables = merge_fitted_and_fixed_variables(fitting_parameters['indices'], variables, fitting_parameters['values'])
         # Simulate PDS time traces
         simulated_time_traces, background_parameters, background_time_traces = simulator.compute_time_traces(experiments, spins, all_variables, False)

@@ -4,6 +4,7 @@ import multiprocessing
 from input.read_config import read_config
 from fitting.objective_function import objective_function, fit_function
 from fitting.symmetry_related_solutions import compute_symmetry_related_solutions
+from fitting.check_relative_weights import check_relative_weights
 from output.fitting.print_fit_statistics import print_fit_statistics
 from output.fitting.print_fitting_parameters import print_fitting_parameters
 from output.fitting.print_background_parameters import print_background_parameters
@@ -49,14 +50,17 @@ if __name__ == '__main__':
         
         # Set the fit and objective functions
         partial_fit_function = partial(fit_function, simulator=simulator, experiments=experiments, \
-            spins=spins, fitting_parameters=fitting_parameters, fixed_variables_included=False)
+            spins=spins, fitting_parameters=fitting_parameters, fixed_variables_included=True)
         partial_objective_function = partial(objective_function, simulator=simulator, experiments=experiments, \
-            spins=spins, fitting_parameters=fitting_parameters, goodness_of_fit=optimizer.goodness_of_fit, fixed_variables_included=False)
+            spins=spins, fitting_parameters=fitting_parameters, goodness_of_fit=optimizer.goodness_of_fit, fixed_variables_included=True)
         optimizer.set_fit_function(partial_fit_function)
         optimizer.set_objective_function(partial_objective_function)
         
         # Optimize the fitting parameters
-        optimized_parameters, score = optimizer.optimize(fitting_parameters['ranges'])                                                         
+        optimized_parameters, score = optimizer.optimize(fitting_parameters['ranges'])    
+        
+        # Check/correct the relative weights
+        optimized_parameters = check_relative_weights(fitting_parameters['indices'], optimized_parameters, fitting_parameters['values'])
 
         # Compute the fit to the experimental PDS time traces
         simulated_time_traces, background_parameters, background_time_traces = optimizer.get_fit()
@@ -75,7 +79,7 @@ if __name__ == '__main__':
         
         # Compute symmetry-related sets of fitting parameters
         score_function = partial(objective_function, simulator=simulator, experiments=experiments, spins=spins, \
-            fitting_parameters=fitting_parameters, goodness_of_fit=optimizer.goodness_of_fit, fixed_variables_included=True) 
+            fitting_parameters=fitting_parameters, goodness_of_fit=optimizer.goodness_of_fit, fixed_variables_included=False) 
         symmetry_related_solutions = compute_symmetry_related_solutions(fitting_parameters['indices'], optimized_parameters, fitting_parameters['values'], simulator, score_function)
         
         # Save the fitting output
@@ -93,10 +97,10 @@ if __name__ == '__main__':
         
         # Set the objective function: the goodness-of-fit has to be set to 'chi2'
         partial_objective_function = partial(objective_function, simulator=simulator, experiments=experiments, \
-            spins=spins, fitting_parameters=fitting_parameters, goodness_of_fit='chi2', fixed_variables_included=False)
+            spins=spins, fitting_parameters=fitting_parameters, goodness_of_fit='chi2', fixed_variables_included=True)
         error_analyzer.set_objective_function(partial_objective_function)
         
-        if error_analysis_parameters:
+        if error_analysis_parameters != [[]] and error_analysis_parameters != []:
             # Run the error analysis
             score_vs_parameter_subsets, score_vs_parameters, numerical_error, score_threshold, parameter_errors = error_analyzer.run_error_analysis(error_analysis_parameters, fitting_parameters, optimized_parameters)
             

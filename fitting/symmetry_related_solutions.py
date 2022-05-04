@@ -6,10 +6,14 @@ from multiprocessing import Pool
 from scipy.spatial.transform import Rotation
 from mathematics.coordinate_system_conversions import spherical2cartesian, cartesian2spherical
 from mathematics.rotate_coordinate_system import rotate_coordinate_system
+from fitting.check_relative_weights import check_relative_weights
 
 
 def merge_fitted_and_fixed_variables(variables_indices, fitted_variables_values, fixed_variables_values):
     ''' Merges fitted and fixed variables into a single dictionary '''
+    # Check/correct the relative weights
+    new_fitted_variables_values = check_relative_weights(variables_indices, fitted_variables_values, fixed_variables_values)
+    # Merge variables
     all_variables = {}
     for variable_name in variables_indices:
         variable_indices = variables_indices[variable_name]
@@ -19,7 +23,7 @@ def merge_fitted_and_fixed_variables(variables_indices, fitted_variables_values,
             for j in range(len(variable_indices[i])):
                 variable_object = variable_indices[i][j]
                 if variable_object.optimize:
-                    variable_value = fitted_variables_values[variable_object.index]
+                    variable_value = new_fitted_variables_values[variable_object.index]
                 else:
                     variable_value = fixed_variables_values[variable_object.index]
                 sublist_variable_values.append(variable_value)

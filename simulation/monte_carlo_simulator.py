@@ -211,12 +211,6 @@ class MonteCarloSimulator(Simulator):
         # Random orientations of the applied static magnetic field in the reference frame
         if self.field_orientations == []:
             self.field_orientations = self.set_field_orientations()
-        # Check that the sum of all 'rel_prob' does not exceed 1
-        # If the sum of all 'rel_prob' exceeds 1, all components of 'rel_prob' are normalized by a contant that makes the sum of all 'rel_prob' equal 1.
-        sum_rel_probs = sum(variables['rel_prob'][0])
-        if variables['rel_prob'][0] != [] and sum_rel_probs > 1:
-            rel_probs = [v / sum_rel_probs for v in variables['rel_prob'][0]]
-            variables['rel_prob'][0] = rel_probs
         # Distance values
         r_values = self.set_r_values(variables['r_mean'][0], variables['r_width'][0], variables['rel_prob'][0])
         # Orientations of the distance vector in the reference frame
@@ -357,12 +351,6 @@ class MonteCarloSimulator(Simulator):
                     # Random orientations of the applied static magnetic field in the reference frame
                     if self.field_orientations == []:
                         self.field_orientations = self.set_field_orientations()
-                    # Check that the sum of all 'rel_prob' does not exceed 1
-                    # If the sum of all 'rel_prob' exceeds 1, all components of 'rel_prob' are normalized by a contant that makes the sum of all 'rel_prob' equal 1.
-                    sum_rel_probs = sum(variables['rel_prob'][idx_spin2-1])
-                    if variables['rel_prob'][idx_spin2-1] != [] and sum_rel_probs > 1:
-                        rel_probs = [v / sum_rel_probs for v in variables['rel_prob'][idx_spin2-1]]
-                        variables['rel_prob'][idx_spin2-1] = rel_probs
                     # Distance values
                     r_values = self.set_r_values(variables['r_mean'][idx_spin2-1], variables['r_width'][idx_spin2-1], variables['rel_prob'][idx_spin2-1])
                     # Orientations of the distance vector in the reference frame
@@ -481,17 +469,7 @@ class MonteCarloSimulator(Simulator):
                     time_start = time.time()
                     # Random orientations of the applied static magnetic field in the reference frame
                     if self.field_orientations == []:
-                        self.field_orientations = self.set_field_orientations()
-                    # Check that the sum of all 'rel_prob' does not exceed 1
-                    # If the sum of all 'rel_prob' exceeds 1, all components of 'rel_prob' are normalized by a contant that makes the sum of all 'rel_prob' equal 1.
-                    sum_rel_probs = sum(variables['rel_prob'][idx_spin1-1])
-                    if variables['rel_prob'][idx_spin1-1] != [] and sum_rel_probs > 1:
-                        rel_probs = [v / sum_rel_probs for v in variables['rel_prob'][idx_spin1-1]]
-                        variables['rel_prob'][idx_spin1-1] = rel_probs
-                    sum_rel_probs = sum(variables['rel_prob'][idx_spin2-1])
-                    if variables['rel_prob'][idx_spin2-1] != [] and sum_rel_probs > 1:
-                        rel_probs = [v / sum_rel_probs for v in variables['rel_prob'][idx_spin2-1]]
-                        variables['rel_prob'][idx_spin2-1] = rel_probs   
+                        self.field_orientations = self.set_field_orientations()   
                     # Coordinates of spin 1 in the reference frame
                     coordinates_spin1 = self.set_coordinates(variables['r_mean'][idx_spin1-1], variables['r_width'][idx_spin1-1], 
                                                              variables['xi_mean'][idx_spin1-1], variables['xi_width'][idx_spin1-1], 
