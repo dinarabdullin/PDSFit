@@ -28,11 +28,11 @@ class Generation:
 
     def crossover_chromosomes(self, chromosome1, chromosome2, crossover_probability):
         ''' Crossovers chromosomes '''
-        if np.random.rand() <= crossover_probability:
+        if np.random.rand() <= crossover_probability and chromosome1.size > 1:
             # Store the genes of chromosome1
             genes = deepcopy(chromosome1.genes)
             # Choose a random crossover position
-            position = np.random.random_integers(low=1, high=chromosome1.size - 2)
+            position = np.random.random_integers(low=1, high=chromosome1.size-1)
             # Crossover
             for i in range(position):
                 chromosome1.genes[i] = chromosome2.genes[i]

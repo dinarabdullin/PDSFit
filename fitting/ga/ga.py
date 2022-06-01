@@ -36,7 +36,7 @@ class GeneticAlgorithm(Optimizer):
     
     def optimize(self, ranges):
         ''' Performs an optimization '''
-        print('\nStarting the optimization via genetic algirithm...')
+        print('\nStarting the optimization via genetic algorithm...')
         time_start = time.time()
         num_best_solution = 1
         for r in range(self.number_of_runs):
@@ -76,7 +76,7 @@ class GeneticAlgorithm(Optimizer):
                     self.optimized_variables = generation.chromosomes[0].genes
                     self.score = np.array(score_vs_generation)
                     num_best_solution = r + 1
-        print('\nThe best solution was found in run no. %d (crossover probability %f, mutation_probability %f)' % 
+        print('\nThe best solution was found in run no. %d (crossover probability %f, mutation probability %f)' % 
             (num_best_solution, 
              self.crossover_probability + (num_best_solution-1) * self.crossover_probability_increment, 
              self.mutation_probability + (num_best_solution-1) * self.mutation_probability_increment))

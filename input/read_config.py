@@ -64,12 +64,9 @@ def read_experimental_parameters(config, mode):
         name = instance['name']
         technique = instance['technique'] 
         if technique in experiment_types:
+            # Init experiment 
             experiment = experiment_types[technique](name)
-            experiment.signal_from_file(instance.filename)
-            noise_std = float(instance['noise_std'])
-            if noise_std:
-                experiment.set_noise_std(noise_std)
-            list_noise_std.append(experiment.noise_std)
+            # Set the corresponding experimental parameters
             parameter_values = {}
             for parameter_name in experiment.parameter_names:
                 if experiment.parameter_names[parameter_name] == 'float':
@@ -88,11 +85,25 @@ def read_experimental_parameters(config, mode):
                     raise ValueError('Unsupported data format!')
                     sys.exit(1)
             experiment.set_parameters(parameter_values)
-            experiments.append(experiment)
+            # Set the zero point
+            if 'zero_point' in instance:
+                zero_point = float(instance['zero_point'])
+            else:
+                zero_point = np.nan
+            # Set the noise level
+            if 'noise_std' in instance:
+                noise_std = float(instance['noise_std'])
+            else:
+                noise_std = np.nan
+            # Set the corresponding PDS time trace
+            experiment.signal_from_file(instance.filename, zero_point, noise_std)
+            list_noise_std.append(experiment.noise_std)
             print('\nExperiment \'{0}\' was loaded'.format(name))
             print('Phase correction: {0:.0f} deg'.format(experiment.phase))
             print('Zero point: {0:.3f} us'.format(experiment.zero_point))
             print('Noise std: {0:0.6f}'.format(experiment.noise_std))
+            # Add to the experiments list
+            experiments.append(experiment)           
         else:
             raise ValueError('Invalid type of experiment!')
             sys.exit(1)  
@@ -112,7 +123,7 @@ def read_experimental_parameters(config, mode):
             mode['error_analysis'] = 0
             print('Error analysis is disabled! To enable error analysis, provide non-zero standard deviations of noise for all experiments.')
     return experiments
-
+    
 
 def read_spin_parameters(config):
     ''' Reads out the spin system parameters '''

@@ -146,7 +146,7 @@ class ErrorAnalyzer():
 
     def compute_parameters_errors(self, error_analysis_parameters, score_vs_parameter_subsets, score_threshold, fitting_parameters, optimized_parameters):
         ''' Computes the uncernainty intervals of the optimized fitting parameters '''
-        print('Computing the uncernainty intervals of the optimized fitting parameters...')
+        print('Computing the uncertainty intervals of the optimized fitting parameters...')
         parameter_errors = np.empty((optimized_parameters.size, 2,))
         parameter_errors[:] = np.nan
         for i in range(len(error_analysis_parameters)):

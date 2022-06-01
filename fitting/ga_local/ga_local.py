@@ -43,7 +43,7 @@ class GeneticAlgorithmWithLocalSolver(Optimizer):
     
     def optimize(self, ranges):
         ''' Performs an optimization '''
-        print('\nStarting the optimization via genetic algirithm...')
+        print('\nStarting the optimization via genetic algorithm...')
         time_start = time.time()
         num_best_solution = 1
         for r in range(self.number_of_runs):
@@ -83,7 +83,7 @@ class GeneticAlgorithmWithLocalSolver(Optimizer):
                     self.optimized_variables = generation.chromosomes[0].genes
                     self.score = np.array(score_vs_generation)
                     num_best_solution = r + 1
-        print('\nThe best solution was found in run no. %d (crossover probability %f, mutation_probability %f)' % 
+        print('\nThe best solution was found in run no. %d (crossover probability %f, mutation probability %f)' % 
             (num_best_solution, 
              self.crossover_probability + (num_best_solution-1) * self.crossover_probability_increment, 
              self.mutation_probability + (num_best_solution-1) * self.mutation_probability_increment))
@@ -91,7 +91,7 @@ class GeneticAlgorithmWithLocalSolver(Optimizer):
         time_elapsed = str(datetime.timedelta(seconds = time_finish - time_start))
         print('The optimization is finished. Total duration: %s' % (time_elapsed))
         time_start = time.time()
-        print('\nStarting the optimization via Nelder-Mead algirithm...')
+        print('\nStarting the optimization via Nelder-Mead algorithm...')
         bounds = [tuple(x) for x in ranges]
         result = optimize.minimize(self.modified_objective_function, 
                                    x0=self.optimized_variables,
