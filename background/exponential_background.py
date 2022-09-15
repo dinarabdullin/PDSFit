@@ -10,7 +10,7 @@ def signal_model(t, decay_constant, scale_factor, s_intra):
     return background_model(t, decay_constant) * (np.ones(s_intra.size) + scale_factor * (s_intra - np.ones(s_intra.size)))
 
 def signal_model_wrapper(t, scale_factor, decay_constant, s_intra):
-    return model(t, decay_constant, scale_factor, s_intra)
+    return signal_model(t, decay_constant, scale_factor, s_intra)
 
 
 class ExponentialBackground(Background):
