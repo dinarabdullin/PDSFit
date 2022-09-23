@@ -37,23 +37,36 @@ def compute_degrees_of_freedom(experiments, variables, fit_modulation_depth):
     return (N-p)
 
 
-def fit_function(variables, simulator, experiments, spins, fitting_parameters, fixed_variables_included):
+def fit_function(variables, simulator, experiments, spins, fitting_parameters, fixed_variables_included=True, more_output=False):
     ''' Computes the fit to the experimental PDS time traces '''
-    # Merge fitted variables and fixed variables into a single dictionary
-    if fixed_variables_included:
-        all_variables = merge_fitted_and_fixed_variables(fitting_parameters['indices'], variables, fitting_parameters['values'])
-        # Simulate PDS time traces
-        simulated_time_traces, background_parameters, background_time_traces = simulator.compute_time_traces(experiments, spins, all_variables, False)
+    if more_output:
+        if fixed_variables_included:
+            # Merge fitted variables and fixed variables into a single dictionary
+            all_variables = merge_fitted_and_fixed_variables(fitting_parameters['indices'], variables, fitting_parameters['values'])
+            # Simulate PDS time traces
+            simulated_time_traces, background_parameters, background_time_traces, background_free_time_traces, \
+                simulated_spectra = simulator.compute_time_traces(experiments, spins, all_variables, more_output=True, display_messages=False)
+        else:
+            # Simulate PDS time traces
+            simulated_time_traces, background_parameters, background_time_traces, background_free_time_traces, \
+                simulated_spectra = simulator.compute_time_traces(experiments, spins, variables, more_output=True, display_messages=False)
+        return simulated_time_traces, background_parameters, background_time_traces, background_free_time_traces, simulated_spectra
     else:
-        # Simulate PDS time traces
-        simulated_time_traces, background_parameters, background_time_traces = simulator.compute_time_traces(experiments, spins, variables, False)
-    return simulated_time_traces, background_parameters, background_time_traces
+        if fixed_variables_included:
+            # Merge fitted variables and fixed variables into a single dictionary
+            all_variables = merge_fitted_and_fixed_variables(fitting_parameters['indices'], variables, fitting_parameters['values'])
+            # Simulate PDS time traces
+            simulated_time_traces = simulator.compute_time_traces(experiments, spins, all_variables, more_output=False, display_messages=False)
+        else:
+            # Simulate PDS time traces
+            simulated_time_traces = simulator.compute_time_traces(experiments, spins, variables, more_output=False, display_messages=False)
+        return simulated_time_traces
 
 
 def objective_function(variables, simulator, experiments, spins, fitting_parameters, goodness_of_fit, fixed_variables_included):
     ''' Objective function '''
     # Compute the fit
-    simulated_time_traces, background_parameters, background_time_traces = fit_function(variables, simulator, experiments, spins, fitting_parameters, fixed_variables_included)
+    simulated_time_traces = fit_function(variables, simulator, experiments, spins, fitting_parameters, fixed_variables_included, more_output=False)
     # Compute the score
     if goodness_of_fit == 'chi2':
         total_score = 0.0

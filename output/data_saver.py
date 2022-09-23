@@ -5,7 +5,9 @@ import shutil
 from output.simulation.save_epr_spectrum import save_epr_spectrum
 from output.simulation.save_bandwidth import save_bandwidth
 from output.simulation.save_background_parameters import save_background_parameters
-from output.simulation.save_background import save_background
+from output.simulation.save_background_time_trace import save_background_time_trace
+from output.simulation.save_background_free_time_trace import save_background_free_time_trace
+from output.simulation.save_simulated_spectrum import save_simulated_spectrum
 from output.simulation.save_simulated_time_trace import save_simulated_time_trace
 from output.fitting.save_score import save_score
 from output.fitting.save_fitting_parameters import save_fitting_parameters
@@ -41,24 +43,29 @@ class DataSaver:
             shutil.copy2(filepath_config, output_directory + config_name)
             self.directory = output_directory
    
-    def save_simulation_output(self, epr_spectra, bandwidths, background, background_parameters, 
-                               background_time_traces, simulated_time_traces, experiments):
+    def save_simulation_output(self, epr_spectra, bandwidths, background, background_parameters, background_time_traces, 
+                               background_free_time_traces, simulated_spectra, simulated_time_traces, experiments):
         ''' Saves the simulation output '''
-        # self.save_epr_spectrum(epr_spectra[0], experiments[0].name)
         self.save_bandwidths(epr_spectra, bandwidths, experiments)
         self.save_background_parameters(background_parameters, background, experiments)
-        self.save_backgrounds(background_time_traces, experiments)
+        self.save_background_time_traces(background_time_traces, experiments)
+        self.save_background_free_time_traces(background_free_time_traces, experiments)
+        self.save_simulated_spectra(simulated_spectra, experiments)
         self.save_simulated_time_traces(simulated_time_traces, experiments)   
     
-    def save_fitting_output(self, score, optimized_parameters, parameter_errors, symmetry_related_solutions, background, 
-                            background_parameters, background_time_traces, simulated_time_traces, fitting_parameters, experiments):
+    def save_fitting_output(self, epr_spectra, bandwidths, score, optimized_parameters, parameter_errors, symmetry_related_solutions, 
+                            background, background_parameters, background_time_traces, background_free_time_traces, 
+                            simulated_spectra, simulated_time_traces, fitting_parameters, experiments):
         ''' Saves the fitting output '''
+        self.save_bandwidths(epr_spectra, bandwidths, experiments)
         self.save_score(score)
         self.save_fitting_parameters(fitting_parameters['indices'], optimized_parameters, fitting_parameters['values'], parameter_errors)
         self.save_symmetry_related_solutions(symmetry_related_solutions, fitting_parameters['indices'])
         self.save_fits(simulated_time_traces, experiments)
         self.save_background_parameters(background_parameters, background, experiments)
-        self.save_backgrounds(background_time_traces, experiments)
+        self.save_background_time_traces(background_time_traces, experiments)
+        self.save_background_free_time_traces(background_free_time_traces, experiments)
+        self.save_simulated_spectra(simulated_spectra, experiments)   
 
     def save_error_analysis_output(self, optimized_parameters, parameter_errors, fitting_parameters, 
                                    score_vs_parameter_subsets, score_vs_parameters, error_analysis_parameters):    
@@ -89,13 +96,27 @@ class DataSaver:
             filepath = self.directory + 'background_parameters.dat'
             save_background_parameters(background_parameters, background, experiments, filepath)
 
-    def save_backgrounds(self, background_time_traces, experiments):
-        ''' Saves the backgrounds of PDS time traces '''
+    def save_background_time_traces(self, background_time_traces, experiments):
+        ''' Saves the background parts of PDS time traces '''
         if self.save_data:
             for i in range(len(experiments)):
                 filepath = self.directory + 'background_' + experiments[i].name + '.dat'
-                save_background(background_time_traces[i], experiments[i].s, experiments[i].s_im, filepath)
-
+                save_background_time_trace(background_time_traces[i], experiments[i].s, experiments[i].s_im, filepath)
+    
+    def save_background_free_time_traces(self, background_free_time_traces, experiments):
+        ''' Saves the background-free parts of PDS time traces '''
+        if self.save_data:
+            for i in range(len(experiments)):
+                filepath = self.directory + 'background_free_time_trace_' + experiments[i].name + '.dat'
+                save_background_free_time_trace(background_free_time_traces[i], filepath)
+    
+    def save_simulated_spectra(self, simulated_spectra, experiments):
+        ''' Saves simulated PDS spectra '''
+        if self.save_data:
+            for i in range(len(experiments)):
+                filepath = self.directory + 'spectrum_' + experiments[i].name + '.dat'
+                save_simulated_spectrum(simulated_spectra[i], filepath)
+                
     def save_simulated_time_traces(self, simulated_time_traces, experiments):
         ''' Saves simulated PDS time traces '''
         if self.save_data:
@@ -104,7 +125,7 @@ class DataSaver:
                 save_simulated_time_trace(simulated_time_traces[i], experiments[i].s, experiments[i].s_im, filepath)
     
     def save_score(self, score):
-        ''' Saves the score as a function of optimization step '''
+        ''' Saves s score as a function of optimization step '''
         if self.save_data:
             filepath = self.directory + 'score.dat'
             save_score(score, filepath)
@@ -116,13 +137,13 @@ class DataSaver:
             save_fitting_parameters(parameter_indices, optimized_parameters, fixed_parameters, parameter_errors, filepath)
     
     def save_symmetry_related_solutions(self, symmetry_related_solutions, parameters_indices):
-        ''' Saves symmetry-related sets of fitting parameters ''' 
+        ''' Saves the symmetry-related sets of fitting parameters ''' 
         if self.save_data:
             filepath = self.directory + 'symmetry_related_solutions.dat'
             save_symmetry_related_solutions(symmetry_related_solutions, parameters_indices, filepath)
 
     def save_fits(self, simulated_time_traces, experiments):
-        ''' Saves fits to experimental PDS time traces '''
+        ''' Saves the fits of PDS time traces '''
         if self.save_data:
             for i in range(len(experiments)):
                 filepath = self.directory + 'fit_' + experiments[i].name + '.dat'

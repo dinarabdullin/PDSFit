@@ -7,10 +7,7 @@ from plots.best_layout import best_layout
 
 
 def plot_bandwidths_single_experiment(axes, bandwidths, experiment, spectrum=[]):
-    ''' 
-    Plots the bandwidths of detection and pump pulses a single experiment.
-    If the EPR spectrum of the spin system is provided, the bandwidths are overlayed with the EPR spectrum. 
-    '''
+    ''' Plots the bandwidths of detection and pump pulses a single experiment '''
     f_min, f_max = [], []
     if spectrum != []:
         axes.plot(spectrum['f'], spectrum['p']/np.amax(spectrum['p']), 'k-', label='spc')
@@ -33,10 +30,7 @@ def plot_bandwidths_single_experiment(axes, bandwidths, experiment, spectrum=[])
 
 
 def plot_bandwidths(bandwidths, experiments, spectra=[]):
-    ''' 
-    Plots the bandwidths of detection and pump pulses for multiple experiments .
-    If the EPR spectrum of the spin system is provided, the bandwidths are overlayed with the EPR spectrum. 
-    '''  
+    ''' Plots the bandwidths of detection and pump pulses for multiple experiments '''  
     figsize = [10, 8]
     num_subplots = len(experiments)
     best_rcparams(num_subplots)

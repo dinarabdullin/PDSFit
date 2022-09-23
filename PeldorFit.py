@@ -21,8 +21,8 @@ if __name__ == '__main__':
     parser.add_argument('filepath', help="Path to the configuration file")
     args = parser.parse_args()
     filepath_config = args.filepath
-    mode, experiments, spins, simulation_parameters, fitting_parameters, optimizer, error_analysis_parameters, \
-        error_analyzer, simulator, data_saver, plotter = read_config(filepath_config)
+    mode, experiments, spins, simulation_parameters, fitting_parameters, optimizer, error_analysis_parameters, error_analyzer, simulator, data_saver, plotter = \
+        read_config(filepath_config)
     
     # Run precalculations
     simulator.precalculations(experiments, spins)
@@ -37,33 +37,46 @@ if __name__ == '__main__':
         bandwidths = simulator.bandwidths(experiments)
         
         # Simulate the PDS time traces
-        simulated_time_traces, background_parameters, background_time_traces = simulator.compute_time_traces(experiments, spins, simulation_parameters)
+        simulated_time_traces, background_parameters, background_time_traces, background_free_time_traces, simulated_spectra = \
+            simulator.compute_time_traces(experiments, spins, simulation_parameters)
         
         # Save the simulation output
-        data_saver.save_simulation_output(epr_spectra, bandwidths, simulator.background, background_parameters, background_time_traces, simulated_time_traces, experiments)
+        data_saver.save_simulation_output(epr_spectra, bandwidths, simulator.background, background_parameters, background_time_traces,
+                                          background_free_time_traces, simulated_spectra, simulated_time_traces, experiments)
         
         # Plot the simulation output
-        plotter.plot_simulation_output(epr_spectra, bandwidths, background_time_traces, simulated_time_traces, experiments)
+        plotter.plot_simulation_output(epr_spectra, bandwidths, background_time_traces, background_free_time_traces, 
+                                       simulated_spectra, simulated_time_traces, experiments)
 
     # Run fitting
     if mode['fitting']:
         
+        # Simulate the EPR spectrum of the spin system
+        epr_spectra = simulator.epr_spectra(spins, experiments)
+        
+        # Compute the bandwidths of the detection and pump pulses
+        bandwidths = simulator.bandwidths(experiments)
+
         # Set the fit and objective functions
-        partial_fit_function = partial(fit_function, simulator=simulator, experiments=experiments, \
-            spins=spins, fitting_parameters=fitting_parameters, fixed_variables_included=True)
-        partial_objective_function = partial(objective_function, simulator=simulator, experiments=experiments, \
-            spins=spins, fitting_parameters=fitting_parameters, goodness_of_fit=optimizer.goodness_of_fit, fixed_variables_included=True)
+        partial_fit_function = partial(fit_function, simulator=simulator, experiments=experiments, spins=spins,
+                                       fitting_parameters=fitting_parameters, fixed_variables_included=True, more_output=False)
+        partial_fit_function_more_output = partial(fit_function, simulator=simulator, experiments=experiments, spins=spins,
+                                                   fitting_parameters=fitting_parameters, fixed_variables_included=True, more_output=True)    
+        partial_objective_function = partial(objective_function, simulator=simulator, experiments=experiments, spins=spins,
+                                             fitting_parameters=fitting_parameters, goodness_of_fit=optimizer.goodness_of_fit, fixed_variables_included=True)
         optimizer.set_fit_function(partial_fit_function)
+        optimizer.set_fit_function_more_output(partial_fit_function_more_output)
         optimizer.set_objective_function(partial_objective_function)
         
         # Optimize the fitting parameters
         optimized_parameters, score = optimizer.optimize(fitting_parameters['ranges'])    
         
-        # Check/correct the relative weights
+        # Check / correct the relative weights
         optimized_parameters = check_relative_weights(fitting_parameters['indices'], optimized_parameters, fitting_parameters['values'])
 
         # Compute the fit to the experimental PDS time traces
-        simulated_time_traces, background_parameters, background_time_traces = optimizer.get_fit()
+        simulated_time_traces, background_parameters, background_time_traces, background_free_time_traces, simulated_spectra = \
+            optimizer.get_fit_more_output()
         
         # Calculate the statistics describing the goodness of fit
         fit_statistics = optimizer.get_fit_statistics(experiments, simulated_time_traces)
@@ -78,15 +91,19 @@ if __name__ == '__main__':
         print_background_parameters(background_parameters, experiments, simulator.background)
         
         # Compute symmetry-related sets of fitting parameters
-        score_function = partial(objective_function, simulator=simulator, experiments=experiments, spins=spins, \
-            fitting_parameters=fitting_parameters, goodness_of_fit=optimizer.goodness_of_fit, fixed_variables_included=False) 
-        symmetry_related_solutions = compute_symmetry_related_solutions(fitting_parameters['indices'], optimized_parameters, fitting_parameters['values'], simulator, score_function)
+        score_function = partial(objective_function, simulator=simulator, experiments=experiments, spins=spins,
+                                 fitting_parameters=fitting_parameters, goodness_of_fit=optimizer.goodness_of_fit, fixed_variables_included=False) 
+        symmetry_related_solutions = compute_symmetry_related_solutions(fitting_parameters['indices'], optimized_parameters, 
+                                                                        fitting_parameters['values'], simulator, score_function)
         
         # Save the fitting output
-        data_saver.save_fitting_output(score, optimized_parameters, [], symmetry_related_solutions, simulator.background, background_parameters, background_time_traces, simulated_time_traces, fitting_parameters, experiments)
+        data_saver.save_fitting_output(epr_spectra, bandwidths, score, optimized_parameters, [], symmetry_related_solutions, 
+                                       simulator.background, background_parameters, background_time_traces, background_free_time_traces, 
+                                       simulated_spectra, simulated_time_traces, fitting_parameters, experiments)
         
         # Plot the fitting output
-        plotter.plot_fitting_output(score, optimizer.goodness_of_fit, background_time_traces, simulated_time_traces, experiments)
+        plotter.plot_fitting_output(epr_spectra, bandwidths, score, optimizer.goodness_of_fit, background_time_traces, 
+                                    background_free_time_traces, simulated_spectra, simulated_time_traces, experiments)
         
     # Run error analysis
     if mode['error_analysis']:
@@ -96,23 +113,25 @@ if __name__ == '__main__':
             print_fitting_parameters(fitting_parameters['indices'], optimized_parameters, fitting_parameters['values'], parameter_errors)
         
         # Set the objective function: the goodness-of-fit has to be set to 'chi2'
-        partial_objective_function = partial(objective_function, simulator=simulator, experiments=experiments, \
-            spins=spins, fitting_parameters=fitting_parameters, goodness_of_fit='chi2', fixed_variables_included=True)
+        partial_objective_function = partial(objective_function, simulator=simulator, experiments=experiments, spins=spins, 
+                                             fitting_parameters=fitting_parameters, goodness_of_fit='chi2', fixed_variables_included=True)
         error_analyzer.set_objective_function(partial_objective_function)
         
         if error_analysis_parameters != [[]] and error_analysis_parameters != []:
             # Run the error analysis
-            score_vs_parameter_subsets, score_vs_parameters, numerical_error, score_threshold, parameter_errors = error_analyzer.run_error_analysis(error_analysis_parameters, fitting_parameters, optimized_parameters)
+            score_vs_parameter_subsets, score_vs_parameters, numerical_error, score_threshold, parameter_errors = \
+                error_analyzer.run_error_analysis(error_analysis_parameters, fitting_parameters, optimized_parameters)
             
             # Display the fitted and fixed parameters with the corresponding confidence intervals
             print_fitting_parameters(fitting_parameters['indices'], optimized_parameters, fitting_parameters['values'], parameter_errors)
             
             # Save the error analysis output
-            data_saver.save_error_analysis_output(optimized_parameters, parameter_errors, fitting_parameters, score_vs_parameter_subsets, score_vs_parameters, error_analysis_parameters)
-            # data_saver.save_fitting_parameters(fitting_parameters['indices'], optimized_parameters, fitting_parameters['values'], parameter_errors)
+            data_saver.save_error_analysis_output(optimized_parameters, parameter_errors, fitting_parameters, 
+                                                  score_vs_parameter_subsets, score_vs_parameters, error_analysis_parameters)
 
             # Plot the error analysis output
-            plotter.plot_error_analysis_output(score_vs_parameter_subsets, score_vs_parameters, error_analysis_parameters, fitting_parameters, optimized_parameters, score_threshold, numerical_error)
+            plotter.plot_error_analysis_output(score_vs_parameter_subsets, score_vs_parameters, error_analysis_parameters,  
+                                               fitting_parameters, optimized_parameters, score_threshold, numerical_error)
     
     print('\nDONE!')
     keep_figures_visible()
