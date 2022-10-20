@@ -95,14 +95,14 @@ class Spin:
             # Hyperfine coupling
             num_repeat = 1
             num_tile = self.num_res_freq
-            for i in range(len(self.n)):
+            for i in range(self.n.size):
                 Aeff = self.A_effective(field_orientations, num_field_orientations, i)
-                I_eq = self.I[i] * self.n[i]
-                m_eq = np.arange(-I_eq, I_eq + 1)
+                I_eq = self.I[i] * float(self.n[i])
+                m_eq = np.arange(-1*I_eq, I_eq + 1, step=1, dtype=float)
                 num_res_freq_for_single_n = int(2 * self.I[i] * self.n[i] + 1)
                 m = np.repeat(m_eq, num_repeat)
                 num_repeat *= num_res_freq_for_single_n
-                num_tile /= num_res_freq_for_single_n
+                num_tile = int(num_tile / num_res_freq_for_single_n)
                 m = np.tile(m, num_tile)
                 fh = Aeff * m
                 w = np.where(np.random.rand(num_field_orientations) <= self.Abund[i], 1.0, 0.0)
