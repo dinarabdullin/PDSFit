@@ -2,7 +2,7 @@ import numpy as np
 
 
 def load_experimental_signal(filepath, column_numbers=[]):
-    ''' Loads an experimental PDS time trace from a file'''
+    ''' Loads a PDS time trace from a file'''
     if column_numbers == []:
         column_numbers = [0, 1, 2]
     t = []

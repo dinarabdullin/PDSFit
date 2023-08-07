@@ -1,5 +1,5 @@
 class ParameterObject:
-    ''' A fitting parameter object ''' 
+    ''' Object class of a model parameter ''' 
     
     def __init__(self, optimize, index):
         self.optimize = optimize

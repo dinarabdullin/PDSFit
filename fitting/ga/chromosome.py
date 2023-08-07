@@ -2,7 +2,7 @@ import numpy as np
 
 
 class Chromosome:
-    ''' Chromosome class '''
+    ''' Chromosome in GA '''
 
     def __init__(self, bounds):
         self.size = len(bounds)

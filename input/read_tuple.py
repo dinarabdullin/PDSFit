@@ -1,28 +1,38 @@
-import libconf
+import sys
 from input.read_list import read_list
 
 
-supported_data_types = {'float': float, 'int': int, 'str': str}
-
-def read_tuple(tuple_object, data_type, scale=1):
+def read_tuple(tuple_object, object_name, data_type, scale=1):
     ''' 
-    Reads a libconfig tuple.
-    The type of the parameter values, 'data_type', can be float or int.
-    Each of the parameter values is scaled by a factor 'scale'.
+    Reads out 'tuple_object'. 
+    The data type of each element, 'data_type', can be either 'float' or 'int'.
+    Each element is scaled by 'scale'.
     '''    
-    lc_tuple = []
-    if tuple_object != ():
-        for component in tuple_object:
-            if data_type[0] == 'float':
-                lc_tuple.append(supported_data_types[data_type[0]](component) * supported_data_types[data_type[0]](scale))
-            elif data_type[0] == 'int':
-                lc_tuple.append(supported_data_types[data_type[0]](component) * supported_data_types[data_type[0]](scale))
-            elif data_type[0] == 'str':
-                lc_tuple.append(supported_data_types[data_type[0]](component))
-            elif data_type[0] == 'array':
-                lc_list = read_list(component, data_type[1], scale)
-                lc_tuple.append(lc_list)
+    tuple_values = []
+    if isinstance(tuple_object, tuple):
+        for element in tuple_object:
+            if isinstance(element, list):
+                list_values = read_list(element, object_name, data_type, scale)
+                tuple_values.append(list_values)
             else:
-                raise ValueError('Unsupported format!')
-                sys.exit(1)
-    return lc_tuple
+                try:
+                    element_value = (data_type)(element)
+                    if data_type == float:
+                        element_value *= (data_type)(scale)
+                    tuple_values.append(element_value)
+                except ValueError:
+                    raise ValueError('Unsupported format of \'{0}\'!'.format(object_name))
+                    sys.exit(1)
+    elif isinstance(tuple_object, list):
+        list_values = read_list(element, object_name, data_type, scale)
+        tuple_values.append(list_values)
+    else:
+        try:
+            tuple_value = (data_type)(tuple_object)
+            if data_type == float:
+                tuple_value *= (data_type)(scale)
+            tuple_values.append(tuple_value)
+        except ValueError:
+            raise ValueError('Unsupported format of \'{0}\'!'.format(object_name))
+            sys.exit(1) 
+    return tuple_values

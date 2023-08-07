@@ -1,4 +1,4 @@
-''' A dictionary of supported experiments '''
+''' A dictionary with the supported experiments '''
 
 from experiments.experiment import Experiment
 from experiments.peldor_4p_rect import Peldor_4p_rect

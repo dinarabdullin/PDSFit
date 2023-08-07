@@ -4,17 +4,19 @@ from background.background import Background
 
 
 def background_model(t, c1, c2):
-    return (1.0 + c1 * np.abs(t) + c2 * np.abs(t)**2)
-    
+    return (1 + c1 * np.abs(t) + c2 * np.abs(t)**2)
+
+
 def signal_model(t, c1, c2, scale_factor, s_intra):
     return background_model(t, c1, c2) * (np.ones(s_intra.size) + scale_factor * (s_intra - np.ones(s_intra.size)))
+
 
 def signal_model_wrapper(t, scale_factor, c1, c2, s_intra):
     return signal_model(t, c1, c2, scale_factor, s_intra)
     
 
 class SecondOrderPolynomialBackground(Background):
-    ''' Second-order polynomial background '''
+    ''' Background model: 2nd-order polynom '''
     
     def __init__(self):
         super().__init__() 
@@ -41,7 +43,7 @@ class SecondOrderPolynomialBackground(Background):
                                         scale_factor=self.parameters['scale_factor']['value'],
                                         s_intra=s_intra)                                
         else:
-            raise ValueError('The polynomial coefficient of the background can not be optimized separately!')
+            raise ValueError('The polynomial coefficients can not be optimized separately!')
             sys.exit(1)
     
     def get_fit(self, t, background_parameters, s_intra):

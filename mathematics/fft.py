@@ -39,7 +39,7 @@ def scale_first_point(sig, scale_factor=1):
 
 
 def fft(t, sig, dc_offset=0, appodization_type='hamming', zero_padding_factor=2, scale_factor_first_point=0.5):
-    ''' FFT of a background-free part of a PDS time trace '''
+    ''' Computes FFT of the intramolecular part of a PDS time trace '''
     # Format data
     if isinstance(t, np.ndarray):
         t_in = t

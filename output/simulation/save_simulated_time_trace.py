@@ -1,14 +1,30 @@
-def save_simulated_time_trace(simulated_time_trace, experimental_time_trace, experimental_time_trace_im, filepath):
+def save_simulated_time_trace(simulated_time_trace, error_bars_simulated_time_trace, experiment, filepath):
     ''' Saves a simulated PDS time trace '''
     file = open(filepath, 'w')
-    t = simulated_time_trace['t']
-    s_sim = simulated_time_trace['s']
-    s_exp = experimental_time_trace
-    s_exp_im = experimental_time_trace_im
-    if s_exp != []:
-        for j in range(t.size):
-            file.write('{0:<20.7f} {1:<20.7f} {2:<20.7f} {3:<20.7f}\n'.format(t[j], s_exp[j], s_sim[j], s_exp_im[j]))
+    if experiment.s != []:
+        if error_bars_simulated_time_trace != []:
+            for j in range(simulated_time_trace['t'].size):
+                file.write('{0:<20.3f}{1:<20.6f}{2:<20.6f}{3:<20.6f}{4:<20.6f}{5:<20.6f}\n'.format(simulated_time_trace['t'][j], 
+                                                                                                   experiment.s[j], 
+                                                                                                   experiment.s_im[j],
+                                                                                                   simulated_time_trace['s'][j],
+                                                                                                   error_bars_simulated_time_trace[j][0],
+                                                                                                   error_bars_simulated_time_trace[j][1]))
+        else:
+            for j in range(simulated_time_trace['t'].size):
+                file.write('{0:<20.3f}{1:<20.6f}{2:<20.6f}{3:<20.6f}\n'.format(simulated_time_trace['t'][j], 
+                                                                               experiment.s[j], 
+                                                                               experiment.s_im[j],
+                                                                               simulated_time_trace['s'][j]))   
     else:
-        for j in range(t.size):
-            file.write('{0:<20.7f} {1:<20.7f} \n'.format(t[j], s_sim[j]))
+        if error_bars_simulated_time_trace != []:
+            for j in range(simulated_time_trace['t'].size):
+                file.write('{0:<20.3f}{1:<20.6f}{2:<20.6f}{3:<20.6f}\n'.format(simulated_time_trace['t'][j],
+                                                                               simulated_time_trace['s'][j],
+                                                                               error_bars_simulated_time_trace[j][0],
+                                                                               error_bars_simulated_time_trace[j][1]))
+        else:
+            for j in range(simulated_time_trace['t'].size):
+                file.write('{0:<20.3f}{1:<20.6f}\n'.format(simulated_time_trace['t'][j],
+                                                           simulated_time_trace['s'][j]))
     file.close()

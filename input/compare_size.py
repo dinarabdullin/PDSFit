@@ -3,7 +3,7 @@ import numpy as np
 
 
 def compare_size(list1, list2, name1, name2):
-    ''' Compares the size (shape) of two lists '''
+    ''' Compares the size (shapes) of two lists '''
     array1 = np.array(list1)
     array2 = np.array(list2)
     if array1.shape != array2.shape:

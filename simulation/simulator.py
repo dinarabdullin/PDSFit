@@ -1,5 +1,5 @@
 class Simulator():
-    '''Simulator class '''
+    '''Simulator '''
 
     def __init__(self):
         ''''''

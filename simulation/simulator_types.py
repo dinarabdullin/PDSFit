@@ -1,4 +1,4 @@
-''' A dictionary of supported simulators '''
+''' A dictionary with the supported simulators '''
 
 from simulation.simulator import Simulator
 from simulation.monte_carlo_simulator import MonteCarloSimulator

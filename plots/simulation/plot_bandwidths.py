@@ -46,6 +46,4 @@ def plot_bandwidths(bandwidths, experiments, spectra=[]):
         else:
             plot_bandwidths_single_experiment(axes, bandwidths[i], experiments[i])
     fig.tight_layout()
-    plt.draw()
-    plt.pause(0.000001)
     return fig

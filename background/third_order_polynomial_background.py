@@ -4,16 +4,19 @@ from background.background import Background
 
 
 def background_model(t, c1, c2, c3):
-    return (1.0 + c1 * np.abs(t) + c2 * np.abs(t)**2 + c3 * np.abs(t)**3)
+    return (1 + c1 * np.abs(t) + c2 * np.abs(t)**2 + c3 * np.abs(t)**3)
+
 
 def signal_model(t, c1, c2, c3, scale_factor, s_intra):
     return background_model(t, c1, c2, c3) * (np.ones(s_intra.size) + scale_factor * (s_intra - np.ones(s_intra.size)))
 
+
 def signal_model_wrapper(t, scale_factor, c1, c2, c3, s_intra):
     return signal_model(t, c1, c2, c3, scale_factor, s_intra)
 
+
 class ThirdOrderPolynomialBackground(Background):
-    ''' Third-order polynomial background '''
+    ''' Background model: 3rd-order polynom '''
     
     def __init__(self):
         super().__init__() 

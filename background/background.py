@@ -2,7 +2,7 @@ from scipy.optimize import curve_fit
 
 
 class Background:
-    ''' Background class '''
+    ''' Background '''
     
     def __init__(self):
         self.parameter_names = []
@@ -13,7 +13,7 @@ class Background:
         self.upper_bounds = []
     
     def set_parameters(self, parameters):
-        ''' Set the parameters '''
+        ''' Set the background parameters '''
         self.parameters = parameters
         self.p0 = []
         self.lower_bounds = []
@@ -30,7 +30,7 @@ class Background:
     
     def optimize_parameters(self, t, s_exp, s_intra):
         ''' 
-        Optimize the parameters to yeild the best fit to:
+        Optimize the background parameters such that yield the minimum MSD to:
         s_exp(t) = s_inter(t, parameters) * (1 - scale_factor * s_intra(t)),
         where
         s_exp(t) - experimental time trace
@@ -53,7 +53,7 @@ class Background:
         return background_parameters
         
     def get_fit(self, t, background_parameters, s_intra):
-        ''' Compute the fit to the PDS time trace '''
+        ''' Compute the fit to a PDS time trace '''
     
     def get_background(self, t, background_parameters, modulation_depth):
-        ''' Compute the background fit '''
+        ''' Computes the background '''

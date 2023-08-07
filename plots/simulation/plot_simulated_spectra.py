@@ -31,6 +31,4 @@ def plot_simulated_spectra(simulated_spectra, experiments):
             axes = fig.add_subplot(layout[0], layout[1], i+1)
         plot_simulated_spectrum(axes, simulated_spectra[i], experiments[i])
     plt.tight_layout() 
-    plt.draw()
-    plt.pause(0.000001)
     return fig

@@ -1,24 +1,30 @@
-import libconf
+import sys
 
 
-supported_data_types = {'float': float, 'int': int, 'str': str}
-
-def read_list(list_object, data_type, scale=1):
+def read_list(list_object, object_name, data_type, scale=1):
     ''' 
-    Reads a libconfig list. 
-    The type of the parameter values, 'data_type', can be float or int.
-    Each of the parameter values is scaled by a factor 'scale'.
+    Reads out 'list_object'. 
+    The data type of each element, 'data_type', can be either 'float' or 'int'.
+    Each element is scaled by 'scale'.
     '''
-    lc_list = []
-    if (list_object != []):
-        for component in list_object:
-            if data_type == 'float':
-                lc_list.append((supported_data_types[data_type])(component) * (supported_data_types[data_type])(scale))
-            elif data_type == 'int':
-                lc_list.append((supported_data_types[data_type])(component) * (supported_data_types[data_type])(scale))
-            elif data_type == 'str':
-                lc_list.append((supported_data_types[data_type])(component))
-            else:
-                raise ValueError('Unsupported format!')
-                sys.exit(1) 
-    return lc_list
+    list_values = []
+    if isinstance(list_object, list):
+        for element in list_object:
+            try:
+                element_value = (data_type)(element)
+                if data_type == float:
+                    element_value *= (data_type)(scale)
+                list_values.append(element_value)
+            except ValueError:
+                raise ValueError('Unsupported format of \'{0}\'!'.format(object_name))
+                sys.exit(1)
+    else:
+        try:
+            list_value = (data_type)(list_object)
+            if data_type == float:
+                list_value *= (data_type)(scale)
+            list_values.append(list_value)
+        except ValueError:
+            raise ValueError('Unsupported format of \'{0}\'!'.format(object_name))
+            sys.exit(1) 
+    return list_values

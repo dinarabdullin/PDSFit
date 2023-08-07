@@ -4,17 +4,19 @@ from background.background import Background
 
 
 def background_model(t, decay_constant):
-    return np.exp(-decay_constant * np.abs(t))
+    return np.exp(-decay_constant * np.absolute(t))
+
 
 def signal_model(t, decay_constant, scale_factor, s_intra):
     return background_model(t, decay_constant) * (np.ones(s_intra.size) + scale_factor * (s_intra - np.ones(s_intra.size)))
+
 
 def signal_model_wrapper(t, scale_factor, decay_constant, s_intra):
     return signal_model(t, decay_constant, scale_factor, s_intra)
 
 
 class ExponentialBackground(Background):
-    ''' Exponential background '''
+    ''' Background model: exponential decay '''
     
     def __init__(self):
         super().__init__() 

@@ -31,6 +31,4 @@ def plot_background_free_time_traces(background_free_time_traces, experiments):
             axes = fig.add_subplot(layout[0], layout[1], i+1)
         plot_background_free_time_trace(axes, background_free_time_traces[i], experiments[i])
     plt.tight_layout() 
-    plt.draw()
-    plt.pause(0.000001)
     return fig

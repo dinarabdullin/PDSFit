@@ -5,27 +5,27 @@ from mathematics.find_nearest import find_nearest
 
 
 class Peldor_4p_chirp(Experiment):
-    ''' Class for 4-pulse ELDOR with a chirp pump pulse '''
+    ''' 4-pulse ELDOR experiment with rectangular detection pulses and a chirp pump pulse '''
     
     def __init__(self, name):
         super().__init__(name)
         self.technique = 'peldor'
         self.parameter_names = {
-            'magnetic_field': 'float', 
-            'detection_frequency': 'float', 
-            'detection_pulse_lengths': 'float_array', 
-            'pump_frequency': 'float',
-            'pump_frequency_width': 'float',
-            'pump_pulse_lengths': 'float_array', 
-            'pump_pulse_rise_times' : 'float_array',
-            'critical_adiabaticity' : 'float'
+            'magnetic_field':           'float', 
+            'detection_frequency':      'float', 
+            'detection_pulse_lengths':  'float_list', 
+            'pump_frequency':           'float',
+            'pump_frequency_width':     'float',
+            'pump_pulse_lengths':       'float_list', 
+            'pump_pulse_rise_times':    'float_list',
+            'critical_adiabaticity':    'float'
             }
         self.frequency_increment = 0.001 # in GHz
         self.time_increment = 0.1 # in s
         
     
     def set_parameters(self, parameter_values):
-        ''' Sets the parameters of an experiment '''
+        ''' Sets the parameters of the experiment '''
         self.magnetic_field = parameter_values['magnetic_field'] 
         self.detection_frequency = parameter_values['detection_frequency'] 
         self.detection_pi_half_pulse_length = parameter_values['detection_pulse_lengths'][0]
@@ -39,7 +39,7 @@ class Peldor_4p_chirp(Experiment):
         self.pump_bandwidth = self.compute_pump_bandwidth()
         
     def compute_detection_bandwidth(self):
-        ''' Computes the bandwidth of detection pulses '''
+        ''' Computes the bandwidth of the detection pulses '''
         bandwidth_detection_pi_half_pulse = 1 / (4 * self.detection_pi_half_pulse_length)
         bandwidth_detection_pi_pulse = 1 / (2 * self.detection_pi_pulse_length)  
         frequency_axis = np.arange(self.detection_frequency - 10 * bandwidth_detection_pi_half_pulse, self.detection_frequency + 10 * bandwidth_detection_pi_half_pulse, self.frequency_increment)
@@ -52,14 +52,13 @@ class Peldor_4p_chirp(Experiment):
         return detection_bandwidth
     
     def compute_pump_bandwidth(self):
-        ''' Computes the bandwidth of pump pulse '''
+        ''' Computes the bandwidth of the pump pulse '''
         frequency_axis = np.arange(self.pump_frequency - 0.5*self.pump_frequency_width, self.pump_frequency + 0.5*self.pump_frequency_width + self.frequency_increment, self.frequency_increment)
         time_axis = np.arange(0, self.pump_pulse_length + self.time_increment, self.time_increment)
         frequency_axis_size = frequency_axis.size
         time_axis_size = time_axis.size
         maximal_rabi_frequency = np.sqrt(self.critical_adiabaticity * self.pump_frequency_width / self.pump_pulse_length)
         microwave_frequencies = self.pump_frequency - 0.5*self.pump_frequency_width + self.pump_frequency_width * time_axis / self.pump_pulse_length
-        #rabi_frequencies = np.zeros(time_axis_size)
         adiabaticity_array = np.zeros((frequency_axis_size, time_axis_size))
         for i in range(frequency_axis_size):
             for j in range(time_axis_size): 
@@ -76,7 +75,6 @@ class Peldor_4p_chirp(Experiment):
                     else:
                         rabi_frequency = maximal_rabi_frequency
                         rabi_frequency_derivative = 0   
-                #rabi_frequencies[j] = rabi_frequency
                 frequency_offset = frequency_axis[i] - microwave_frequencies[j]
                 frequency_offset_derivative = -self.pump_frequency_width / self.pump_pulse_length
                 if rabi_frequency == 0 and frequency_offset == 0:
@@ -94,7 +92,7 @@ class Peldor_4p_chirp(Experiment):
         return pump_bandwidth
     
     def get_detection_bandwidth(self, ranges=()):
-        ''' Return the bandwidth of detection pulses '''
+        ''' Returns the bandwidth of the detection pulses '''
         if ranges == ():
             return self.detection_bandwidth
         else:
@@ -103,7 +101,7 @@ class Peldor_4p_chirp(Experiment):
             return detection_bandwidth 
 
     def get_pump_bandwidth(self, ranges=()):
-        ''' Return the bandwidth of a pump pulse '''
+        ''' Returns the bandwidths of the pump pulse '''
         if ranges == ():
             return self.pump_bandwidth
         else:
@@ -111,24 +109,14 @@ class Peldor_4p_chirp(Experiment):
             pump_bandwidth = {'f': pump_bandwidth['f'][indices], 'p': pump_bandwidth['p'][indices]}
             return pump_bandwidth      
     
-    def detection_probability(self, resonance_frequencies, weights=[]):
-        ''' Computes detection probabilities for different resonance frequencies '''
+    def detection_probability(self, resonance_frequencies):
+        ''' Computes detection probabilities based on given resonance frequencies '''
         indices = find_nearest(self.detection_bandwidth['f'], resonance_frequencies)
         detection_probabilities = self.detection_bandwidth['p'][indices]
-        if weights != []:
-            if isinstance(weights, list):
-                weights = np.array(weights).reshape(len(weights),1)
-            detection_probabilities = detection_probabilities * weights
-            detection_probabilities = detection_probabilities.sum(axis=1)
-        return detection_probabilities.flatten()
+        return detection_probabilities
 
-    def pump_probability(self, resonance_frequencies, weights=[]):
-        ''' Computes pump probabilities for different resonance frequencies '''
+    def pump_probability(self, resonance_frequencies):
+        ''' Computes pump probabilities based on given resonance frequencies '''
         indices = find_nearest(self.pump_bandwidth['f'], resonance_frequencies)
         pump_probabilities = self.pump_bandwidth['p'][indices]
-        if weights != []:
-            if isinstance(weights, list):
-                weights = np.array(weights).reshape(len(weights),1)
-            pump_probabilities = pump_probabilities * weights
-            pump_probabilities = pump_probabilities.sum(axis=1)
-        return pump_probabilities.flatten()
+        return pump_probabilities

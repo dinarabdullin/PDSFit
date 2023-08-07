@@ -6,18 +6,21 @@ from background.background import Background
 def background_model(t, k1, k2):
     return np.exp(k1 * np.abs(t) + k2 * t * t)
 
+
 def signal_model(t, k1, k2, scale_factor, s_intra):
     return background_model(t, k1, k2) * (np.ones(s_intra.size) + scale_factor * (s_intra - np.ones(s_intra.size)))
 
+
 def signal_model_wrapper1(t, k2, scale_factor, k1, s_intra):
     return signal_model(t, k1, k2, scale_factor, s_intra)
+
 
 def signal_model_wrapper2(t, scale_factor, k1, k2, s_intra):
     return signal_model(t, k1, k2, scale_factor, s_intra)
     
 
 class KellersBackground(Background):
-    ''' RIDME background model proposed by Keller: a product of the exponential decay and a Gaussian '''
+    ''' Background model: Keller's exponential function -  the product of the exponential decay and a Gaussian '''
     
     def __init__(self):
         super().__init__() 

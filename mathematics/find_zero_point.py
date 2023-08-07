@@ -4,7 +4,7 @@ from mathematics.find_nearest import find_nearest
 
 
 def find_zero_point(t, y_re):
-    ''' Finds the zero point of the PDS time trace '''
+    ''' Finds the zero point of a PDS time trace '''
     # Make a linear time grid with a step of 1 ns and extrapolate the PDS time trace on this grid
     t_step = 0.001
     t_grid = np.arange(np.amin(t), np.amax(t), t_step)
@@ -47,7 +47,7 @@ def find_zero_point(t, y_re):
 
 
 def set_zero_point(t, y_re, y_im, t_zp):
-    ''' Sets the zero point of the PDS time trace to t_zp '''
+    ''' Sets the zero point of a PDS time trace '''
     # Make a linear time grid with a step of 1 ns and extrapolate the PDS time trace on this grid
     t_step = 0.001
     t_grid = np.arange(np.amin(t), np.amax(t), t_step)

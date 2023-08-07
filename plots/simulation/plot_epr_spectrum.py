@@ -15,6 +15,4 @@ def plot_epr_spectrum(spectrum):
     axes.set_xlim(np.amin(spectrum['f']), np.amax(spectrum['f']))
     axes.set_ylim(0.0, 1.1)
     plt.tight_layout()
-    plt.draw()
-    plt.pause(0.000001) # needed for displaying the plot
     return fig

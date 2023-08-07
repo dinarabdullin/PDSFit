@@ -1,4 +1,4 @@
-''' A dictionary of supported background models '''
+''' A dictionary with the supported background models '''
 
 from background.background import Background
 from background.exponential_background import ExponentialBackground

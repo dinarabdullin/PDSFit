@@ -4,20 +4,23 @@ from background.background import Background
 
 
 def background_model(t, decay_constant, dimension):
-    return np.exp(-decay_constant * np.abs(t)**(dimension/3.0))
+    return np.exp(-decay_constant * np.abs(t)**(dimension/3))
+
 
 def signal_model(t, decay_constant, dimension, scale_factor, s_intra):
     return background_model(t, decay_constant, dimension) * (np.ones(s_intra.size) + scale_factor * (s_intra - np.ones(s_intra.size)))
 
+
 def signal_model_wrapper1(t, dimension, scale_factor, decay_constant, s_intra):
     return signal_model(t, decay_constant, dimension, scale_factor, s_intra)
+
 
 def signal_model_wrapper2(t, scale_factor, decay_constant, dimension, s_intra):
     return signal_model(t, decay_constant, dimension, scale_factor, s_intra)
     
 
 class StretchedExponentialBackground(Background):
-    ''' Stretched exponential background '''
+    ''' Background model: stretched exponential decay '''
     
     def __init__(self):
         super().__init__() 
