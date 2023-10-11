@@ -1,7 +1,7 @@
-PDSFit
+# H1 PDSFit
 =========
 
-Description
+## H2 Description
 =========
 PDSFit is a software that allows the extraction of inter-spin distance distributions and, in some cases, angular distributions from primary time traces acquired by pulsed dipolar EPR spectroscopy (PDS). This data analysis is performed via the model-based simulation or fitting of the time traces, using a parametrized geometric model of the spin system and a parametrized model of the PDS background. The features that determine the application field of PDSFit are listed below:
 
@@ -14,12 +14,12 @@ PDSFit is a software that allows the extraction of inter-spin distance distribut
 •	PDSFit can be applied to spin systems with nonzero exchange coupling if the exchange coupling constant falls into the weak exchange limit.
 
 
-Manual
+## H2 Manual
 =========
-The manual of PDS is available at https://github.com/dinarabdullin/PDSFit/PDSFit_Manual.pdf.
+The manual of PDS is available [here](https://github.com/dinarabdullin/PDSFit/blob/master/PDSFit_Manual.pdf)
 
 
-Copyright
+## H2 Copyright
 =========
 This program can be distributed under the GNU General Public License.
 
