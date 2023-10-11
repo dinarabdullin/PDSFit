@@ -12,10 +12,8 @@ PDSFit is a software that allows the extraction of inter-spin distance distribut
 •	PDSFit can be applied to spin systems with nonzero exchange coupling if the exchange coupling constant falls into the weak exchange limit.
 
 
-
 ## Manual
 The manual of PDS is available [here](https://github.com/dinarabdullin/PDSFit/blob/master/PDSFit_Manual.pdf)
-
 
 
 ## Copyright
