@@ -1,14 +1,13 @@
-import sys
+import copy
 import numpy as np
-from scipy.interpolate import griddata
 import plots.set_matplotlib
 from plots.set_matplotlib import best_rcparams
 import matplotlib.pyplot as plt
 from plots.best_layout import best_layout
+import sys
 import warnings
 if not sys.warnoptions:
     warnings.simplefilter("ignore")
-from mathematics.rounding import ceil_with_precision, floor_with_precision
 from mathematics.find_nearest import find_nearest
 from supplement.definitions import const
 
@@ -16,162 +15,189 @@ from supplement.definitions import const
 markers = ["o", "s", "^", "p", "h", "*", "d", "v", "<", ">"]
 
 
-def plot_1d_error_surface(axes, error_surface, optimized_model_parameters, error_analysis_parameters, 
-                          fitting_parameters, chi2_minimum, chi2_threshold, distributions_are_multimodal):
-    # Set the values of the fitting parameter and the corresponding chi2 values
-    parameter_id = error_analysis_parameters[0]
-    x = error_surface['parameters'][0] / const['model_parameter_scales'][parameter_id.name]
-    y = error_surface['chi2']
-    # Plot the 1d error surface
-    im = axes.scatter(x, y, c=y, cmap='jet_r', vmin=chi2_minimum + chi2_threshold, vmax=chi2_minimum*1.5+chi2_threshold)
-    if parameter_id.name in const['angle_parameter_names']:
-        x_min, x_max = floor_with_precision(np.amin(x),0), ceil_with_precision(np.amax(x),0)
-        axes.set_xlim(x_min, x_max)
-        axes.set_xticks(np.linspace(x_min, x_max, 3))
+def plot_error_surfaces(
+    error_surfaces, chi2_minimum, chi2_thresholds, optimized_model_parameters, 
+    fitting_parameters, show_uncertainty_interval = False
+    ):
+    """Plot error surfaces."""
+    if len(fitting_parameters["r_mean"]) > 1:
+        multimodal_distributions = True
     else:
-        x_min, x_max = np.amin(x), np.amax(x)
-        axes.set_xlim(x_min, x_max)
-        axes.set_xticks(np.linspace(x_min, x_max, 3))
-    if distributions_are_multimodal:
-        xlabel_text = const['model_parameter_labels'][parameter_id.name][0] + r'$_{%d}$' % (parameter_id.component+1) + ' ' + const['model_parameter_labels'][parameter_id.name][1]
-    else:
-        xlabel_text = const['model_parameter_labels'][parameter_id.name][0] + ' ' + const['model_parameter_labels'][parameter_id.name][1]
-    ylabel_text = r'$\mathit{\chi^2}$'
-    axes.set_xlabel(xlabel_text)
-    axes.set_ylabel(ylabel_text)
-    # Depict the optimized fitting parameter
-    for i in range(len(optimized_model_parameters)):
-        parameter_index = parameter_id.get_index(fitting_parameters['indices'])
-        x_opt = optimized_model_parameters[i][parameter_index] / const['model_parameter_scales'][parameter_id.name]
-        idx_x_opt = find_nearest(x, x_opt)
-        y_opt = y[idx_x_opt]
-        if len(optimized_model_parameters) <= 10:
-            axes.plot(x_opt, y_opt, color='black', marker=markers[i], markerfacecolor='white', clip_on=False)
-        else:
-            axes.plot(x_opt, y_opt, color='black', marker='o', markerfacecolor='white', clip_on=False)
-    axes.ticklabel_format(axis='y', style='sci', scilimits=(0,0), useMathText=True) 
-    # Make axes square
-    xl, xh = axes.get_xlim()
-    yl, yh = axes.get_ylim()
-    axes.set_aspect((xh-xl)/(yh-yl))
-    return im
-
-
-def plot_2d_error_surface(axes, error_surface, optimized_model_parameters, error_analysis_parameters, 
-                          fitting_parameters, chi2_minimum, chi2_threshold, distributions_are_multimodal):
-    # Set the values of the fitting parameters and the corresponding chi2 values
-    parameter1_id = error_analysis_parameters[0] 
-    parameter2_id = error_analysis_parameters[1]
-    x1 = error_surface['parameters'][0] / const['model_parameter_scales'][parameter1_id.name]
-    x2 = error_surface['parameters'][1] / const['model_parameter_scales'][parameter2_id.name]
-    y = error_surface['chi2']
-    # Interpolate the data points (x1, x2, y) on a regular grid (X, Y, Z)
-    size = int(np.sqrt(x1.size))*1j
-    X, Y = np.mgrid[np.amin(x1):np.amax(x1):size, np.amin(x2):np.amax(x2):size]
-    Z = griddata((x1, x2), y, (X, Y), method='nearest')
-    # Plot the 2d error surface
-    im = axes.pcolor(X, Y, Z, cmap='jet_r', vmin=chi2_minimum + chi2_threshold, vmax=chi2_minimum*1.5+chi2_threshold)
-    if parameter1_id.name in const['angle_parameter_names']:
-        x_min, x_max = floor_with_precision(np.amin(x1),0), ceil_with_precision(np.amax(x1),0)
-        axes.set_xlim(x_min, x_max)
-        axes.set_xticks(np.linspace(x_min, x_max, 3))
-    else:
-        x_min, x_max = np.amin(x1), np.amax(x1)
-        axes.set_xlim(x_min, x_max)
-        axes.set_xticks(np.linspace(x_min, x_max, 3))
-    if parameter2_id.name in const['angle_parameter_names']:
-        x_min, x_max = floor_with_precision(np.amin(x2),0), ceil_with_precision(np.amax(x2),0)
-        axes.set_ylim(x_min, x_max)
-        axes.set_yticks(np.linspace(x_min, x_max, 3))
-    else:
-        x_min, x_max = np.amin(x2), np.amax(x2)
-        axes.set_ylim(x_min, x_max)
-        axes.set_yticks(np.linspace(x_min, x_max, 3))
-    if distributions_are_multimodal:
-        xlabel_text = const['model_parameter_labels'][parameter1_id.name][0] + r'$_{%d}$' % (parameter1_id.component+1) + ' ' + const['model_parameter_labels'][parameter1_id.name][1]
-        ylabel_text = const['model_parameter_labels'][parameter2_id.name][0] + r'$_{%d}$' % (parameter2_id.component+1) + ' ' + const['model_parameter_labels'][parameter2_id.name][1]
-    else:
-        xlabel_text = const['model_parameter_labels'][parameter1_id.name][0] + ' ' + const['model_parameter_labels'][parameter1_id.name][1]
-        ylabel_text = const['model_parameter_labels'][parameter2_id.name][0] + ' ' + const['model_parameter_labels'][parameter2_id.name][1]
-    axes.set_xlabel(xlabel_text)
-    axes.set_ylabel(ylabel_text)
-    # Depict the optimized fitting parameter
-    for i in range(len(optimized_model_parameters)):
-        parameter1_index = parameter1_id.get_index(fitting_parameters['indices'])
-        parameter2_index = parameter2_id.get_index(fitting_parameters['indices']) 
-        x1_opt = optimized_model_parameters[i][parameter1_index] / const['model_parameter_scales'][parameter1_id.name]
-        x2_opt = optimized_model_parameters[i][parameter2_index] / const['model_parameter_scales'][parameter2_id.name]
-        if len(optimized_model_parameters) <= 10:
-            axes.plot(x1_opt, x2_opt, color='black', marker=markers[i], markerfacecolor='white', clip_on=False)
-        else:
-            axes.plot(x1_opt, x2_opt, color='black', marker='o', markerfacecolor='white', clip_on=False)
-    # Make axes square
-    xl, xh = axes.get_xlim()
-    yl, yh = axes.get_ylim()
-    axes.set_aspect((xh-xl)/(yh-yl))
-    return im
-
-
-def plot_error_surfaces(error_surfaces, error_surfaces_2d, optimized_model_parameters, error_analysis_parameters, fitting_parameters, chi2_minimum, chi2_thresholds):
-    ''' Plots chi2 as a function of fitting parameter subsets '''  
-    figsize = [10, 8]
+        multimodal_distributions = False
     num_subplots = 0
-    for i in range(len(error_analysis_parameters)):
-        dim = len(error_analysis_parameters[i])
-        if dim <= 2:
+    for error_surface in error_surfaces:
+        if len(error_surface["par"]) <= 2:
             num_subplots += 1
-        else:
-            num_subplots += dim * (dim - 1) // 2
+    figsize = [10, 8]
     best_rcparams(num_subplots)
     layout = best_layout(figsize[0], figsize[1], num_subplots)
-    fig = plt.figure(figsize=(figsize[0], figsize[1]), facecolor='w', edgecolor='w')
-    if len(fitting_parameters['indices']['r_mean']) > 1:
-        distributions_are_multimodal = True
-    else:
-        distributions_are_multimodal = False
-    s = 1
-    for i in range(len(error_analysis_parameters)):
-        dim = len(error_analysis_parameters[i])
-        chi2_threshold = chi2_thresholds[i]
+    fig = plt.figure(
+        figsize = (figsize[0], figsize[1]),
+        facecolor = "w",
+        edgecolor = "w"
+        )
+    n_subplot = 1
+    for error_surface in error_surfaces:
+        dim = len(error_surface["par"])
         if dim == 1:
             if num_subplots == 1:
                 axes = fig.gca()
             else:
-                axes = fig.add_subplot(layout[0], layout[1], s)
-                s += 1
-            im = plot_1d_error_surface(axes, error_surfaces[i], optimized_model_parameters, error_analysis_parameters[i], 
-                                       fitting_parameters, chi2_minimum, chi2_threshold, distributions_are_multimodal)
+                axes = fig.add_subplot(layout[0], layout[1], n_subplot)
+            im = plot_error_surface_1d(
+                axes, copy.deepcopy(error_surface), chi2_minimum, chi2_thresholds[0], 
+                optimized_model_parameters, multimodal_distributions, show_uncertainty_interval
+                )
+            n_subplot += 1
         elif dim == 2:
             if num_subplots == 1:
                 axes = fig.gca()
             else:
-                axes = fig.add_subplot(layout[0], layout[1], s)
-                s += 1
-            im = plot_2d_error_surface(axes, error_surfaces[i], optimized_model_parameters, error_analysis_parameters[i], 
-                                       fitting_parameters, chi2_minimum, chi2_threshold, distributions_are_multimodal)
+                axes = fig.add_subplot(layout[0], layout[1], n_subplot)
+            im = plot_error_surface_2d(
+                axes, copy.deepcopy(error_surface), chi2_minimum, chi2_thresholds[1], 
+                optimized_model_parameters, multimodal_distributions
+                )
+            n_subplot += 1
         else:
-            c = 0
-            for k in range(dim - 1):
-                for l in range(k+1, dim):
-                    parameters = [error_analysis_parameters[i][k], error_analysis_parameters[i][l]]
-                    error_surface = error_surfaces_2d[i][c]
-                    c += 1
-                    if num_subplots == 1:
-                        axes = fig.gca()
-                    else:
-                        axes = fig.add_subplot(layout[0], layout[1], s)
-                        s += 1
-                    im = plot_2d_error_surface(axes, error_surface, optimized_model_parameters, parameters, 
-                                               fitting_parameters, chi2_minimum, chi2_threshold, distributions_are_multimodal)
+            pass
+    # Rescale figure axes to add a colorbar
     left = 0
-    right = float(layout[1])/float(layout[1]+1)
-    bottom = 0.5 * (1-right)
+    right = float(layout[1]) / float(layout[1] + 1)
+    bottom = 0.5 * (1 - right)
     top = 1 - bottom
-    fig.tight_layout(rect=[left, bottom, right, top]) 
-    cax = plt.axes([right+0.05, 0.5-0.5/float(layout[0])*0.5, 0.02, 1/float(layout[0])*0.5])
-    cbar = plt.colorbar(im, cax=cax, orientation='vertical')
+    fig.tight_layout(rect = [left, bottom, right, top])
+    # Add a colorbar
+    cax = plt.axes([right + 0.05, 0.5 - 0.5 / float(layout[0]) * 0.5, 0.02, 1 / float(layout[0]) * 0.5])
+    cbar = plt.colorbar(im, cax = cax, orientation = "vertical")
     cbar.formatter.set_powerlimits((0, 0))
     cbar.formatter.set_useMathText(True)
-    cbar.ax.yaxis.set_offset_position('left') 
-    plt.text(right-1.8, 1.05, r'$\mathit{\chi^2}$', transform=cax.transAxes)
+    cbar.ax.yaxis.set_offset_position("left") 
+    plt.text(right - 1.8, 1.05, r"$\mathit{\chi^2}$", transform = cax.transAxes)
     return fig
+
+
+def plot_error_surface_1d(
+    axes, error_surface, y_min, y_thr, p_opt, multimodal_distributions = False, show_uncertainty_interval = False,
+    ):
+    """Plot a one-dimensional error surface."""
+    parameter, xv, yv = error_surface["par"][0], error_surface["x"][0], error_surface["y"]
+    xv = xv / const["model_parameter_scales"][parameter.name]
+    x_min, x_max = parameter.get_range()[0], parameter.get_range()[1]
+    x_min = x_min / const["model_parameter_scales"][parameter.name]
+    x_max = x_max / const["model_parameter_scales"][parameter.name]
+    n_opt = len(p_opt)
+    xv_opt, yv_opt = [], []
+    for i in range(n_opt):
+        x_opt = p_opt[i][parameter.get_index()]
+        x_opt = x_opt / const["model_parameter_scales"][parameter.name]
+        index_opt = find_nearest(xv, x_opt)
+        x_opt, y_opt = xv[index_opt], yv[index_opt]
+        xv_opt.append(x_opt)
+        yv_opt.append(y_opt)
+    # Plot a one-dimensional error surface
+    im = axes.scatter(xv, yv, c = yv, cmap = "jet_r", vmin = y_min + y_thr, vmax = 1.5 * y_min + y_thr)
+    axes.set_xlim(x_min, x_max)
+    axes.set_xticks(np.linspace(x_min, x_max, 3))
+    if multimodal_distributions:
+        x_label = \
+            const["model_parameter_labels"][parameter.name][0] + \
+            r"$_{%d}$" % (parameter.component + 1) + " " + \
+            const["model_parameter_labels"][parameter.name][1]
+    else:
+        x_label = \
+            const["model_parameter_labels"][parameter.name][0] + " " + \
+            const["model_parameter_labels"][parameter.name][1]
+    y_label = r"$\mathit{\chi^2}$"
+    axes.set_xlabel(x_label)
+    axes.set_ylabel(y_label)
+    # Depict the optimized value of a fitting parameter
+    for i in range(n_opt):
+        if n_opt <= 10:
+            axes.plot(
+                xv_opt[i], yv_opt[i], color = "black", marker = markers[i], markerfacecolor = "white", clip_on = False
+                )
+        else:
+            axes.plot(
+                xv_opt[i], yv_opt[i], color = "black", marker = "o", markerfacecolor = "white", clip_on = False
+                )
+    axes.ticklabel_format(axis = "y", style = "sci", scilimits = (0,0), useMathText = True) 
+    #
+    if show_uncertainty_interval:
+        indices_uncertainty_interval = np.where(yv <= y_min + y_thr)[0]
+        xv_ui = xv[indices_uncertainty_interval]
+        lb_ui, ub_ui = np.amin(xv_ui), np.amax(xv_ui)
+        axes.axvspan(lb_ui, ub_ui, facecolor="lightgray", alpha=0.3, label="confidence\n interval")
+        axes.plot(
+            xv, (y_min + y_thr) * np.ones(xv.size), 'k--', label = r'$\mathit{\chi^{2}_{min}}$ + $\mathit{\Delta\chi^{2}}$'
+            )
+    # Make axes square
+    xl, xh = axes.get_xlim()
+    yl, yh = axes.get_ylim()
+    axes.set_aspect((xh - xl) / (yh - yl))
+    return im
+
+
+def plot_error_surface_2d(
+    axes, error_surface, y_min, y_thr, p_opt, multimodal_distributions = False
+    ):
+    """Plot a two-dimensional error surface."""
+    parameters, xv, yv = error_surface["par"], error_surface["x"], error_surface["y"]
+    parameter1, parameter2 = parameters[0], parameters[1]
+    xg = np.reshape(xv, [2] + [int(np.sqrt(yv.shape))] * 2)
+    yg = np.reshape(yv, [int(np.sqrt(yv.shape))] * 2)
+    xg[0] = xg[0] / const["model_parameter_scales"][parameter1.name]
+    xg[1] = xg[1] / const["model_parameter_scales"][parameter2.name]
+    x1_min, x1_max = parameter1.get_range()[0], parameter1.get_range()[1]
+    x2_min, x2_max = parameter2.get_range()[0], parameter2.get_range()[1]
+    x1_min = x1_min / const["model_parameter_scales"][parameter1.name]
+    x1_max = x1_max / const["model_parameter_scales"][parameter1.name]
+    x2_min = x2_min / const["model_parameter_scales"][parameter2.name]
+    x2_max = x2_max / const["model_parameter_scales"][parameter2.name]
+    n_opt = len(p_opt)
+    xv_opt = []
+    for i in range(n_opt):
+        x1_opt = p_opt[i][parameter1.get_index()] 
+        x2_opt = p_opt[i][parameter2.get_index()]
+        x1_opt = x1_opt / const["model_parameter_scales"][parameter1.name]
+        x2_opt = x2_opt / const["model_parameter_scales"][parameter2.name]
+        xv_opt.append([x1_opt, x2_opt])
+    # Plot a two-dimensional error surface
+    im = axes.pcolor(xg[0], xg[1], yg, cmap = "jet_r", vmin = y_min + y_thr, vmax = 1.5 * y_min + y_thr)
+    axes.set_xlim(x1_min, x1_max)
+    axes.set_xticks(np.linspace(x1_min, x1_max, 3))
+    axes.set_ylim(x2_min, x2_max)
+    axes.set_yticks(np.linspace(x2_min, x2_max, 3))
+    if multimodal_distributions:    
+        x_label = \
+            const["model_parameter_labels"][parameter1.name][0] + \
+            r"$_{%d}$" % (parameter1.component + 1) + " " + \
+            const["model_parameter_labels"][parameter1.name][1]
+        y_label = \
+            const["model_parameter_labels"][parameter2.name][0] + \
+            r"$_{%d}$" % (parameter2.component + 1) + " " + \
+            const["model_parameter_labels"][parameter2.name][1]
+    else:
+        x_label = \
+            const["model_parameter_labels"][parameter1.name][0] + " " + \
+            const["model_parameter_labels"][parameter1.name][1]
+        y_label = \
+            const["model_parameter_labels"][parameter2.name][0] + " " + \
+            const["model_parameter_labels"][parameter2.name][1]
+    axes.set_xlabel(x_label)
+    axes.set_ylabel(y_label)
+    # Depict the optimized values of fitting parameters
+    for i in range(n_opt):
+        if n_opt <= 10:
+            axes.plot(
+                xv_opt[i][0], xv_opt[i][1], color = "black", marker = markers[i], markerfacecolor = "white", clip_on = False
+                )
+        else:
+            axes.plot(
+                xv_opt[i][0], xv_opt[i][1], color = "black", marker = "o", markerfacecolor = "white", clip_on = False
+                )
+    # Make axes square
+    xl, xh = axes.get_xlim()
+    yl, yh = axes.get_ylim()
+    axes.set_aspect((xh - xl) / (yh - yl))
+    return im

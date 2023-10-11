@@ -12,138 +12,167 @@ try:
 except:
     pass
 from mpi.mpi_status import get_mpi
-from input.load_optimized_model_parameters import load_optimized_model_parameters
-from fitting.check_relative_weights import check_relative_weights
+from error_analysis.load_optimized_models import load_optimized_models, load_fitting_parameters
+from fitting.scoring_function import normalize_weights
 from mathematics.find_nearest import find_nearest
 
 
 class ErrorAnalyzer():
-    ''' Error Analysis '''
+    """Error analysis."""
 
     def __init__(self):
-        self.objective_function = None
-        self.objective_function_with_background_record = None
-        self.parameter_names = {
-            'samples_per_parameter':                'int', 
-            'samples_numerical_error':              'int', 
-            'confidence_interval':                  'int',
-            'confidence_interval_numerical_error':  'int', 
-            'background_errors':                    'int',
-            'filepath_optimized_parameters':        'str', 
+        self.scoring_function = None
+        self.intrinsic_parameter_names = {
+            "confidence_interval": "int", 
+            "samples_per_parameter": "int",
+            "samples_numerical_error": "int",
+            "filepath_fitting_parameters": "str"
             }
-
-    def set_intrinsic_parameters(self, error_analysis_parameters):
-        self.samples_per_parameter = error_analysis_parameters['samples_per_parameter']
-        self.samples_numerical_error = error_analysis_parameters['samples_numerical_error']
-        self.confidence_interval = error_analysis_parameters['confidence_interval']
-        self.confidence_interval_numerical_error = error_analysis_parameters['confidence_interval_numerical_error']
-        self.background_errors = error_analysis_parameters['background_errors']
-        self.filepath_optimized_parameters = error_analysis_parameters['filepath_optimized_parameters']
     
-    def set_objective_function(self, func):
-        ''' Sets the objective function '''
-        self.objective_function = func
     
-    def set_objective_function_with_background_record(self, func):
-        ''' Set the objective function that records the background parameters '''
-        self.objective_function_with_background_record = func
-
-    def load_optimized_model_parameters(self):
-        ''' Loads the optimized values of model parameters from a file '''
-        if self.filepath_optimized_parameters != '':
-            return load_optimized_model_parameters(self.filepath_optimized_parameters)
+    def set_intrinsic_parameters(self, intrinsic_parameters):
+        """Set the intrinsic parameters."""
+        self.confidence_interval = intrinsic_parameters["confidence_interval"]
+        self.samples_per_parameter = intrinsic_parameters["samples_per_parameter"]
+        self.samples_numerical_error = intrinsic_parameters["samples_numerical_error"]
+        self.filepath_fitting_parameters = intrinsic_parameters["filepath_fitting_parameters"]
+    
+    
+    def load_fitting_parameters(self):
+        if self.filepath_fitting_parameters:
+            return load_fitting_parameters(self.filepath_fitting_parameters)
         else:
-            raise ValueError('No file with the optimized model parameters was provided!')
+            raise ValueError("A file with an optimized model is missing!")
             sys.exit(1)
     
-    def run_error_analysis(self, error_analysis_parameters, optimized_model_parameters, optimized_background_parameters, 
-                           simulated_time_traces, background_time_traces, background, fitting_parameters, modulation_depths):      
-        ''' Runs the error analysis '''
-        if optimized_model_parameters != []:
-            sys.stdout.write('\n########################################################################\
-                              \n#                            Error analysis                            #\
-                              \n########################################################################\n')
-            sys.stdout.flush()
-            time_start = time.time()
-            chi2_thresholds, chi2_minimum  = self.compute_chi2_threshold(error_analysis_parameters, optimized_model_parameters)
-            error_surfaces, higher_dimensions = self.compute_error_surfaces(optimized_model_parameters, error_analysis_parameters, fitting_parameters)
-            error_surfaces_2d = self.compute_2d_error_surfaces(error_surfaces, higher_dimensions)
-            error_profiles = self.compute_error_profiles(error_surfaces)
-            error_profiles = self.correct_error_profiles(error_profiles, chi2_minimum, optimized_model_parameters, error_analysis_parameters, fitting_parameters)
-            model_parameter_errors, model_parameter_uncertainty_interval_bounds = \
-                self.compute_model_parameter_errors(optimized_model_parameters, error_profiles, chi2_minimum, chi2_thresholds, error_analysis_parameters, fitting_parameters)
-            background_parameter_errors = []
-            error_bars_background_time_traces = []
-            if self.background_errors:
-                background_parameter_errors = self.compute_background_parameter_errors(optimized_background_parameters,
-                                                                                       error_surfaces, 
-                                                                                       chi2_minimum, 
-                                                                                       chi2_thresholds,
-                                                                                       error_analysis_parameters)                                                                                       
-                error_bars_background_time_traces = self.compute_error_bars_for_background_time_traces(background_time_traces,
-                                                                                                       error_surfaces, 
-                                                                                                       error_analysis_parameters, 
-                                                                                                       chi2_minimum, 
-                                                                                                       chi2_thresholds, 
-                                                                                                       background, 
-                                                                                                       modulation_depths)
-            time_elapsed = str(datetime.timedelta(seconds = time.time() - time_start))
-            sys.stdout.write('\nThe error analysis is finished. Duration: {0}\n'.format(time_elapsed))
-            sys.stdout.flush()
-            return model_parameter_errors, background_parameter_errors, error_surfaces, error_surfaces_2d, error_profiles, \
-                   model_parameter_uncertainty_interval_bounds, chi2_minimum, chi2_thresholds, error_bars_background_time_traces
+    
+    def load_optimized_models(self):
+        """Load the optimized values of the model parameters from a file."""
+        if self.filepath_fitting_parameters:
+            return load_optimized_models(self.filepath_fitting_parameters)
+        else:
+            raise ValueError("A file with an optimized model is missing!")
+            sys.exit(1)    
+    
+    
+    def set_scoring_function(self, func):
+        """Set the objective function."""
+        self.scoring_function = func
 
-    def compute_chi2_threshold(self, error_analysis_parameters, optimized_model_parameters):
-        ''' Computes the chi2 threshold '''
-        sys.stdout.write('\nComputing the chi-squared threshold... ')
+
+    def run_error_analysis(
+        self, error_analysis_parameters, optimized_model_parameters, simulated_data_optimized_model,
+        fitting_parameters, background_model, experiments 
+        ):    
+        """Run the error analysis."""
+        sys.stdout.write(
+            "\n########################################################################\
+            \n#                            Error analysis                            #\
+            \n########################################################################\n"
+            )
         sys.stdout.flush()
-        # Compute the chi2 thresholds based on the degrees of freedom and confidence interval
+        time_start = time.time()
+        sys.stdout.write("\nComputing the chi-squared threshold...\n")
+        sys.stdout.flush()
+        chi2_thresholds, chi2_minimum = self.compute_chi2_threshold(error_analysis_parameters, optimized_model_parameters)
+        sys.stdout.write("\nComputing the errors of the fitting parameters...\n")
+        sys.stdout.flush()
+        all_error_surfaces, all_error_surfaces_2d, all_error_surfaces_1d = [], [], []
+        errors_model_parameters = self.init_errors_model_parameters(optimized_model_parameters)
+        errors_background_parameters = self.init_errors_background_parameters(simulated_data_optimized_model["background_parameters"], background_model)
+        errors_backgrounds = self.init_errors_backgrounds(simulated_data_optimized_model["background"])
+        num_parameter_subspaces = len(error_analysis_parameters)
+        for i in range(num_parameter_subspaces):
+            sys.stdout.write("Parameter set {0} / {1}\n".format(i + 1, num_parameter_subspaces))
+            sys.stdout.flush()
+            parameter_subspace = error_analysis_parameters[i]
+            num_parameters = len(parameter_subspace)
+            # Compute an error surface
+            error_surface, simulated_data_error_surface = self.compute_error_surface(parameter_subspace, optimized_model_parameters, fitting_parameters)
+            all_error_surfaces.append(error_surface)
+            # If the dimension of the error surface is larger than two, project 
+            # the the error surface onto two-dimensional parameter subspaces.
+            if num_parameters > 2:
+                error_surfaces_2d = self.compute_2d_error_surfaces(error_surface)
+                all_error_surfaces_2d.extend(error_surfaces_2d)
+            # Project the the error surface onto one-dimensional parameter subspaces.
+            if num_parameters > 1:
+                error_surfaces_1d = self.compute_1d_error_surfaces(error_surface)
+            else:
+                error_surfaces_1d = [error_surface]
+            for error_surface_1d in error_surfaces_1d:
+                 error_surface_1d = self.reset_minimum_chi2(error_surface_1d, chi2_minimum, optimized_model_parameters)
+            all_error_surfaces_1d.extend(error_surfaces_1d)
+            # Compute the errors of model parameters
+            for error_surface_1d in error_surfaces_1d:
+                error_model_parameter = self.compute_model_parameter_error(optimized_model_parameters, error_surface_1d, chi2_thresholds, chi2_minimum)
+                errors_model_parameters = self.update_errors_model_parameters(error_surface_1d["par"][0], error_model_parameter, errors_model_parameters)
+            # Compute the backgound errors
+            new_errors_background_parameters, new_errors_backgrounds = self.compute_background_errors(
+                simulated_data_optimized_model["background_parameters"], simulated_data_optimized_model["background"], 
+                error_surface, simulated_data_error_surface, chi2_thresholds, chi2_minimum, background_model, experiments
+                )
+            errors_background_parameters = self.update_errors_background_parameters(new_errors_background_parameters, errors_background_parameters)
+            errors_backgrounds = self.update_errors_backgrounds(new_errors_backgrounds, errors_backgrounds)           
+        return {
+            "error_surfaces": all_error_surfaces,
+            "error_surfaces_2d": all_error_surfaces_2d,
+            "error_surfaces_1d": all_error_surfaces_1d,
+            "chi2_minimum": chi2_minimum,
+            "chi2_thresholds": chi2_thresholds,
+            "errors_model_parameters": errors_model_parameters,
+            "errors_background_parameters" : errors_background_parameters,
+            "errors_backgrounds": errors_backgrounds
+            }
+    
+    
+    def compute_chi2_threshold(self, error_analysis_parameters, optimized_model_parameters):
+        """Compute the chi-squared threshold."""
+        # Compute theoretical values of the chi2 threshold for 
+        # various degrees of freedom at a fixed confidence level.
         num_parameters = len(optimized_model_parameters)
-        degrees_of_freedom = np.arange(1,num_parameters+1,1)
-        chi2_thresholds_theory = self.compute_chi2_threshold_for_confidence_interval(degrees_of_freedom, self.confidence_interval)
-         # Estimate the contribution of the numerical error to the chi2 threshold
-        chi2_minimum_mean, chi2_minimum_std = self.compute_numerical_error(optimized_model_parameters)
-        chi2_minimum = chi2_minimum_mean
-        chi2_threshold_numerical_error = float(self.confidence_interval_numerical_error) * chi2_minimum_std
-        # Compute the sum of the chi2 thresholds and the numerical error
-        dimensions = []
-        selected_chi2_thresholds_theory = []
-        chi2_thresholds = []
+        max_dim = 0
         for i in range(len(error_analysis_parameters)):
-            dimension = len(error_analysis_parameters[i])
-            dimensions.append(dimension)
-            total_chi2_threshold = chi2_threshold_numerical_error + chi2_thresholds_theory[num_parameters-dimension] 
-            selected_chi2_thresholds_theory.append(chi2_thresholds_theory[num_parameters-dimension])
-            chi2_thresholds.append(total_chi2_threshold)
-        unequal_dimensions = list(set(dimensions))
-        unequal_chi2_thresholds_theory = list(set(selected_chi2_thresholds_theory))
-        unequal_chi2_thresholds = list(set(chi2_thresholds))
-        sorted_dimensions = sorted(unequal_dimensions)
-        sorted_chi2_thresholds_theory = [x for _, x in sorted(zip(unequal_dimensions, unequal_chi2_thresholds_theory))]
-        sorted_chi2_thresholds = [x for _, x in sorted(zip(unequal_dimensions, unequal_chi2_thresholds))]
-        # Display the results
-        sys.stdout.write('done!\n')
-        sys.stdout.write('Minimum chi-squared:                         {0:<.1f}\n'.format(chi2_minimum))
-        sys.stdout.write('Numerical error contribution ({0:d}-sigma):      {1:<.1f}\n'.format(self.confidence_interval, chi2_threshold_numerical_error))
-        sys.stdout.write('Theoretical chi-squared threshold ({0:d}-sigma): '.format(self.confidence_interval))
-        for i in range(len(sorted_dimensions)):
-            sys.stdout.write('{0:<.1f} ({1:d}d)'.format(sorted_chi2_thresholds_theory[i], sorted_dimensions[i]))
-            if i < len(sorted_dimensions) - 1:
-                sys.stdout.write(', ')
+            dim = len(error_analysis_parameters[i])
+            if dim > max_dim:
+                max_dim = dim
+        degrees_of_freedom = np.arange(num_parameters, num_parameters - max_dim, -1)
+        chi2_thresholds_theory = self.compute_theoretical_chi2_thresholds(degrees_of_freedom, self.confidence_interval)
+        # Estimate the contribution of the numerical error to the chi2 threshold
+        mean_chi2_minimum, std_chi2_minimum = self.compute_numerical_error(optimized_model_parameters)
+        chi2_threshold_num_error = float(self.confidence_interval) * std_chi2_minimum
+        # Compute the total chi2 threshold(s)
+        total_chi2_thresholds = chi2_thresholds_theory + chi2_threshold_num_error 
+        # Print the chi2 threshold(s)
+        sys.stdout.write("Minimum chi-squared: {0:<.1f}\n".format(mean_chi2_minimum))
+        sys.stdout.write(
+            "Theoretical chi-squared threshold ({0:d}-sigma): ".format(self.confidence_interval)
+            )
+        for i in range(max_dim):
+            sys.stdout.write("{0:<.1f} ({1:d}d)".format(chi2_thresholds_theory[i], i + 1))
+            if i < max_dim - 1:
+                sys.stdout.write(", ")
             else:
-                sys.stdout.write('\n')
-        sys.stdout.write('Total chi-squared threshold ({0:d}-sigma):       '.format(self.confidence_interval))
-        for i in range(len(sorted_dimensions)):
-            sys.stdout.write('{0:<.1f} ({1:d}d)'.format(sorted_chi2_thresholds[i], sorted_dimensions[i]))
-            if i < len(sorted_dimensions) - 1:
-                sys.stdout.write(', ')
+                sys.stdout.write("\n")
+        sys.stdout.write(
+            "Numerical error contribution ({0:d}-sigma): {1:<.1f}\n".format(self.confidence_interval, chi2_threshold_num_error)
+            )
+        sys.stdout.write(
+            "Total chi-squared threshold ({0:d}-sigma): ".format(self.confidence_interval)
+            )
+        for i in range(max_dim):
+            sys.stdout.write("{0:<.1f} ({1:d}d)".format(total_chi2_thresholds[i], i + 1))
+            if i < max_dim - 1:
+                sys.stdout.write(", ")
             else:
-                sys.stdout.write('\n')
-        return chi2_thresholds, chi2_minimum
-
-    def compute_chi2_threshold_for_confidence_interval(self, degrees_of_freedom, confidence_interval):
-        ''' Computes the chi2 threshold based on the degrees of freedom and confidence interval '''
-        chi2_thresholds = []
+                sys.stdout.write("\n")
+        return total_chi2_thresholds, mean_chi2_minimum
+    
+    
+    def compute_theoretical_chi2_thresholds(self, degrees_of_freedom, confidence_interval):
+        """Compute theoretical values of the chi-squared threshold for
+        various degrees of freedom at a fixed confidence level."""
+        chi2_thresholds_theory = []
         for v in degrees_of_freedom:
             chi2_threshold = 0.0
             if v == 1:
@@ -151,442 +180,360 @@ class ErrorAnalyzer():
             else:
                 p = 1.0 - scipy.stats.chi2.sf(float(confidence_interval)**2, 1)
                 chi2_threshold = scipy.stats.chi2.ppf(p, int(v))
-            chi2_thresholds.append(chi2_threshold)
-        chi2_thresholds = np.array(chi2_thresholds)
-        return chi2_thresholds
+            chi2_thresholds_theory.append(chi2_threshold)
+        return np.array(chi2_thresholds_theory)
+    
     
     def compute_numerical_error(self, optimized_model_parameters):
-        ''' Computes the numerical error '''
+        """Compute the contribution of the numerical error to the chi-squared treshold."""
         # Make multiple copies of the optimized model parameters
-        model_parameters = []
+        parameter_sets = []
         for i in range(self.samples_numerical_error):
-            model_parameters.append(optimized_model_parameters)
-        # Calculate chi2
+            parameter_sets.append(optimized_model_parameters)
+        # Calculate chi-squared values
         run_with_mpi = get_mpi()
         if run_with_mpi:
             with MPIPoolExecutor() as executor:
-                result = executor.map(self.objective_function, model_parameters)
-            chi2_values = list(result)
+                result = zip(*executor.map(self.scoring_function, parameter_sets))
+            chi2_values, _ = list(result)
         else:
             pool = Pool()
-            chi2_values = pool.map(self.objective_function, model_parameters)
+            chi2_values, _ = list(zip(*pool.map(self.scoring_function, parameter_sets)))
             pool.close()
             pool.join()
         chi2_values = np.array(chi2_values)
         # Set the minimum chi2 and the chi2 threshold due to the numerical error
-        chi2_minimum_mean = np.mean(chi2_values)
-        chi2_minimum_std = np.std(chi2_values)
-        # # Plot
+        mean_chi2_minimum, std_chi2_minimum = np.mean(chi2_values), np.std(chi2_values)
+        # Plot
         # from plots.error_analysis.plot_numerical_error import plot_numerical_error
-        # plot_numerical_error(chi2_values, chi2_minimum_mean, chi2_minimum_std)
-        return chi2_minimum_mean, chi2_minimum_std
+        # plot_numerical_error(chi2_values, mean_chi2_minimum, std_chi2_minimum)
+        return mean_chi2_minimum, std_chi2_minimum
 
-    def compute_error_surfaces(self, optimized_model_parameters, error_analysis_parameters, fitting_parameters):
-        ''' Computes error surfaces '''
-        sys.stdout.write('\nComputing error surfaces for the fitting parameters...\n')
-        sys.stdout.flush()
-        error_surfaces = []
-        higher_dimensions = False
-        num_parameter_sets = len(error_analysis_parameters)
-        for i in range(num_parameter_sets):
-            sys.stdout.write('\r')
-            sys.stdout.write('Parameter set {0} / {1}'.format(i+1, num_parameter_sets))
-            sys.stdout.flush()
-            # Set the values of error analysis parameters
-            num_parameters = len(error_analysis_parameters[i])
-            if num_parameters == 1:
-                num_samples = self.samples_per_parameter
-                # Make multiple copies of the optimized model parameters
-                model_parameters = np.tile(optimized_model_parameters, (num_samples, 1))
-                # Vary the error analysis parameters
-                parameter_id = error_analysis_parameters[i][0]
-                parameter_index = parameter_id.get_index(fitting_parameters['indices'])
-                parameter_range = fitting_parameters['ranges'][parameter_index]
-                parameter_lower_bound = parameter_range[0]
-                parameter_upper_bound = parameter_range[1]
-                parameter_values = np.linspace(parameter_lower_bound, parameter_upper_bound, num=num_samples)
-                model_parameters[:,parameter_index] = parameter_values.reshape((1, num_samples))
-            else:
-                if num_parameters > 2:
-                    higher_dimensions = True
-                num_samples = np.power(self.samples_per_parameter, num_parameters)
-                # Make multiple copies of the optimized model parameters
-                model_parameters = np.tile(optimized_model_parameters, (num_samples, 1)) 
-                # Vary the error analysis parameters
-                parameter_set = []
-                for j in range(num_parameters):
-                    parameter_id = error_analysis_parameters[i][j]
-                    parameter_index = parameter_id.get_index(fitting_parameters['indices'])
-                    parameter_range = fitting_parameters['ranges'][parameter_index]
-                    parameter_lower_bound = parameter_range[0]
-                    parameter_upper_bound = parameter_range[1]
-                    parameter_values = np.linspace(parameter_lower_bound, parameter_upper_bound, num=self.samples_per_parameter)
-                    parameter_set.append(parameter_values)
-                parameter_grid = np.array(np.meshgrid(*parameter_set))
-                parameter_grid_points = parameter_grid.reshape(num_parameters,-1).T
-                for k in range(num_samples):
-                    for j in range(num_parameters):
-                        parameter_id = error_analysis_parameters[i][j]
-                        parameter_index = parameter_id.get_index(fitting_parameters['indices'])
-                        model_parameters[k,parameter_index] = parameter_grid_points[k][j]
-            # Check / correct the relative weights
-            for k in range(self.samples_per_parameter):
-                model_parameters[k,:] = check_relative_weights(model_parameters[k,:], fitting_parameters)
-            # Compute chi2 values
-            run_with_mpi = get_mpi()
-            if run_with_mpi:
-                if self.background_errors:
-                    with MPIPoolExecutor() as executor:
-                        result = zip(*executor.map(self.objective_function_with_background_record, model_parameters))
-                    chi2_values, background_parameters, modulation_depths = list(result)
-                else:
-                    with MPIPoolExecutor() as executor:
-                        result = executor.map(self.objective_function, model_parameters)
-                    chi2_values = list(result)
-            else:
-                pool = Pool()
-                if self.background_errors:
-                    chi2_values, background_parameters, modulation_depths = list(zip(*pool.map(self.objective_function_with_background_record, model_parameters)))
-                else:
-                    chi2_values = pool.map(self.objective_function, model_parameters)
-                pool.close()
-                pool.join()
-            # Store the results
-            error_surface = {}  
-            error_surface['parameters'] = []
-            for j in range(num_parameters):
-                parameter_id = error_analysis_parameters[i][j]
-                parameter_index = parameter_id.get_index(fitting_parameters['indices'])
-                error_surface['parameters'].append(model_parameters[:,parameter_index])
-            error_surface['chi2'] = np.array(chi2_values)
-            if self.background_errors:
-                error_surface['background_parameters'] = np.array(background_parameters)
-                error_surface['modulation_depths'] = np.array(modulation_depths)
-            error_surfaces.append(error_surface)
-        sys.stdout.write('\ndone!\n')
-        sys.stdout.flush()
-        return error_surfaces, higher_dimensions 
     
-    def compute_2d_error_surfaces(self, error_surfaces, higher_dimensions):
-        ''' Computes 2d error surfaces '''
-        error_surfaces_2d = []
-        if higher_dimensions:
-            sys.stdout.write('\nComputing 2d error surfaces from multi-dimensional error surfaces... ')
-            sys.stdout.flush()
-            for i in range(len(error_surfaces)):
-                parameters = error_surfaces[i]['parameters']
-                num_parameters = len(parameters)
-                joint_error_surfaces = []
-                if num_parameters > 2:
-                    for k in range(num_parameters - 1):
-                        for l in range(k+1, num_parameters):
-                            parameter1_values = parameters[k]
-                            parameter2_values = parameters[l]
-                            chi2_values = error_surfaces[i]['chi2']
-                            # Make parameter grids
-                            n_points = self.samples_per_parameter
-                            parameter1_min = np.amin(parameter1_values)
-                            parameter1_max = np.amax(parameter1_values)
-                            parameter1_step = (parameter1_max - parameter1_min) / (float(n_points)-1)
-                            parameter1_grid = np.linspace(parameter1_min, parameter1_max, n_points)
-                            parameter2_min = np.amin(parameter2_values)
-                            parameter2_max = np.amax(parameter2_values)
-                            parameter2_step = (parameter2_max - parameter2_min) / (float(n_points)-1)
-                            parameter2_grid = np.linspace(parameter2_min, parameter2_max, n_points)
-                            parameter1_2d_grid = np.array([[item] * n_points for item in parameter1_grid]).reshape(-1)
-                            parameter2_2d_grid = np.array(parameter2_grid.tolist() * n_points)
-                            # Find the minimum chi2 value at each grid point
-                            minimized_chi2_values = np.zeros(n_points*n_points)
-                            indices_nonempty_bins = []
-                            for j in range(n_points*n_points):
-                                indices_grid_points = np.where((np.abs(parameter1_values-parameter1_2d_grid[j]) <= 0.5*parameter1_step) & \
-                                                               (np.abs(parameter2_values-parameter2_2d_grid[j]) <= 0.5*parameter2_step))[0] 
-                                if len(indices_grid_points) > 0:
-                                    minimized_chi2_values[j] = np.amin(chi2_values[indices_grid_points])
-                                    indices_nonempty_bins.append(j)
-                            parameter1_2d_grid = parameter1_2d_grid[indices_nonempty_bins]
-                            parameter2_2d_grid = parameter2_2d_grid[indices_nonempty_bins]
-                            minimized_chi2_values = minimized_chi2_values[indices_nonempty_bins]
-                            # Store data
-                            error_surface_2d = {}
-                            error_surface_2d['parameters'] = [parameter1_2d_grid, parameter2_2d_grid]
-                            error_surface_2d['chi2'] = minimized_chi2_values
-                            joint_error_surfaces.append(error_surface_2d)
-                error_surfaces_2d.append(joint_error_surfaces)
-            sys.stdout.write('done!\n')
-            sys.stdout.flush()
-        return error_surfaces_2d 
-    
-    def compute_error_profiles(self, error_surfaces):
-        ''' Computes error curves '''
-        sys.stdout.write('\nComputing 1d error profiles from multi-dimensional error surfaces... ')
-        sys.stdout.flush()
-        error_profiles = []
-        for i in range(len(error_surfaces)):
-            parameters = error_surfaces[i]['parameters']
-            for j in range(len(parameters)):
-                parameter_values = parameters[j]
-                chi2_values = error_surfaces[i]['chi2']
-                # Make a parameter grid
-                parameter_min = np.amin(parameter_values)
-                parameter_max = np.amax(parameter_values)
-                n_points = self.samples_per_parameter
-                parameter_step = (parameter_max - parameter_min) / (float(n_points)-1)
-                parameter_grid = np.linspace(parameter_min, parameter_max, n_points)
-                # Find the minimum chi2 value at each grid point
-                minimized_chi2_values = np.zeros(n_points)
-                indices_nonempty_bins = []
-                for k in range(n_points):
-                    indices_grid_points = np.where(np.abs(parameter_values-parameter_grid[k]) <= 0.5*parameter_step)[0]
-                    if len(indices_grid_points) > 0:
-                        minimized_chi2_values[k] = np.amin(chi2_values[indices_grid_points])
-                        indices_nonempty_bins.append(k)
-                parameter_grid = parameter_grid[indices_nonempty_bins]
-                minimized_chi2_values = minimized_chi2_values[indices_nonempty_bins]
-                # Store data
-                error_profile = {}
-                error_profile['parameter'] = parameter_grid
-                error_profile['chi2'] = minimized_chi2_values
-                error_profiles.append(error_profile)
-        sys.stdout.write('done!\n')
-        sys.stdout.flush()
-        return error_profiles  
-    
-    def correct_error_profiles(self, error_profiles, chi2_minimum, optimized_model_parameters, error_analysis_parameters, fitting_parameters):
-        ''' '''
-        count = 0
-        for i in range(len(error_analysis_parameters)):
-            parameter_uncertainty_interval_bounds_per_error_surface = []
-            for j in range(len(error_analysis_parameters[i])):
-                # Find the chi-squared minimum
-                parameter_id = error_analysis_parameters[i][j]
-                parameter_index = parameter_id.get_index(fitting_parameters['indices'])
-                parameter_values = error_profiles[count]['parameter']
-                chi2_values = error_profiles[count]['chi2']
-                optimized_parameter_value = optimized_model_parameters[parameter_index]
-                idx_optimized_parameter = find_nearest(parameter_values, optimized_parameter_value)
-                if idx_optimized_parameter <= 1:
-                    current_chi2_minimum = np.mean(chi2_values[0:5])
-                elif idx_optimized_parameter == self.samples_per_parameter - 2:
-                    current_chi2_minimum = np.mean(chi2_values[-5:])
-                else:
-                    current_chi2_minimum = np.mean(chi2_values[idx_optimized_parameter-2:idx_optimized_parameter+2])
-                if current_chi2_minimum < chi2_minimum:
-                    error_profiles[count]['chi2'] = error_profiles[count]['chi2'] + (chi2_minimum - current_chi2_minimum)
-                count += 1  
-        return error_profiles
-    
-    def compute_model_parameter_errors(self, optimized_model_parameters, error_profiles, chi2_minimum, chi2_thresholds, 
-                                       error_analysis_parameters, fitting_parameters):
-        ''' Computes the errors of the optimized model parameters '''
-        sys.stdout.write('\nComputing the errors of the model parameters...\n')
-        sys.stdout.flush()
-        # Prepare the container for the model parameter errors
-        model_parameter_errors = np.empty((optimized_model_parameters.size, 2,))
-        model_parameter_errors[:] = np.nan
-        model_parameter_uncertainty_interval_bounds = []
-        # Compute the errors
-        count = 0
-        for i in range(len(error_analysis_parameters)):
-            parameter_uncertainty_interval_bounds_per_error_surface = []
-            for j in range(len(error_analysis_parameters[i])):
-                # Find the chi2 values below the threshold
-                parameter_id = error_analysis_parameters[i][j]
-                parameter_index = parameter_id.get_index(fitting_parameters['indices'])
-                optimized_parameter_value = optimized_model_parameters[parameter_index]
-                parameter_values = error_profiles[count]['parameter']
-                chi2_values = error_profiles[count]['chi2']
-                parameter_min, parameter_max = np.amin(parameter_values), np.amax(parameter_values) 
-                if len(parameter_values) < 100:
-                    parameter_grid = np.linspace(parameter_min, parameter_max, 100)
-                    parameter_step = (parameter_max - parameter_min) / 99
-                    interpolation = interpolate.interp1d(parameter_values, chi2_values, kind='cubic')
-                    chi2_grid = interpolation(parameter_grid)
-                else:
-                    parameter_grid = parameter_values
-                    parameter_step = (parameter_max - parameter_min) / (float(self.samples_per_parameter) - 1)
-                    chi2_grid = chi2_values
-                selected_indices = np.where(chi2_grid <= chi2_minimum + chi2_thresholds[i])[0]
-                if selected_indices.size == 0:
-                    parameter_uncertainty_interval_bounds_per_error_surface.append([])
-                else:
-                    selected_parameter_values = parameter_grid[selected_indices]
-                    parameter_uncertainty_interval, parameter_uncertainty_interval_bounds = \
-                        self.compute_model_parameter_uncertainty_interval(parameter_id, optimized_parameter_value, selected_parameter_values, parameter_step)  
-                    parameter_uncertainty_interval_bounds_per_error_surface.append(parameter_uncertainty_interval_bounds)
-                    parameter_error = self.compute_model_parameter_error(optimized_parameter_value, parameter_uncertainty_interval, parameter_min, parameter_max, parameter_step)                
-                    # Check whether the error was not calculated earlier and, if was, select the largest value
-                    if np.isnan(model_parameter_errors[parameter_index][0]) and np.isnan(model_parameter_errors[parameter_index][1]):
-                        model_parameter_errors[parameter_index][0], model_parameter_errors[parameter_index][1] = parameter_error[0], parameter_error[1]
-                    else:
-                        if parameter_error[0] < model_parameter_errors[parameter_index][0]:
-                            model_parameter_errors[parameter_index][0] = parameter_error[0]
-                        if parameter_error[1] > model_parameter_errors[parameter_index][1]:
-                            model_parameter_errors[parameter_index][1] = parameter_error[1]
-                count += 1
-                # # Find the chi2 values below the threshold
-                # chi2_values = error_profiles[count]['chi2']
-                # selected_indices = np.where(chi2_values <= chi2_minimum + chi2_thresholds[i])[0]
-                # if selected_indices.size == 0:
-                    # parameter_uncertainty_interval_bounds_per_error_surface.append([])
-                # else:
-                    # parameter_id = error_analysis_parameters[i][j]
-                    # parameter_index = parameter_id.get_index(fitting_parameters['indices'])
-                    # optimized_parameter_value = optimized_model_parameters[parameter_index]
-                    # parameter_values = error_profiles[count]['parameter']
-                    # selected_parameter_values = parameter_values[selected_indices]
-                    # parameter_min, parameter_max = np.amin(parameter_values), np.amax(parameter_values) 
-                    # parameter_step = (parameter_max - parameter_min) / (float(self.samples_per_parameter) - 1)
-                    # parameter_uncertainty_interval, parameter_uncertainty_interval_bounds = \
-                        # self.compute_model_parameter_uncertainty_interval(parameter_id, optimized_parameter_value, selected_parameter_values, parameter_step)  
-                    # parameter_uncertainty_interval_bounds_per_error_surface.append(parameter_uncertainty_interval_bounds)
-                    # parameter_error = self.compute_model_parameter_error(optimized_parameter_value, parameter_uncertainty_interval, parameter_min, parameter_max, parameter_step)                
-                    # # Check whether the error was not calculated earlier and, if was, select the largest value
-                    # if np.isnan(model_parameter_errors[parameter_index][0]) and np.isnan(model_parameter_errors[parameter_index][1]):
-                        # model_parameter_errors[parameter_index][0], model_parameter_errors[parameter_index][1] = parameter_error[0], parameter_error[1]
-                    # else:
-                        # if parameter_error[0] < model_parameter_errors[parameter_index][0]:
-                            # model_parameter_errors[parameter_index][0] = parameter_error[0]
-                        # if parameter_error[1] > model_parameter_errors[parameter_index][1]:
-                            # model_parameter_errors[parameter_index][1] = parameter_error[1]
-                # count += 1
-            model_parameter_uncertainty_interval_bounds.append(parameter_uncertainty_interval_bounds_per_error_surface)
-        sys.stdout.write('done!\n')
-        sys.stdout.flush()
-        return model_parameter_errors, model_parameter_uncertainty_interval_bounds         
-    
-    def compute_model_parameter_uncertainty_interval(self, parameter_id, optimized_parameter_value, parameter_values, parameter_step, delta=4):
-        ''' Computes the uncertainty interval of a model parameter '''
-        uncertainty_interval_bounds = []
-        if parameter_values.size <= 1:
-            sys.stdout.write('Warning: The uncertanty interval of parameter \'{0}\' is below the resolution of the error surface!\n'.format(parameter_id.name))
-            sys.stdout.write('Reduce the parameter range or increase the number of points in the error surface.\n')
-            sys.stdout.flush()
-            uncertainty_interval = np.array([np.nan, np.nan])
-        else: 
-            # Check whether there are several uncertainty regions separated from each other
-            parameter_scaled_values = parameter_values / parameter_step
-            uncertainty_interval_lower_bounds, uncertainty_interval_upper_bounds = [], []
-            uncertainty_interval_lower_bounds.append(parameter_scaled_values[0])
-            for i in range(1, parameter_scaled_values.size - 1):
-                if (parameter_scaled_values[i] - parameter_scaled_values[i-1] > delta):
-                    uncertainty_interval_lower_bounds.append(parameter_scaled_values[i])
-                    uncertainty_interval_upper_bounds.append(parameter_scaled_values[i-1]) 
-            uncertainty_interval_upper_bounds.append(parameter_scaled_values[-1])        
-            all_uncertainty_intervals = np.column_stack((uncertainty_interval_lower_bounds, uncertainty_interval_upper_bounds))   
-            all_uncertainty_intervals *= parameter_step
-            # Find the uncertainty interval that contains the optimized value of the model parameter
-            uncertainty_interval = None
-            for item in all_uncertainty_intervals:
-                if (item[0] - parameter_step <= optimized_parameter_value) and \
-                   (item[1] + parameter_step >= optimized_parameter_value):
-                    uncertainty_interval = item
-            if uncertainty_interval is None:
-                sys.stdout.write('Warning: The optimized value of parameter \'{0}\' is outside the uncertanty interval!\n'.format(parameter_id.name))
-                sys.stdout.flush()
-                uncertainty_interval = np.array([np.nan, np.nan])
-            else:
-                uncertainty_interval_bounds.append(uncertainty_interval[0])
-                uncertainty_interval_bounds.append(uncertainty_interval[1])  
-                if uncertainty_interval[1] - uncertainty_interval[0] < parameter_step:
-                    sys.stdout.write('Warning: The uncertanty interval of parameter \'{0}\' is below the resolution of the error surface!\n'.format(parameter_id.name))
-                    sys.stdout.write('Reduce the parameter range or increase the number of points in the error surface.\n')
-                    sys.stdout.flush()
-                    uncertainty_interval = np.array([np.nan, np.nan])                                           
-        uncertainty_interval_bounds = np.array(uncertainty_interval_bounds)
-        return uncertainty_interval, uncertainty_interval_bounds
-        
-    def compute_model_parameter_error(self, optimized_parameter_value, uncertainty_interval, 
-                                      parameter_min, parameter_max, parameter_step):
-        ''' Computes the error of a model parameter based on its uncertainty interval '''
-        if np.isnan(uncertainty_interval[0]) or np.isnan(uncertainty_interval[1]):
-            parameter_minus_error, parameter_plus_error = np.nan, np.nan   
+    def compute_error_surface(self, parameter_subspace, optimized_model_parameters, fitting_parameters):
+        """Compute an error surface."""
+        num_parameters = len(parameter_subspace)
+        # Generate model parameters set with different values for error analysis parameters
+        if num_parameters == 1:
+            num_samples = self.samples_per_parameter
+            parameter_sets = np.tile(optimized_model_parameters, (num_samples, 1))
+            parameter = parameter_subspace[0]
+            parameter_index = parameter.get_index()
+            parameter_range = parameter.get_range()
+            parameter_values = np.linspace(parameter_range[0], parameter_range[1], num = num_samples)
+            parameter_grid_points = np.expand_dims(parameter_values, -1)
+            parameter_sets[:,parameter_index] = parameter_grid_points[:,0]
         else:
-            if (uncertainty_interval[0] == parameter_min) and (uncertainty_interval[1] == parameter_max):
-                parameter_minus_error, parameter_plus_error = np.nan, np.nan          
+            num_samples = np.power(self.samples_per_parameter, num_parameters)
+            parameter_sets = np.tile(optimized_model_parameters, (num_samples, 1))
+            parameter_axes, parameter_indices = [], []
+            for j in range(num_parameters):
+                parameter = parameter_subspace[j]
+                parameter_index = parameter.get_index()
+                parameter_range = parameter.get_range()
+                parameter_values = np.linspace(parameter_range[0], parameter_range[1], num = self.samples_per_parameter)
+                parameter_axes.append(parameter_values)
+                parameter_indices.append(parameter_index)
+            parameter_grid_points = np.stack(np.meshgrid(*parameter_axes, indexing="ij"), -1).reshape(num_samples, num_parameters)
+            # parameter_grid = np.reshape(np.transpose(parameter_grid_points), [num_parameters] + [self.samples_per_parameter] * num_parameters)
+            # print(parameter_grid.shape)
+            # assert np.all(parameter_grid == np.array(np.meshgrid(*parameter_axes, indexing="ij")))
+            for j in range(num_parameters):
+                parameter_sets[:,parameter_indices[j]] = parameter_grid_points[:,j]
+        # Normalize relative weights
+        for k in range(num_samples):
+            parameter_sets[k,:] = normalize_weights(parameter_sets[k,:], fitting_parameters)
+        # Calculate chi-squared values
+        run_with_mpi = get_mpi()
+        if run_with_mpi:
+            with MPIPoolExecutor() as executor:
+                result = zip(*executor.map(self.scoring_function, parameter_sets))
+            chi2_values, simulated_data = list(result)
+        else:
+            pool = Pool()
+            chi2_values, simulated_data = list(zip(*pool.map(self.scoring_function, parameter_sets)))
+            pool.close()
+            pool.join()
+        chi2_values, simulated_data = np.array(chi2_values), np.array(simulated_data)
+        # chi2_grid = np.reshape(chi2_values, [self.samples_per_parameter] * num_parameters)
+        # Store error analysis
+        error_surface = {}
+        error_surface["par"] = parameter_subspace
+        error_surface["x"] = np.transpose(parameter_grid_points)
+        error_surface["y"] = chi2_values
+        return error_surface, simulated_data       
+
+    
+    def compute_2d_error_surfaces(self, error_surface):
+        """Project an n-dimentional error surface (n > 2) 
+        onto two-dimentional parameter subspaces."""
+        # Convert parameters' values and chi-squared values to
+        # a parameters' grid and a chi-squared grid, respectively.
+        parameters, parameter_grid_points, chi2_values = error_surface["par"], error_surface["x"], error_surface["y"]
+        num_parameters = len(parameters)
+        parameter_grid = np.reshape(parameter_grid_points, [num_parameters] + [self.samples_per_parameter] * num_parameters)
+        chi2_grid = np.reshape(chi2_values, [self.samples_per_parameter] * num_parameters)
+        # Compute two-dimensional error surfaces
+        error_surfaces_2d = []
+        for i in range(num_parameters - 1):
+            for j in range(i + 1, num_parameters):
+                # Transpose the parameters' grid such that the two variables of an error surface 
+                # will correspond to last two axes of the the parameters' grid.
+                new_index_order = []
+                for k in range(num_parameters):
+                    if k != i and k != j:
+                        new_index_order += [k]
+                new_index_order += [i, j]
+                print(new_index_order)
+                parameter1_grid = parameter_grid[i]
+                parameter2_grid = parameter_grid[j]
+                parameter1_grid = np.transpose(parameter1_grid, axes = new_index_order)
+                parameter2_grid = np.transpose(parameter2_grid, axes = new_index_order)
+                new_chi2_grid = np.transpose(chi2_grid, axes = new_index_order)
+                # Reduce the dimension of the parameters' and chi-squared grids to 2
+                for _ in range(num_parameters-2):
+                    parameter1_grid = parameter1_grid[0]
+                    parameter2_grid = parameter2_grid[0]
+                    new_chi2_grid = np.amin(new_chi2_grid, axis = 0)
+                new_parameter_grid = np.array([parameter1_grid, parameter2_grid])
+                new_parameter_grid_points = np.stack(new_parameter_grid, -1).reshape(self.samples_per_parameter**2, 2)
+                new_chi2_grid = np.expand_dims(new_chi2_grid, 0)
+                new_chi2_values = new_chi2_grid.reshape(-1, self.samples_per_parameter**2)
+                error_surface_2d = {}  
+                error_surface_2d["par"] = [parameters[i], parameters[j]]
+                error_surface_2d["x"] = np.transpose(new_parameter_grid_points)
+                error_surface_2d["y"] = new_chi2_values[0]
+                error_surfaces_2d.append(error_surface_2d)
+        return error_surfaces_2d
+    
+    
+    def compute_1d_error_surfaces(self, error_surface):
+        """Project an n-dimentional error surface (n > 2) 
+        onto one-dimentional parameter subspaces."""
+        # Convert parameters' values and chi-squared values to
+        # a parameters' grid and a chi-squared grid, respectively.
+        parameters, parameter_grid_points, chi2_values = error_surface["par"], error_surface["x"], error_surface["y"]
+        num_parameters = parameter_grid_points.shape[0]
+        parameter_grid = np.reshape(parameter_grid_points, [num_parameters] + [self.samples_per_parameter] * num_parameters)
+        chi2_grid = np.reshape(chi2_values, [self.samples_per_parameter] * num_parameters)
+        # Compute two-dimensional error surfaces
+        error_surfaces_1d = []
+        for i in range(num_parameters):
+            # Transpose the parameters' grid such that the variable of an error surface 
+            # will correspond the last axis of the the parameters' grid.
+            new_index_order = []
+            for k in range(num_parameters):
+                if k != i:
+                    new_index_order += [k]
+            new_index_order += [i]
+            parameter1_grid = parameter_grid[i]
+            parameter1_grid = np.transpose(parameter1_grid, axes = new_index_order)
+            new_chi2_grid = np.transpose(chi2_grid, axes = new_index_order)
+            # Reduce the dimension of the parameters' and chi-squared grids to 2
+            for _ in range(num_parameters-1):
+                parameter1_grid = parameter1_grid[0]
+                new_chi2_grid = np.amin(new_chi2_grid, axis = 0)
+            parameter1_grid_points = np.expand_dims(parameter1_grid, -1)
+            error_surface_1d = {}  
+            error_surface_1d["par"] = [parameters[i]]
+            error_surface_1d["x"] = np.transpose(parameter1_grid_points)
+            error_surface_1d["y"] = new_chi2_grid
+            error_surfaces_1d.append(error_surface_1d)
+        return error_surfaces_1d
+    
+    
+    def reset_minimum_chi2(self, error_surface_1d, chi2_minimum, optimized_model_parameters):
+        """Reset the minimum chi-squared value of an one-dimensional error surface."""
+        parameter, parameter_values, chi2_values = error_surface_1d["par"][0], error_surface_1d["x"][0], error_surface_1d["y"] 
+        optimized_value = optimized_model_parameters[parameter.get_index()]
+        index_optimized_value = find_nearest(parameter_values, optimized_value)
+        if index_optimized_value <= 1:
+            current_chi2_minimum = np.mean(chi2_values[0:5])
+        elif index_optimized_value == self.samples_per_parameter - 2:
+            current_chi2_minimum = np.mean(chi2_values[-5:])
+        else:
+            current_chi2_minimum = np.mean(chi2_values[index_optimized_value-2:index_optimized_value+2])
+        if current_chi2_minimum < chi2_minimum:
+            new_chi2_values = chi2_values - current_chi2_minimum + chi2_minimum
+            error_surface_1d["y"] = new_chi2_values
+        return error_surface_1d
+    
+    
+    def init_errors_model_parameters(self, optimized_model_parameters):
+        """Initialize background errors."""
+        return [[np.nan, np.nan]] * len(optimized_model_parameters)
+
+
+    def update_errors_model_parameters(self, parameter, error, errors_model_parameters):
+        """Update the errors of model parameters."""
+        if error != [np.nan, np.nan]:
+            parameter_index = parameter.get_index()
+            if errors_model_parameters[parameter_index] == [np.nan, np.nan]:
+                errors_model_parameters[parameter_index] = error
             else:
-                parameter_minus_error = uncertainty_interval[0] - optimized_parameter_value
-                parameter_plus_error = uncertainty_interval[1] - optimized_parameter_value
-        return np.array([parameter_minus_error, parameter_plus_error]) 
-
-    def compute_background_parameter_errors(self, optimized_background_parameters, error_surfaces, chi2_minimum, chi2_thresholds, error_analysis_parameters):
-        ''' Computes the errors of the optimized background parameters '''
-        sys.stdout.write('\nComputing the errors of the background parameters...\n')
-        sys.stdout.flush()
-        # Prepare the container for the background parameter errors
-        background_parameter_errors = []
-        for k in range(len(optimized_background_parameters)):
-            background_parameter_errors_single_experiment = {}
-            for key in optimized_background_parameters[k]:
-                background_parameter_errors_single_experiment[key] = np.array([np.nan, np.nan])
-            background_parameter_errors.append(background_parameter_errors_single_experiment)
-        # Compute the errors
-        for i in range(len(error_analysis_parameters)):
-            # Find the chi2 values below the threshold
-            chi2_values = error_surfaces[i]['chi2']
-            selected_indices = np.where(chi2_values <= chi2_minimum + chi2_thresholds[i])[0]
-            # Compute the errors of the background parameters
-            if selected_indices.size != 0:
-                for k in range(len(optimized_background_parameters)):
-                    for key in optimized_background_parameters[k]:
-                        # Optimized value of the background parameter
-                        optimized_background_parameter_value = optimized_background_parameters[k][key]
-                        # Background parameter values that correspond to the chi2 values below the chi2 threshold
-                        background_parameter_values = []
-                        n_samples = len(error_surfaces[i]['background_parameters'])
-                        for l in range(n_samples):
-                            background_parameter_values.append(error_surfaces[i]['background_parameters'][l][k][key])
-                        background_parameter_values = np.array(background_parameter_values)
-                        selected_background_parameter_values = background_parameter_values[selected_indices]
-                        # Calculate the errors of the background parameter
-                        background_parameter_uncertainty_interval_lower_bound = np.amin(selected_background_parameter_values)
-                        background_parameter_uncertainty_interval_upper_bound = np.amax(selected_background_parameter_values)
-                        background_parameter_minus_error = background_parameter_uncertainty_interval_lower_bound - optimized_background_parameter_value
-                        background_parameter_plus_error = background_parameter_uncertainty_interval_upper_bound - optimized_background_parameter_value
-                        background_parameter_error = np.array([background_parameter_minus_error, background_parameter_plus_error])
-                        # Check whether the error was not calculated earlier and, if was, select the largest value
-                        if np.isnan(background_parameter_errors[k][key][0]) and np.isnan(background_parameter_errors[k][key][1]):
-                            background_parameter_errors[k][key][0], background_parameter_errors[k][key][1] = background_parameter_error[0], background_parameter_error[1]
-                        else:
-                            if background_parameter_error[0] < background_parameter_errors[k][key][0]:
-                                background_parameter_errors[k][key][0] = background_parameter_error[0] 
-                            if background_parameter_error[1] > background_parameter_errors[k][key][1]:
-                                background_parameter_errors[k][key][1] = background_parameter_error[1]         
-        sys.stdout.write('done!\n')
-        sys.stdout.flush()
-        return background_parameter_errors
-
-    def compute_error_bars_for_background_time_traces(self, background_time_traces, error_surfaces, error_analysis_parameters, 
-                                                      chi2_minimum, chi2_thresholds, background, modulation_depths):
-        ''' Compute the error bars for the simulated backgrounds based on the error surfaces '''
-        sys.stdout.write('\nComputing the error bars for the simulated PDS backgrounds... ')
-        sys.stdout.flush()
-        # Prepare the container for the error bars
-        error_bars_background_time_traces = []
-        for k in range(len(background_time_traces)):
-            error_bars_background_time_trace = []
-            for m in range(background_time_traces[k]['t'].size):
-                error_bars_background_time_trace.append([0.0, 0.0])
-            error_bars_background_time_traces.append(np.array(error_bars_background_time_trace))
-        error_bars_background_time_traces = np.array(error_bars_background_time_traces)
-        # Compute the error bars
-        for i in range(len(error_analysis_parameters)):
-            chi2_values = error_surfaces[i]['chi2']
-            selected_indices = np.where(chi2_values <= chi2_minimum + chi2_thresholds[i])[0]
-            background_parameter_test_sets = error_surfaces[i]['background_parameters'][selected_indices] 
-            modulation_depths = error_surfaces[i]['modulation_depths'][selected_indices] 
-            for j in range(len(background_parameter_test_sets)):
-                for k in range(len(background_time_traces)):
-                    background_time_trace = background_time_traces[k]
-                    background_parameter_test_set = background_parameter_test_sets[j][k]
-                    modulation_depth = modulation_depths[j][k]
-                    test_time_trace = background.get_background(background_time_trace['t'], background_parameter_test_set, modulation_depth)
-                    residuals = test_time_trace - background_time_trace['s']
-                    for m in range(background_time_trace['t'].size):
-                        if residuals[m] < error_bars_background_time_traces[k][m][0]:
-                            error_bars_background_time_traces[k][m][0] = residuals[m]
-                        if residuals[m] > error_bars_background_time_traces[k][m][1]:
-                            error_bars_background_time_traces[k][m][1] = residuals[m]
-        sys.stdout.write('done!\n')
-        sys.stdout.flush()
-        return error_bars_background_time_traces
+                if error[0] < errors_model_parameters[parameter_index][0]:
+                    errors_model_parameters[parameter_index][0] = error[0]
+                if error[1] > errors_model_parameters[parameter_index][1]:
+                    errors_model_parameters[parameter_index][1] = error[1]
+        return errors_model_parameters    
+    
+    
+    def compute_model_parameter_error(
+        self, optimized_model_parameters, error_surface_1d, chi2_thresholds, chi2_minimum, delta = 4 
+        ):
+        """Compute the error of an optimized model parameter."""
+        parameter, parameter_values, chi2_values = error_surface_1d["par"][0], error_surface_1d["x"][0], error_surface_1d["y"] 
+        optimized_value = optimized_model_parameters[parameter.get_index()]
+        min_value, max_value = np.amin(parameter_values), np.amax(parameter_values)
+        step = parameter_values[1] - parameter_values[0]
+        if parameter_values.size < 100:
+            parameter_grid = np.linspace(min_value, max_value, 100)
+            interpolation = interpolate.interp1d(parameter_values, chi2_values, kind = "cubic")
+            chi2_grid = interpolation(parameter_grid)
+        else:
+            parameter_grid = parameter_values
+            chi2_grid = chi2_values
+        # Find the parameter values below the threshold
+        indices_uncertainty_interval = np.where(chi2_grid <= chi2_minimum + chi2_thresholds[0])[0]
+        error = [np.nan, np.nan]
+        if indices_uncertainty_interval.size <= 1:
+            sys.stdout.write(
+                "WARNING: The uncertanty interval of parameter \'{0}\' is below the resolution of the error surface!\n".format(parameter.name)
+                )
+            sys.stdout.write(" " * 9 + "Reduce the parameter range or increase the resolution of the error surface.\n")
+            sys.stdout.flush()
+        else:
+            # Check whether there are several uncertainty intervals separated from each other
+            parameter_values_uncertainty_interval = parameter_grid[indices_uncertainty_interval]
+            lower_bounds, upper_bounds = [], []
+            lower_bounds.append(parameter_values_uncertainty_interval[0])
+            for i in range(1, parameter_values_uncertainty_interval.size - 1):
+                if (parameter_values_uncertainty_interval[i] - parameter_values_uncertainty_interval[i-1]) > delta * step:
+                    lower_bounds.append(parameter_values_uncertainty_interval[i])
+                    upper_bounds.append(parameter_values_uncertainty_interval[i-1])        
+            upper_bounds.append(parameter_values_uncertainty_interval[-1])        
+            all_bounds = np.column_stack((lower_bounds, upper_bounds))   
+            # Find the uncertainty interval that contains the optimized value of the model parameter
+            bounds_uncertainty_interval = None
+            for bounds in all_bounds:
+                if (bounds[0] - step <= optimized_value) and (bounds[1] + step >= optimized_value):
+                    bounds_uncertainty_interval = bounds
+            if bounds_uncertainty_interval is None:
+                sys.stdout.write(
+                    "WARNING: The optimized value of parameter \"{0}\" is outside the calculated uncertanty interval!\n".format(parameter.name)
+                    )
+                sys.stdout.flush()
+            else:  
+                if bounds_uncertainty_interval[1] - bounds_uncertainty_interval[0] < step:
+                    sys.stdout.write(
+                        "WARNING: The uncertanty interval of parameter \'{0}\' is below the resolution of the error surface! ".format(parameter.name)
+                        )
+                    sys.stdout.write("Reduce the parameter range or increase the resolution of the error surface.\n")
+                    sys.stdout.flush()
+                elif (bounds_uncertainty_interval[0] <= min_value + step) and (bounds_uncertainty_interval[1] >= max_value - step):
+                    sys.stdout.write(
+                        "WARNING: The uncertanty interval of parameter \'{0}\' spans over its entire range!\n".format(parameter.name)
+                        )
+                    sys.stdout.flush()
+                else:
+                    error = [
+                        bounds_uncertainty_interval[0] - optimized_value, 
+                        bounds_uncertainty_interval[1] - optimized_value
+                        ]
+        return error
+ 
+    
+    def init_errors_background_parameters(self, optimized_background_parameters, background_model):
+        """Initialize background errors."""
+        errors_background_parameters = []
+        for i in range(len(optimized_background_parameters)):
+            errors_single_experiment = {}
+            for name in optimized_background_parameters[i]:
+                if background_model.parameters[name]["optimize"]:
+                    errors_single_experiment[name] = [0.0, 0.0]
+            errors_background_parameters.append(errors_single_experiment)
+        return errors_background_parameters
+    
+    
+    def update_errors_background_parameters(self, new_errors_background_parameters, current_errors_background_parameters):
+        """Update background errors."""
+        for i in range(len(current_errors_background_parameters)):
+            for name in current_errors_background_parameters[i]:
+                current_error = current_errors_background_parameters[i][name]
+                new_error = new_errors_background_parameters[i][name]
+                if new_error != [np.nan, np.nan]:
+                    if current_error == [np.nan, np.nan]:
+                        current_errors_background_parameters[i][name] = new_error
+                    else:
+                        if new_error[0] < current_error[0]:
+                            current_errors_background_parameters[i][name][0] = new_error[0]
+                        if new_error[1] > current_error[1]:
+                            current_errors_background_parameters[i][name][1] = new_error[1]
+        return current_errors_background_parameters
+    
+    
+    def init_errors_backgrounds(self, optimized_backgrounds):
+        """Initialize background errors."""
+        errors_backgrounds = []
+        for i in range(len(optimized_backgrounds)):
+            errors_background = np.zeros((2, optimized_backgrounds[i].size))
+            errors_backgrounds.append(errors_background)
+        return errors_backgrounds
+    
+    
+    def update_errors_backgrounds(self, new_errors_backgrounds, current_errors_backgrounds):
+        """Update background errors."""
+        for i in range(len(current_errors_backgrounds)):
+            indices_lower_bound = np.where(new_errors_backgrounds[i][0] < current_errors_backgrounds[i][0])[0]
+            if indices_lower_bound.size > 0:
+                current_errors_backgrounds[i][0][indices_lower_bound] = new_errors_backgrounds[i][0][indices_lower_bound]
+            indices_upper_bound = np.where(new_errors_backgrounds[i][1] > current_errors_backgrounds[i][1])[0]
+            if indices_upper_bound.size > 0:
+                current_errors_backgrounds[i][1][indices_upper_bound] = new_errors_backgrounds[i][1][indices_upper_bound]
+        return current_errors_backgrounds
+    
+    
+    def compute_background_errors(
+        self, optimized_background_parameters, optimized_backgrounds, error_surface, simulated_data, 
+        chi2_thresholds, chi2_minimum, background_model, experiments
+        ):
+        """Compute the errors of optimized background parameters and
+        the corresponing errors of optimized backgrounds."""
+        errors_background_parameters = self.init_errors_background_parameters(optimized_background_parameters, background_model)
+        errors_backgrounds = self.init_errors_backgrounds(optimized_backgrounds)
+        num_parameters = len(error_surface["x"])
+        chi2_values = error_surface["y"]
+        indices_uncertainty_interval = np.where(chi2_values <= chi2_minimum + chi2_thresholds[num_parameters - 1])[0]
+        if indices_uncertainty_interval.size > 0:
+            simulated_data_uncertainty_interval = simulated_data[indices_uncertainty_interval]
+            # Compute the errors of optimized background parameters
+            for i in range(len(optimized_background_parameters)):
+                for name in optimized_background_parameters[i]:
+                    if background_model.parameters[name]["optimize"]:
+                        optimized_value = optimized_background_parameters[i][name]
+                        parameter_values_uncertainty_interval = np.zeros(len(simulated_data_uncertainty_interval))
+                        for k in range(len(simulated_data_uncertainty_interval)):
+                            parameter_values_uncertainty_interval[k] = simulated_data_uncertainty_interval[k]["background_parameters"][i][name]
+                        bounds_uncertainty_interval = [
+                            np.amin(parameter_values_uncertainty_interval), 
+                            np.amax(parameter_values_uncertainty_interval)
+                            ]
+                        error = [
+                            bounds_uncertainty_interval[0] - optimized_value, 
+                            bounds_uncertainty_interval[1] - optimized_value
+                            ]
+                        errors_background_parameters[i][name] = error
+            # Compute the errors of optimized backgrounds
+            for k in range(len(simulated_data_uncertainty_interval)):
+                for i in range(len(experiments)):
+                    background_parameters = simulated_data_uncertainty_interval[k]["background_parameters"][i]
+                    modulation_depth = simulated_data_uncertainty_interval[k]["modulation_depth"][i]
+                    background = background_model.get_background(experiments[i].t, background_parameters, modulation_depth)
+                    residuals = background - optimized_backgrounds[i]
+                    indices_lower_bound = np.where(residuals < errors_backgrounds[i][0])[0]
+                    if indices_lower_bound.size > 0:
+                        errors_backgrounds[i][0][indices_lower_bound] = residuals[indices_lower_bound]
+                    indices_upper_bound = np.where(residuals > errors_backgrounds[i][1])[0]
+                    if indices_upper_bound.size > 0:
+                        errors_backgrounds[i][1][indices_upper_bound] = residuals[indices_upper_bound]
+        return errors_background_parameters, errors_backgrounds

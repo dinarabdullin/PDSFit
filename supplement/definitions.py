@@ -1,33 +1,46 @@
-''' Constants & definitions '''
-
+"""Constants and definitions."""
 import numpy as np
 
 const = {}
-const['Hz2MHz'] = 1e-6
-const['MHz2Hz'] = 1e6
-const['MHz2GHz'] = 1e-3
-const['GHz2MHz'] = 1e3
-const['mT2T'] = 1e-3
-const['T2mT'] = 1e3
-const['nm2m'] = 1e-9
-const['angstrom2nm'] = 0.1
-const['ns2us'] = 1e-3
-const['deg2rad'] = np.pi / 180.0
-const['rad2deg'] = 180.0 / np.pi
-const['plank_constant'] = 6.626070040e-34 # J*s
-const['bohr_magneton'] = 9.274009994e-24 # J/T
-const['boltzmann_constant'] = 1.38064852e-23 # J/K
-const['ge'] = 2.0023 # free electron g factor
-const['vacuum_permeability'] = 1e-7 # T*m/A
-const['Fez'] = 1e-3 * const['Hz2MHz'] * const['bohr_magneton'] / const['plank_constant'] # GHz/T
-const['Fdd'] = const['Hz2MHz'] * const['vacuum_permeability'] * const['bohr_magneton']**2 / (const['plank_constant'] * const['nm2m']**3) # MHz
-const['pp2std'] = 0.5 # peak-to-peak width -> standard deviation for the Gaussian
-const['std2fwhm'] = 2 * np.sqrt(2 * np.log(2)) # standard deviation -> peak-to-peak width for the Gaussian
-const['fwhm2std'] = 1 / const['std2fwhm'] # half width at half maximum -> standard deviation for the Gaussian 
+const["Hz2MHz"] = 1e-6
+const["MHz2Hz"] = 1e6
+const["MHz2GHz"] = 1e-3
+const["GHz2MHz"] = 1e3
+const["mT2T"] = 1e-3
+const["T2mT"] = 1e3
+const["nm2m"] = 1e-9
+const["angstrom2nm"] = 0.1
+const["ns2us"] = 1e-3
+const["deg2rad"] = np.pi / 180.0
+const["rad2deg"] = 180.0 / np.pi
+const["plank_constant"] = 6.626070040e-34 # J*s
+const["bohr_magneton"] = 9.274009994e-24 # J/T
+const["boltzmann_constant"] = 1.38064852e-23 # J/K
+const["ge"] = 2.0023 # free electron g factor
+const["vacuum_permeability"] = 1e-7 # T*m/A
+const["Fez"] = 1e-3 * const["Hz2MHz"] * const["bohr_magneton"] / const["plank_constant"] # GHz/T
+const["Fdd"] = const["Hz2MHz"] * const["vacuum_permeability"] * const["bohr_magneton"]**2 / (const["plank_constant"] * const["nm2m"]**3) # MHz
+const["pp2std"] = 0.5 # peak-to-peak width -> standard deviation for the Gaussian
+const["std2fwhm"] = 2 * np.sqrt(2 * np.log(2)) # standard deviation -> peak-to-peak width for the Gaussian
+const["fwhm2std"] = 1 / const["std2fwhm"] # half width at half maximum -> standard deviation for the Gaussian 
+
+# Default EPR parameters
+const["default_epr_parameters"] = {
+    "g":                                [2.0023, 2.0023, 2.0023],
+    "gStrain":                          [],
+    "n":                                [],
+    "I":                                [],
+    "Abund":                            [],
+    "A":                                [],
+    "AStrain":                          [],
+    "lwpp":                             0.0,
+    "T1":                               0.0,
+    "g_anisotropy_in_dipolar_coupling": False
+    }
 
 # The intensities of spectral components for 
 # nuclear spin I and the number of equivalent nuclei n
-const['relative_intensities'] = [  
+const["relative_intensities"] = [  
     #I = 1/2
     [[1, 1],                    #n = 1
     [1, 2, 1],                  #n = 2
@@ -52,134 +65,129 @@ const['relative_intensities'] = [
 ]
 
 # Supported distributions
-const['distribution_types'] = ['uniform', 'normal', 'vonmises']
+const["distribution_types"] = ["uniform", "normal", "vonmises"]
 
 # Supported Euler angles conventions
-const['euler_angles_conventions'] = ['ZXZ', 'XYX', 'YZY', 'ZYZ', 'XZX', 'YXY']
+const["euler_angles_conventions"] = ["ZXZ", "XYX", "YZY", "ZYZ", "XZX", "YXY"]
 
-# Names of the model parameters
-const['model_parameter_names'] = [
-    'r_mean',
-    'r_width', 
-    'xi_mean', 
-    'xi_width', 
-    'phi_mean', 
-    'phi_width',
-    'alpha_mean', 
-    'alpha_width', 
-    'beta_mean', 
-    'beta_width',
-    'gamma_mean', 
-    'gamma_width', 
-    'rel_prob',
-    'j_mean', 
-    'j_width'
+# The names of model parameters
+const["model_parameter_names"] = [
+    "r_mean",
+    "r_width", 
+    "xi_mean", 
+    "xi_width", 
+    "phi_mean", 
+    "phi_width",
+    "alpha_mean", 
+    "alpha_width", 
+    "beta_mean", 
+    "beta_width",
+    "gamma_mean", 
+    "gamma_width", 
+    "rel_prob",
+    "j_mean", 
+    "j_width"
     ]
 
-# Names of the paired model parameters
-const['paired_model_parameters'] = {
-    'r_mean'      : 'r_width',
-    'r_width'     : 'r_mean', 
-    'xi_mean'     : 'xi_width',
-    'xi_width'    : 'xi_mean', 
-    'phi_mean'    : 'phi_width', 
-    'phi_width'   : 'phi_mean',
-    'alpha_mean'  : 'alpha_width',
-    'alpha_width' : 'alpha_mean',
-    'beta_mean'   : 'beta_width',
-    'beta_width'  : 'beta_mean',
-    'gamma_mean'  : 'gamma_width',
-    'gamma_width' : 'gamma_mean',
-    'rel_prob'    : 'none',
-    'j_mean'      : 'j_width', 
-    'j_width'     : 'j_mean'
+# The names of paired geometric model parameters
+const["paired_model_parameters"] = {
+    "r_mean"      : "r_width",
+    "r_width"     : "r_mean", 
+    "xi_mean"     : "xi_width",
+    "xi_width"    : "xi_mean", 
+    "phi_mean"    : "phi_width", 
+    "phi_width"   : "phi_mean",
+    "alpha_mean"  : "alpha_width",
+    "alpha_width" : "alpha_mean",
+    "beta_mean"   : "beta_width",
+    "beta_width"  : "beta_mean",
+    "gamma_mean"  : "gamma_width",
+    "gamma_width" : "gamma_mean",
+    "rel_prob"    : "none",
+    "j_mean"      : "j_width", 
+    "j_width"     : "j_mean"
     }
  
-# Names of angle parameters
-const['mean_angle_parameter_names'] = [
-    'xi_mean',  
-    'phi_mean', 
-    'alpha_mean', 
-    'beta_mean',
-    'gamma_mean'
+# The names of angle parameters
+const["mean_angle_parameter_names"] = [
+    "xi_mean",  
+    "phi_mean", 
+    "alpha_mean", 
+    "beta_mean",
+    "gamma_mean"
     ]
 
-const['angle_parameter_names'] = [
-    'xi_mean', 
-    'xi_width', 
-    'phi_mean', 
-    'phi_width',
-    'alpha_mean', 
-    'alpha_width', 
-    'beta_mean', 
-    'beta_width',
-    'gamma_mean', 
-    'gamma_width'
+const["angle_parameter_names"] = [
+    "xi_mean", 
+    "xi_width", 
+    "phi_mean", 
+    "phi_width",
+    "alpha_mean", 
+    "alpha_width", 
+    "beta_mean", 
+    "beta_width",
+    "gamma_mean", 
+    "gamma_width"
     ]
 
-# Scale factors for the model parameters
-const['model_parameter_scales'] = {
-    'r_mean'      : const['angstrom2nm'],
-    'r_width'     : const['angstrom2nm'], 
-    'xi_mean'     : const['deg2rad'],
-    'xi_width'    : const['deg2rad'], 
-    'phi_mean'    : const['deg2rad'], 
-    'phi_width'   : const['deg2rad'],
-    'alpha_mean'  : const['deg2rad'],
-    'alpha_width' : const['deg2rad'],  
-    'beta_mean'   : const['deg2rad'], 
-    'beta_width'  : const['deg2rad'],
-    'gamma_mean'  : const['deg2rad'], 
-    'gamma_width' : const['deg2rad'],
-    'rel_prob'    : 1.0,
-    'j_mean'      : 1.0, 
-    'j_width'     : 1.0
+# Scale factors for geometric model parameters
+const["model_parameter_scales"] = {
+    "r_mean"      : const["angstrom2nm"],
+    "r_width"     : const["angstrom2nm"], 
+    "xi_mean"     : const["deg2rad"],
+    "xi_width"    : const["deg2rad"], 
+    "phi_mean"    : const["deg2rad"], 
+    "phi_width"   : const["deg2rad"],
+    "alpha_mean"  : const["deg2rad"],
+    "alpha_width" : const["deg2rad"],  
+    "beta_mean"   : const["deg2rad"], 
+    "beta_width"  : const["deg2rad"],
+    "gamma_mean"  : const["deg2rad"], 
+    "gamma_width" : const["deg2rad"],
+    "rel_prob"    : 1.0,
+    "j_mean"      : 1.0, 
+    "j_width"     : 1.0
     }
     
-# Long names of the model parameters    
-const['model_parameter_names_and_units'] = {
-	'r_mean'      : 'r mean (Angstrom)',
-	'r_width'     : 'r width (Angstrom)', 
-	'xi_mean'     : 'xi mean (deg)',
-	'xi_width'    : 'xi width (deg)', 
-	'phi_mean'    : 'phi mean (deg)', 
-	'phi_width'   : 'phi width (deg)',
-    'alpha_mean'  : 'alpha mean (deg)',
-    'alpha_width' : 'alpha width (deg)',
-    'beta_mean'   : 'beta mean (deg)',
-    'beta_width'  : 'beta width (deg)',
-    'gamma_mean'  : 'gamma mean (deg)',
-    'gamma_width' : 'gamma width (deg)',
-    'rel_prob'    : 'rel_prob',
-    'j_mean'      : 'J mean (MHz)', 
-    'j_width'     : 'J width (MHz)'
+# The long names of geometric model parameters    
+const["model_parameter_names_and_units"] = {
+	"r_mean"      : "r mean (Angstrom)",
+	"r_width"     : "r width (Angstrom)", 
+	"xi_mean"     : "xi mean (deg)",
+	"xi_width"    : "xi width (deg)", 
+	"phi_mean"    : "phi mean (deg)", 
+	"phi_width"   : "phi width (deg)",
+    "alpha_mean"  : "alpha mean (deg)",
+    "alpha_width" : "alpha width (deg)",
+    "beta_mean"   : "beta mean (deg)",
+    "beta_width"  : "beta width (deg)",
+    "gamma_mean"  : "gamma mean (deg)",
+    "gamma_width" : "gamma width (deg)",
+    "rel_prob"    : "rel. probability",
+    "j_mean"      : "J mean (MHz)", 
+    "j_width"     : "J width (MHz)"
     }
 
-# Axes' labels for the model parameters    
-const['model_parameter_labels'] = {
-	'r_mean'      : [r'$\langle\mathit{r}\rangle$', r'($\AA$)'],
-	'r_width'     : [r'$\mathit{\Delta r}$', r'($\AA$)'], 
-	'xi_mean'     : [r'$\langle\mathit{\xi}\rangle$', '$^\circ$'],
-	'xi_width'    : [r'$\mathit{\Delta\xi}$', '$^\circ$'], 
-	'phi_mean'    : [r'$\langle\mathit{\varphi}\rangle$', '$^\circ$'], 
-	'phi_width'   : [r'$\mathit{\Delta\varphi}$', '$^\circ$'],
-    'alpha_mean'  : [r'$\langle\mathit{\alpha}\rangle$', '$^\circ$'],
-    'alpha_width' : [r'$\mathit{\Delta\alpha}$', '$^\circ$'], 
-    'beta_mean'   : [r'$\langle\mathit{\beta}\rangle$', '$^\circ$'],
-    'beta_width'  : [r'$\mathit{\Delta\beta}$', '$^\circ$'], 
-    'gamma_mean'  : [r'$\langle\mathit{\gamma}\rangle$', '$^\circ$'],
-    'gamma_width' : [r'$\mathit{\Delta\gamma}$', '$^\circ$'],
-    'rel_prob'    : [r'$\mathit{w}$', ''],
-    'j_mean'      : [r'$\langle\mathit{J}\rangle$', '(MHz)'],
-    'j_width'     : [r'$\mathit{\Delta J}$', '(MHz)']
+# Labels for geometric model parameters    
+const["model_parameter_labels"] = {
+	"r_mean"      : [r"$\langle\mathit{r}\rangle$", r"($\AA$)"],
+	"r_width"     : [r"$\mathit{\Delta r}$", r"($\AA$)"], 
+	"xi_mean"     : [r"$\langle\mathit{\xi}\rangle$", "$^\circ$"],
+	"xi_width"    : [r"$\mathit{\Delta\xi}$", "$^\circ$"], 
+	"phi_mean"    : [r"$\langle\mathit{\varphi}\rangle$", "$^\circ$"], 
+	"phi_width"   : [r"$\mathit{\Delta\varphi}$", "$^\circ$"],
+    "alpha_mean"  : [r"$\langle\mathit{\alpha}\rangle$", "$^\circ$"],
+    "alpha_width" : [r"$\mathit{\Delta\alpha}$", "$^\circ$"], 
+    "beta_mean"   : [r"$\langle\mathit{\beta}\rangle$", "$^\circ$"],
+    "beta_width"  : [r"$\mathit{\Delta\beta}$", "$^\circ$"], 
+    "gamma_mean"  : [r"$\langle\mathit{\gamma}\rangle$", "$^\circ$"],
+    "gamma_width" : [r"$\mathit{\Delta\gamma}$", "$^\circ$"],
+    "rel_prob"    : [r"$\mathit{w}$", ""],
+    "j_mean"      : [r"$\langle\mathit{J}\rangle$", "(MHz)"],
+    "j_width"     : [r"$\mathit{\Delta J}$", "(MHz)"]
     }
-    
-# Long names of the goodness-of-fit parameters 
-const['goodness_of_fit_names'] = {
-    'chi2':         'Chi-squared',
-    }
-    
-# Axes' labels of the goodness-of-fit parameters  
-const['goodness_of_fit_axes_labels'] = {
-    'chi2':          r'$\mathit{\chi^2}$',
+     
+# Labels for goodness-of-fit parameters
+const["goodness_of_fit_labels"] = {
+    "chi2": r"$\mathit{\chi^2}$",
     } 

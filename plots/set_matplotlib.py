@@ -1,4 +1,3 @@
-''' Set the backend and rcParams of matplotlib '''
 import os
 import matplotlib
 if os.name == 'posix' and "DISPLAY" not in os.environ:
@@ -12,7 +11,7 @@ rcParams['font.sans-serif'] = 'Arial'
 
 
 def best_rcparams(n):
-    ''' Sets rcParams in dependence of the subplots number '''
+    """Set matplotlib.rcParams in dependence of the subplots number."""
     if   n == 1:
         rcParams['lines.linewidth'] = 2
         rcParams['xtick.major.size'] = 8

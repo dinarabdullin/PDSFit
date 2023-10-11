@@ -1,32 +1,42 @@
+import sys
 import numpy as np
-from input.load_experimental_signal import load_experimental_signal
+from preprocessing.preprocessing import find_optimal_phase, set_phase, \
+    find_zero_point, set_zero_point, compute_noise_level
 from supplement.definitions import const
-from mathematics.find_optimal_phase import find_optimal_phase, set_phase
-from mathematics.find_zero_point import find_zero_point, set_zero_point
-from mathematics.compute_noise_level import compute_noise_level
 
 
 class Experiment:
-    ''' Experiment '''
+    """PDS experiment."""
     
     def __init__(self, name):
         self.name = name
-        self.t = []
-        self.s = []
-        self.s_im = []
-        self.phase = 0.0
-        self.zero_point = 0.0
-        self.noise_std = 0.0
-        
-    def signal_from_file(self, filepath, phase=np.nan, zero_point=np.nan, noise_std=np.nan, column_numbers=[]):
-        ''' Loads a PDS time trace from a file'''
-        # Load the PDS time trace
-        t, s_re, s_im = load_experimental_signal(filepath, column_numbers)
+    
+    
+    def load_signal_from_file(self, filepath, column_numbers = [0, 1, 2]):
+        """Load a PDS time trace from a file."""
+        t, s_re, s_im = [], [], []
+        file = open(filepath, "r")
+        for line in file:
+            data_row = line.split()
+            t.append(float(data_row[column_numbers[0]]))
+            s_re.append(float(data_row[column_numbers[1]]))
+            s_im.append(float(data_row[column_numbers[2]]))
+        file.close()
+        self.t = np.array(t)
+        self.s = np.array(s_re)
+        self.s_im = np.array(s_im)
+    
+    
+    def perform_preprocessing(
+        self, phase = np.nan, zero_point = np.nan, noise_std = np.nan
+        ):
+        """Preprocess a PDS time trace."""
+        t, s_re, s_im = self.t, self.s, self.s_im
         # Set the first time point to 0
         t = t - np.amin(t)
         # Set the units of the time axis to microseconds
-        t = const['ns2us'] * t
-        # Find the optimal phase and normalize to 1
+        t = const["ns2us"] * t
+        # Find the optimal phase
         if not np.isnan(phase):
             ph = phase
         else:
@@ -38,7 +48,7 @@ class Experiment:
         s_im = s_im / s_re_max
         # Find / set the zero point and re-normalize to 1
         if not np.isnan(zero_point):
-            t_zp = const['ns2us'] * zero_point
+            t_zp = const["ns2us"] * zero_point
         else:
             t_zp = find_zero_point(t, s_re)
         t, s_re, s_im = set_zero_point(t, s_re, s_im, t_zp)
@@ -47,8 +57,13 @@ class Experiment:
             noise_level = noise_std
         else:
             noise_level = compute_noise_level(s_im)
-        if noise_level < 1e-10:
-            noise_level = 0
+        if noise_level == 0:
+            raise ValueError(
+                "Error: The zero level of noise is encountered!\n\
+                Specify the nonzero quadrature component of the PDS time trace or\n\
+                provide the noise level explicitly via noise_std."
+                )
+            sys.exit(1)
         # Store the data
         self.t = t
         self.s = s_re
@@ -56,7 +71,3 @@ class Experiment:
         self.phase = ph
         self.zero_point = t_zp
         self.noise_std = noise_level
-    
-    def set_noise_std(self, noise_std):
-        ''' Sets the standard deviation of noise in the PDS time trace '''
-        self.noise_std = noise_std
