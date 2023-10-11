@@ -13,7 +13,7 @@ PDSFit is a software that allows the extraction of inter-spin distance distribut
 
 
 ## Manual
-The manual of PDS is available [here](https://github.com/dinarabdullin/PDSFit/blob/master/PDSFit_Manual.pdf)
+The manual of PDS is available [here](https://github.com/dinarabdullin/PDSFit/blob/master/PDSFit_Manual.pdf).
 
 
 ## Copyright
