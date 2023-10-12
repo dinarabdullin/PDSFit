@@ -418,50 +418,59 @@ class MonteCarloSimulator(Simulator):
         else:
             for i in range(num_modes - 1):
                 num_samples_per_mode[i] = int(self.num_samples * rel_prob[i])
-            num_samples_per_mode[num_modes - 1] = self.num_samples - sum(num_samples_per_mode)
+            num_samples_per_mode[num_modes - 1] = self.num_samples - np.sum(num_samples_per_mode[:-1])
         return num_samples_per_mode
     
     
     def set_r_values(self, r_mean, r_width, num_samples_per_mode):
         """Generate random samples of r from the distribution P(r)."""
         r_values = []
-        valid_indices = []
-        valid_num_samples_per_mode = np.zeros(num_samples_per_mode.size, dtype=int)
+        idx_valid_samples = []
+        num_valid_samples_per_mode = np.zeros(num_samples_per_mode.size, dtype=int)
         for i in range(len(num_samples_per_mode)):
             r_values_single_mode = random_samples_from_distribution(
                 self.distribution_types["r"], r_mean[i], r_width[i], num_samples_per_mode[i], sine_weighted = False
             )
             # Check that all r values are above the lower limit
             # If not, record the number and indices of valid r samples
-            valid_indices_single_mode = np.where(r_values_single_mode >= self.minimum_r)[0]
-            valid_indices.append(valid_indices_single_mode)
-            valid_num_samples_per_mode[i] = valid_indices_single_mode.size
-            r_values.append(r_values_single_mode[valid_indices_single_mode])
+            idx_valid_samples_single_mode = np.where(r_values_single_mode >= self.minimum_r)[0]
+            idx_valid_samples.append(idx_valid_samples_single_mode)
+            num_valid_samples_per_mode[i] = idx_valid_samples_single_mode.size
+            if idx_valid_samples_single_mode.size == 0:
+                r_values.append(np.array([]))
+            else:
+                r_values.append(r_values_single_mode[idx_valid_samples_single_mode])
         # If needed, replace invalid samples with new samples.
-        if np.all(valid_num_samples_per_mode == num_samples_per_mode):
+        if np.all(num_valid_samples_per_mode == num_samples_per_mode):
             r_values = np.concatenate(r_values, axis = None)
             return r_values, num_samples_per_mode
         else:
             # Update the relative weigths.
-            valid_num_samples = np.sum(valid_num_samples_per_mode)
-            new_rel_prob = valid_num_samples_per_mode.astype("float") / float(valid_num_samples)
-            new_num_samples_per_mode = self.samples_per_mode(len(r_mean), new_rel_prob)
+            valid_num_samples = np.sum(num_valid_samples_per_mode)
+            new_rel_prob = num_valid_samples_per_mode.astype("float") / float(valid_num_samples)
+            new_num_samples_per_mode = self.samples_per_mode(len(r_mean), new_rel_prob[:-1])
             # Add missing samples.
             new_r_values = []
             for i in range(len(new_num_samples_per_mode)):
-                num_missing_samples = new_num_samples_per_mode[i] - valid_num_samples_per_mode[i]
-                if num_missing_samples <= 0:
-                    new_r_values.append(r_values[:new_num_samples_per_mode[i]])
+                if new_num_samples_per_mode[i] == 0:
+                    r_values_single_mode = np.array([])
                 else:
-                    r_values_single_mode = r_values[i]
-                    for _ in range(num_missing_samples):
-                        r_value = 0.0
-                        while r_value < self.minimum_r:
-                            r_value = random_samples_from_distribution(
-                                self.distribution_types["r"], r_mean[i], r_width[i], 1, sine_weighted = False
-                                )
-                        r_values_single_mode = np.append(r_values_single_mode, r_value)
-                    new_r_values.append(r_values_single_mode)
+                    num_missing_samples = new_num_samples_per_mode[i] - num_valid_samples_per_mode[i]
+                    if num_missing_samples <= 0:
+                        r_values_single_mode = r_values[i][:new_num_samples_per_mode[i]]
+                    else:
+                        r_values_single_mode = np.zeros(new_num_samples_per_mode[i])
+                        r_values_single_mode[:num_valid_samples_per_mode[i]] = r_values[i]
+                        c = num_valid_samples_per_mode[i]
+                        for _ in range(num_missing_samples):
+                            r_value = 0.0
+                            while r_value < self.minimum_r:
+                                r_value = random_samples_from_distribution(
+                                    self.distribution_types["r"], r_mean[i], r_width[i], 1, sine_weighted = False
+                                    )
+                            r_values_single_mode[c] = r_value
+                            c += 1
+                new_r_values.append(r_values_single_mode)
             new_r_values = np.concatenate(new_r_values, axis = None)
             return new_r_values, new_num_samples_per_mode
 
