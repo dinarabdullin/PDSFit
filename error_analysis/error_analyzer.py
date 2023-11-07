@@ -114,6 +114,7 @@ class ErrorAnalyzer():
                 )
             errors_background_parameters = self.update_errors_background_parameters(new_errors_background_parameters, errors_background_parameters)
             errors_backgrounds = self.update_errors_backgrounds(new_errors_backgrounds, errors_backgrounds)           
+        errors_distributions = self.compute_errors_distributions(optimized_model_parameters, errors_model_parameters, fitting_parameters)
         return {
             "error_surfaces": all_error_surfaces,
             "error_surfaces_2d": all_error_surfaces_2d,
@@ -398,9 +399,9 @@ class ErrorAnalyzer():
         error = [np.nan, np.nan]
         if indices_uncertainty_interval.size <= 1:
             sys.stdout.write(
-                "WARNING: The uncertanty interval of parameter \'{0}\' is below the resolution of the error surface!\n".format(parameter.name)
+                "WARNING: The uncertanty interval of parameter \'{0}\' is below the resolution of the error surface! ".format(parameter.name)
                 )
-            sys.stdout.write(" " * 9 + "Reduce the parameter range or increase the resolution of the error surface.\n")
+            sys.stdout.write("Reduce the parameter range or increase the resolution of the error surface.\n")
             sys.stdout.flush()
         else:
             # Check whether there are several uncertainty intervals separated from each other
@@ -537,3 +538,9 @@ class ErrorAnalyzer():
                     if indices_upper_bound.size > 0:
                         errors_backgrounds[i][1][indices_upper_bound] = residuals[indices_upper_bound]
         return errors_background_parameters, errors_backgrounds
+    
+    
+    def compute_errors_distributions(self, optimized_model_parameters, errors_model_parameters, fitting_parameters):
+        """Compute error bars for the distributions of model parameters."""
+        
+        

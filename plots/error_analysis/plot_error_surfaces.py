@@ -122,15 +122,17 @@ def plot_error_surface_1d(
                 xv_opt[i], yv_opt[i], color = "black", marker = "o", markerfacecolor = "white", clip_on = False
                 )
     axes.ticklabel_format(axis = "y", style = "sci", scilimits = (0,0), useMathText = True) 
-    #
+    # Depict an uncertainty interval as a gray shade
     if show_uncertainty_interval:
         indices_uncertainty_interval = np.where(yv <= y_min + y_thr)[0]
-        xv_ui = xv[indices_uncertainty_interval]
-        lb_ui, ub_ui = np.amin(xv_ui), np.amax(xv_ui)
-        axes.axvspan(lb_ui, ub_ui, facecolor="lightgray", alpha=0.3, label="confidence\n interval")
-        axes.plot(
-            xv, (y_min + y_thr) * np.ones(xv.size), 'k--', label = r'$\mathit{\chi^{2}_{min}}$ + $\mathit{\Delta\chi^{2}}$'
-            )
+        if len(indices_uncertainty_interval) >= 2:
+            xv_ui = xv[indices_uncertainty_interval]
+            lb_ui, ub_ui = np.amin(xv_ui), np.amax(xv_ui)
+            if ub_ui > lb_ui:
+                axes.axvspan(lb_ui, ub_ui, facecolor="lightgray", alpha=0.3, label="confidence\n interval")
+                axes.plot(
+                    xv, (y_min + y_thr) * np.ones(xv.size), 'k--', label = r'$\mathit{\chi^{2}_{min}}$ + $\mathit{\Delta\chi^{2}}$'
+                    )
     # Make axes square
     xl, xh = axes.get_xlim()
     yl, yh = axes.get_ylim()
