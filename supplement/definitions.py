@@ -180,6 +180,26 @@ const["model_parameter_labels"] = {
     }
 
 
+# Scale factors for the model parameters
+const['model_parameter_scales'] = {
+    'r_mean'      : const['angstrom2nm'],
+    'r_width'     : const['angstrom2nm'], 
+    'xi_mean'     : const['deg2rad'],
+    'xi_width'    : const['deg2rad'], 
+    'phi_mean'    : const['deg2rad'], 
+    'phi_width'   : const['deg2rad'],
+    'alpha_mean'  : const['deg2rad'],
+    'alpha_width' : const['deg2rad'],  
+    'beta_mean'   : const['deg2rad'], 
+    'beta_width'  : const['deg2rad'],
+    'gamma_mean'  : const['deg2rad'], 
+    'gamma_width' : const['deg2rad'],
+    'rel_prob'    : 1.0,
+    'j_mean'      : 1.0, 
+    'j_width'     : 1.0
+    }
+
+
 # Distributions of geometric model parameters
 const["names_distribution_parameters"] = {
     "r"     : ["r_mean", "r_width", "rel_prob"],
