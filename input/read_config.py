@@ -229,11 +229,15 @@ def read_error_analysis_parameters(config, fitting_parameters):
                     sys.exit(1)
                 if len(list_ranges) == 0:
                     opt_range = fitting_parameter.get_range()
-                    if len(opt_range) == 0:
+                    if opt_range is None:
                         raise ValueError("No range was provided for error analysis parameter \'{0}\'!".format(parameter_name))
                         sys.exit(1)
                     else:
-                        error_analysis_parameter.set_range(opt_range)
+                        if len(opt_range) == 0:
+                            raise ValueError("No range was provided for error analysis parameter \'{0}\'!".format(parameter_name))
+                            sys.exit(1)
+                        else:
+                            error_analysis_parameter.set_range(opt_range)
                 else:
                     error_analysis_parameter.set_range([const["model_parameter_scales"][parameter_name] * v for v in list_ranges[i]])
                 subset_parameters.append(error_analysis_parameter)      
