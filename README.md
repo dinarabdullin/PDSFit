@@ -19,5 +19,5 @@ The manual of PDS is available [here](https://github.com/dinarabdullin/PDSFit/bl
 ## Copyright
 This program can be distributed under the GNU General Public License.
 
-If you use this code / program, please cite:
-[the reference will hopefully appear soon]
+If you use this program, please cite:
+Dinar Abdullin, Pablo Rauh Corro, Tobias Hett, Olav Schiemann, Magn. Reson. Chem. 2024, 62, 37-60.
