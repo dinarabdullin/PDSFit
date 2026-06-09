@@ -153,8 +153,12 @@ class Spin:
     def quantization_axis(self, field_orientations, g_eff = []):
         """Compute quantization axes for given magnetic field orientations."""
         num_field_orientations = field_orientations.shape[0]
-        if g_eff == []:
-            g_eff = self.g_effective(field_orientations)
+        if isinstance(g_eff, list):
+            if not g_eff:        
+                g_eff = self.g_effective(field_orientations)
+        else:
+            if g_eff.size == 0:
+                g_eff = self.g_effective(field_orientations)
         g_eff = np.expand_dims(g_eff, -1)
         g_principal = np.tile(self.g, (num_field_orientations, 1)) 
         quantization_axes = (g_principal / g_eff)**2 * field_orientations

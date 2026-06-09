@@ -468,6 +468,7 @@ class MonteCarloSimulator(Simulator):
                                 r_value = random_samples_from_distribution(
                                     self.distribution_types["r"], r_mean[i], r_width[i], 1, sine_weighted = False
                                     )
+                                r_value = np.asarray(r_value).squeeze()
                             r_values_single_mode[c] = r_value
                             c += 1
                 new_r_values.append(r_values_single_mode)

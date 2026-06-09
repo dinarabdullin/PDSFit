@@ -13,7 +13,7 @@ class Chromosome:
     
     
     def random_gene(self, lower_bound, upper_bound):
-        gene = lower_bound + (upper_bound - lower_bound) * np.random.rand(1)
+        gene = lower_bound + (upper_bound - lower_bound) * np.random.rand()
         return gene
     
     

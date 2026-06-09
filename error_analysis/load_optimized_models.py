@@ -32,7 +32,10 @@ def load_optimized_model(filepath, model_only = False):
             raise ValueError("Invalid parameter name \'{0}\'!".format(name))
             sys.exit(1)
         component = int(data[1]) - 1
-        optimized = bool(data[2])
+        if data[2] == "yes":
+            optimized = True
+        else:
+            optimized = False
         value = float(data[3]) * const["model_parameter_scales"][name]
         minus_error, plus_error = data[4], data[5]
         if minus_error == "nan" or plus_error == "nan":

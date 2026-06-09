@@ -146,8 +146,11 @@ def plot_error_surface_2d(
     """Plot a two-dimensional error surface."""
     parameters, xv, yv = error_surface["par"], error_surface["x"], error_surface["y"]
     parameter1, parameter2 = parameters[0], parameters[1]
-    xg = np.reshape(xv, [2] + [int(np.sqrt(yv.shape))] * 2)
-    yg = np.reshape(yv, [int(np.sqrt(yv.shape))] * 2)
+    n = int(np.sqrt(yv.size))
+    xg = np.reshape(xv, (2, n, n))
+    yg = np.reshape(yv, (n, n))
+    # xg = np.reshape(xv, [2] + [int(np.sqrt(yv.shape))] * 2)
+    # yg = np.reshape(yv, [int(np.sqrt(yv.shape))] * 2)
     xg[0] = xg[0] / const["model_parameter_scales"][parameter1.name]
     xg[1] = xg[1] / const["model_parameter_scales"][parameter2.name]
     x1_min, x1_max = parameter1.get_range()[0], parameter1.get_range()[1]

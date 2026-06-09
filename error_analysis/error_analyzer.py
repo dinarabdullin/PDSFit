@@ -39,6 +39,7 @@ class ErrorAnalyzer():
     
     
     def load_fitting_parameters(self):
+        """Load fitting parameters."""
         if self.filepath_fitting_parameters:
             return load_fitting_parameters(self.filepath_fitting_parameters)
         else:
@@ -113,8 +114,7 @@ class ErrorAnalyzer():
                 error_surface, simulated_data_error_surface, chi2_thresholds, chi2_minimum, background_model, experiments
                 )
             errors_background_parameters = self.update_errors_background_parameters(new_errors_background_parameters, errors_background_parameters)
-            errors_backgrounds = self.update_errors_backgrounds(new_errors_backgrounds, errors_backgrounds)           
-        errors_distributions = self.compute_errors_distributions(optimized_model_parameters, errors_model_parameters, fitting_parameters)
+            errors_backgrounds = self.update_errors_backgrounds(new_errors_backgrounds, errors_backgrounds)
         return {
             "error_surfaces": all_error_surfaces,
             "error_surfaces_2d": all_error_surfaces_2d,
@@ -285,7 +285,6 @@ class ErrorAnalyzer():
                     if k != i and k != j:
                         new_index_order += [k]
                 new_index_order += [i, j]
-                print(new_index_order)
                 parameter1_grid = parameter_grid[i]
                 parameter2_grid = parameter_grid[j]
                 parameter1_grid = np.transpose(parameter1_grid, axes = new_index_order)
@@ -380,7 +379,7 @@ class ErrorAnalyzer():
     
     
     def compute_model_parameter_error(
-        self, optimized_model_parameters, error_surface_1d, chi2_thresholds, chi2_minimum, delta = 4 
+        self, optimized_model_parameters, error_surface_1d, chi2_thresholds, chi2_minimum
         ):
         """Compute the error of an optimized model parameter."""
         parameter, parameter_values, chi2_values = error_surface_1d["par"][0], error_surface_1d["x"][0], error_surface_1d["y"] 
@@ -406,41 +405,26 @@ class ErrorAnalyzer():
         else:
             # Check whether there are several uncertainty intervals separated from each other
             parameter_values_uncertainty_interval = parameter_grid[indices_uncertainty_interval]
-            lower_bounds, upper_bounds = [], []
-            lower_bounds.append(parameter_values_uncertainty_interval[0])
-            for i in range(1, parameter_values_uncertainty_interval.size - 1):
-                if (parameter_values_uncertainty_interval[i] - parameter_values_uncertainty_interval[i-1]) > delta * step:
-                    lower_bounds.append(parameter_values_uncertainty_interval[i])
-                    upper_bounds.append(parameter_values_uncertainty_interval[i-1])        
-            upper_bounds.append(parameter_values_uncertainty_interval[-1])        
-            all_bounds = np.column_stack((lower_bounds, upper_bounds))   
-            # Find the uncertainty interval that contains the optimized value of the model parameter
-            bounds_uncertainty_interval = None
-            for bounds in all_bounds:
-                if (bounds[0] - step <= optimized_value) and (bounds[1] + step >= optimized_value):
-                    bounds_uncertainty_interval = bounds
-            if bounds_uncertainty_interval is None:
+            lower_bound, upper_bound = parameter_values_uncertainty_interval[0], parameter_values_uncertainty_interval[-1]
+            if optimized_value < lower_bound - step or optimized_value > upper_bound + step:
                 sys.stdout.write(
                     "WARNING: The optimized value of parameter \"{0}\" is outside the calculated uncertanty interval!\n".format(parameter.name)
                     )
                 sys.stdout.flush()
-            else:  
-                if bounds_uncertainty_interval[1] - bounds_uncertainty_interval[0] < step:
+            else:
+                if upper_bound - lower_bound < step:
                     sys.stdout.write(
                         "WARNING: The uncertanty interval of parameter \'{0}\' is below the resolution of the error surface! ".format(parameter.name)
                         )
                     sys.stdout.write("Reduce the parameter range or increase the resolution of the error surface.\n")
                     sys.stdout.flush()
-                elif (bounds_uncertainty_interval[0] <= min_value + step) and (bounds_uncertainty_interval[1] >= max_value - step):
+                elif lower_bound <= min_value + step and upper_bound >= max_value - step:
                     sys.stdout.write(
                         "WARNING: The uncertanty interval of parameter \'{0}\' spans over its entire range!\n".format(parameter.name)
                         )
                     sys.stdout.flush()
                 else:
-                    error = [
-                        bounds_uncertainty_interval[0] - optimized_value, 
-                        bounds_uncertainty_interval[1] - optimized_value
-                        ]
+                    error = [lower_bound - optimized_value, upper_bound - optimized_value]
         return error
  
     
@@ -537,10 +521,4 @@ class ErrorAnalyzer():
                     indices_upper_bound = np.where(residuals > errors_backgrounds[i][1])[0]
                     if indices_upper_bound.size > 0:
                         errors_backgrounds[i][1][indices_upper_bound] = residuals[indices_upper_bound]
-        return errors_background_parameters, errors_backgrounds
-    
-    
-    def compute_errors_distributions(self, optimized_model_parameters, errors_model_parameters, fitting_parameters):
-        """Compute error bars for the distributions of model parameters."""
-        
-        
+        return errors_background_parameters, errors_backgrounds       

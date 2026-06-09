@@ -98,9 +98,7 @@ def compute_equivalent_models(
                 new_rho_mean = spherical_coordinates[0][0] 
                 new_xi_mean = spherical_coordinates[1][0] 
                 new_phi_mean = spherical_coordinates[2][0]
-                euler_angles = new_spin_frame_rotation.inv().as_euler(
-                    simulator.euler_angles_convention, degrees = False
-                    )
+                euler_angles = new_spin_frame_rotation.inv().as_euler(simulator.euler_angles_convention)
                 new_alpha_mean = euler_angles[0][0]
                 new_beta_mean = euler_angles[0][1]
                 new_gamma_mean = euler_angles[0][2]
@@ -182,23 +180,64 @@ def compute_model_after_spin_exchange(model_parameters, fitting_parameters, simu
         # Set the initial orientations of spins
         r_orientations = spherical2cartesian(np.ones(simulator.num_samples), xi_values, phi_values)
         spin_frame_rotations = Rotation.from_euler(
-            simulator.euler_angles_convention, 
+        simulator.euler_angles_convention, 
             np.column_stack((alpha_values, beta_values, gamma_values))
             ).inv()
         # Compute the orientations of spins in the coordinate frame of spin B
         new_r_orientations = spin_frame_rotations.apply(-1 * r_orientations)
+        new_spin_frame_rotations = spin_frame_rotations.inv()
         spherical_coordinates = cartesian2spherical(new_r_orientations)
-        new_rho_values = spherical_coordinates[0]
+        #new_rho_values = spherical_coordinates[0]
         new_xi_values = spherical_coordinates[1]
         new_phi_values = spherical_coordinates[2]
-        new_spin_frame_rotations = spin_frame_rotations.inv()
-        euler_angles = new_spin_frame_rotations.inv().as_euler(
-            simulator.euler_angles_convention, degrees = False
-            )
+        # If xi or phi values are constant, rotate the coordinate system
+        apply_transform = False
+        transform_matrices1, transform_matrices2 = None, None
+        if not fitting_parameters["phi_mean"][k].is_optimized() and not fitting_parameters["phi_width"][k].is_optimized():
+            phi_correction = new_phi_values - phi_values
+            transform_matrices1 = Rotation.from_euler(
+                "ZXZ", 
+                np.column_stack((phi_correction, np.zeros(simulator.num_samples), np.zeros(simulator.num_samples)))
+                ).inv()
+            apply_transform = True
+        if not fitting_parameters["xi_mean"][k].is_optimized() and not fitting_parameters["xi_width"][k].is_optimized():
+            xi_correction = new_xi_values - xi_values
+            transform_matrices2 = Rotation.from_euler(
+                "ZXZ", 
+                np.column_stack((np.zeros(simulator.num_samples), xi_correction, np.zeros(simulator.num_samples)))
+                ).inv()
+            apply_transform = True
+        if apply_transform:
+            if transform_matrices1 is not None:
+                transform_matrices = transform_matrices1
+                if transform_matrices2 is not None:
+                    transform_matrices = transform_matrices2 * transform_matrices
+            else:
+                transform_matrices = transform_matrices2
+            new_r_orientations = transform_matrices.apply(new_r_orientations)
+            new_spin_frame_rotations = new_spin_frame_rotations * transform_matrices
+            spherical_coordinates = cartesian2spherical(new_r_orientations)
+            new_xi_values = spherical_coordinates[1]
+            new_phi_values = spherical_coordinates[2]
+        euler_angles = new_spin_frame_rotations.inv().as_euler(simulator.euler_angles_convention)
         new_alpha_values = euler_angles[:,0]
         new_beta_values = euler_angles[:,1]
-        new_gamma_values = euler_angles[:,2]        
-        # Plot the distributions of parameters
+        new_gamma_values = euler_angles[:,2] 
+        gamma_angles = np.expand_dims(new_gamma_values, axis=1)
+        if not fitting_parameters["gamma_mean"][k].is_optimized() and not fitting_parameters["gamma_width"][k].is_optimized():
+            # if simulator.euler_angles_convention == "ZXZ" or simulator.euler_angles_convention == "ZYZ":
+                # new_alpha_values = new_alpha_values - (new_gamma_values - gamma_values)
+                # new_gamma_values = gamma_values
+            transform_matrices = Rotation.from_euler(
+                simulator.euler_angles_convention[-1], 
+                -1 * gamma_angles
+                ).inv()
+            new_spin_frame_rotations = transform_matrices * new_spin_frame_rotations
+            euler_angles = new_spin_frame_rotations.inv().as_euler(simulator.euler_angles_convention)
+            new_alpha_values = euler_angles[:,0]
+            new_beta_values = euler_angles[:,1]
+            new_gamma_values = euler_angles[:,2]
+        # # Plot the distributions of parameters
         # from plots.monte_carlo.plot_monte_carlo_points import plot_monte_carlo_points
         # plot_monte_carlo_points(
             # [], new_xi_values, new_phi_values, new_alpha_values, new_beta_values, new_gamma_values, [], 
@@ -211,21 +250,11 @@ def compute_model_after_spin_exchange(model_parameters, fitting_parameters, simu
         beta_grid, beta_probs = compute_distribution(new_beta_values, 0, np.pi, np.pi / 180)
         gamma_grid, gamma_probs = compute_distribution(new_gamma_values, -np.pi, np.pi, np.pi / 180)
         # Fit the distributions and determine the mean values and the widths
-        new_xi_mean, new_xi_width = fit_distribution(
-            xi_grid, xi_probs, simulator.distribution_types["xi"]
-            )
-        new_phi_mean, new_phi_width = fit_distribution(
-            phi_grid, phi_probs, simulator.distribution_types["phi"]
-            )
-        new_alpha_mean, new_alpha_width = fit_distribution(
-            alpha_grid, alpha_probs, simulator.distribution_types["alpha"]
-            )
-        new_beta_mean, new_beta_width = fit_distribution(
-            beta_grid, beta_probs, simulator.distribution_types["beta"]
-            )
-        new_gamma_mean, new_gamma_width = fit_distribution(
-            gamma_grid, gamma_probs, simulator.distribution_types["gamma"]
-            )
+        new_xi_mean, new_xi_width = fit_distribution(xi_grid, xi_probs, simulator.distribution_types["xi"])
+        new_phi_mean, new_phi_width = fit_distribution(phi_grid, phi_probs, simulator.distribution_types["phi"])
+        new_alpha_mean, new_alpha_width = fit_distribution(alpha_grid, alpha_probs, simulator.distribution_types["alpha"])
+        new_beta_mean, new_beta_width = fit_distribution(beta_grid, beta_probs, simulator.distribution_types["beta"])
+        new_gamma_mean, new_gamma_width = fit_distribution(gamma_grid, gamma_probs, simulator.distribution_types["gamma"])
         # Store parameters
         new_model_parameters["xi_mean"][k] = new_xi_mean
         new_model_parameters["xi_width"][k] = new_xi_width

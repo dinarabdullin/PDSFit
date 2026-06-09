@@ -134,7 +134,7 @@ class Generation:
             pool.join() 
         for i in range(self.size):
             self.chromosomes[i].score = score[i]
-    
+            
     
     def sort_chromosomes(self):
         """Sort chromosomes based on their score."""
